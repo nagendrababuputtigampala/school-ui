@@ -25,6 +25,19 @@ interface HomePageProps {
 }
 
 export function HomePage({ onNavigate }: HomePageProps) {
+  // Ensure no horizontal scroll on any screen size
+  React.useEffect(() => {
+    document.body.style.overflowX = 'hidden';
+    // Add mobile-specific viewport meta tag handling
+    const viewport = document.querySelector('meta[name=viewport]');
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    }
+    return () => {
+      document.body.style.overflowX = 'auto';
+    };
+  }, []);
+
   const stats = [
     { label: 'Students', value: '2,500+', icon: People, color: '#1976d2' },
     { label: 'Teachers', value: '150+', icon: School, color: '#388e3c' },
@@ -51,25 +64,60 @@ export function HomePage({ onNavigate }: HomePageProps) {
   ];
 
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ mb: 12}}>
+    <Box sx={{ 
+      width: '100%',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
+      minHeight: '100vh',
+      margin: 0,
+      padding: 0,
+      boxSizing: 'border-box',
+      // Mobile-specific fixes
+      '@media (max-width: 600px)': {
+        '& .MuiContainer-root': {
+          paddingLeft: '4px !important',
+          paddingRight: '4px !important'
+        },
+        '& .MuiGrid-container': {
+          margin: '0 !important',
+          width: '100% !important'
+        }
+      }
+    }}>
+      <Container 
+        maxWidth="xl" 
+        disableGutters={true}
+        sx={{ 
+          overflowX: 'hidden',
+          px: { xs: 0.5, sm: 1, md: 2, lg: 3 },
+          width: '100%',
+          maxWidth: '100%'
+        }}
+      >
+        <Box sx={{ 
+          mb: { xs: 6, sm: 8, md: 12 }
+        }}>
         {/* Hero Section */}
         <Paper
-      sx={{
-        position: 'relative',
-        backgroundColor: 'grey.800',
-        color: '#fff',
-        mb: 8,
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundImage: `url(https://images.unsplash.com/photo-1523050854058-8df90110c9d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBidWlsZGluZyUyMGVkdWNhdGlvbnxlbnwxfHx8fDE3NTkyOTk2NzJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral)`,
-        minHeight: '500px',
-        display: 'flex',
-        alignItems: 'center',
-        borderRadius: 2,
-      }}
-    >
+          sx={{
+            position: 'relative',
+            backgroundColor: 'grey.800',
+            color: '#fff',
+            mb: { xs: 4, sm: 6, md: 8 },
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+            backgroundImage: `url(https://images.unsplash.com/photo-1523050854058-8df90110c9d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBidWlsZGluZyUyMGVkdWNhdGlvbnxlbnwxfHx8fDE3NTkyOTk2NzJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral)`,
+            minHeight: { xs: '300px', sm: '400px', md: '500px', lg: '600px' },
+            display: 'flex',
+            alignItems: 'center',
+            borderRadius: { xs: 0, sm: 1, md: 2 },
+            width: '100%',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            mx: { xs: 0, sm: 0, md: 0 }
+          }}
+        >
       {/* Overlay */}
       <Box
         sx={{
@@ -82,23 +130,51 @@ export function HomePage({ onNavigate }: HomePageProps) {
           borderRadius: 2,
         }}
       />
-      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        <Grid container spacing={4} alignItems="center">
+      <Box 
+        sx={{ 
+          position: 'relative', 
+          zIndex: 1, 
+          width: '100%',
+          maxWidth: { xs: '100%', md: '1200px' },
+          mx: 'auto',
+          px: { xs: 1, sm: 3, md: 4, lg: 6 }
+        }}
+      >
+        <Grid container spacing={{ xs: 2, md: 4 }} alignItems="center">
           <Grid size={12}>
             <Typography
               component="h1"
               variant="h2"
               color="inherit"
               gutterBottom
-              sx={{ fontWeight: 'bold' }}
+              sx={{ 
+                fontWeight: 'bold',
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
+              }}
             >
               Welcome to EduConnect
             </Typography>
-            <Typography variant="h5" color="inherit" paragraph sx={{ opacity: 0.9 }}>
+            <Typography 
+              variant="h5" 
+              color="inherit" 
+              paragraph 
+              sx={{ 
+                opacity: 0.9,
+                fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' }
+              }}
+            >
               Empowering minds, shaping futures. Join our community of learners,
               innovators, and leaders who are making a difference in the world.
             </Typography>
-            <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ 
+              mt: { xs: 2, sm: 3, md: 4 }, 
+              display: 'flex', 
+              gap: { xs: 1, sm: 1.5, md: 2 }, 
+              flexWrap: 'wrap',
+              flexDirection: { xs: 'column', sm: 'row' },
+              width: '100%',
+              maxWidth: { xs: '100%', sm: 'auto' }
+            }}>
               <Button
                 variant="contained"
                 size="large"
@@ -132,38 +208,65 @@ export function HomePage({ onNavigate }: HomePageProps) {
             </Box>
           </Grid>
         </Grid>
-      </Container>
+      </Box>
     </Paper>
 
         {/* Statistics */}
-      <Grid container spacing={3} sx={{ mb: 8 }}>
+        <Box sx={{ px: { xs: 1, sm: 0, md: 0 } }}>
+          <Grid 
+            container 
+            spacing={{ xs: 0.5, sm: 1.5, md: 2, lg: 3 }} 
+            sx={{ 
+              mb: { xs: 4, sm: 6, md: 8 },
+              mx: 0,
+              width: '100%',
+              maxWidth: '100%',
+              '& .MuiGrid-item': {
+                maxWidth: '100%'
+              },
+              '& .MuiGrid-root': {
+                maxWidth: '100%'
+              }
+            }}
+          >
           {stats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
-              <Grid size={2} >
+              <Grid size={{ xs: 6, sm: 6, md: 3, lg: 3 }} key={index}>
                 <Card
                   sx={{
                     textAlign: 'center',
-                    p: 3,
+                    p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
                     height: '100%',
                     transition: 'transform 0.2s',
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
+                      transform: { xs: 'none', md: 'translateY(-4px)' },
                     },
                   }}
                 >
                   <Avatar
                     sx={{
                       bgcolor: stat.color,
-                      width: 56,
-                      height: 56,
+                      width: { xs: 48, md: 56 },
+                      height: { xs: 48, md: 56 },
                       mx: 'auto',
-                      mb: 2,
+                      mb: { xs: 1, md: 2 },
                     }}
                   >
                     <IconComponent />
                   </Avatar>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  <Typography 
+                    variant="h4" 
+                    component="div" 
+                    sx={{ 
+                      fontWeight: 'bold', 
+                      mb: 1,
+                      fontSize: { xs: '1.5rem', md: '2rem' }
+                    }}
+                  >
                     {stat.value}
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
@@ -176,8 +279,22 @@ export function HomePage({ onNavigate }: HomePageProps) {
         </Grid>
 
         {/* Highlights */}
-        <Box sx={{ mb: 8 }}>
-          <Typography variant="h3" component="h2" textAlign="center" gutterBottom>
+        <Box sx={{ 
+          mb: { xs: 4, sm: 6, md: 8 },
+          width: '100%',
+          maxWidth: '100%',
+          px: { xs: 1, sm: 0, md: 0 }
+        }}>
+          <Typography 
+            variant="h3" 
+            component="h2" 
+            textAlign="center" 
+            gutterBottom
+            sx={{ 
+              fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem', lg: '3rem' },
+              px: { xs: 1, sm: 2 }
+            }}
+          >
             Why Choose EduConnect?
           </Typography>
           <Typography
@@ -185,21 +302,41 @@ export function HomePage({ onNavigate }: HomePageProps) {
             textAlign="center"
             color="text.secondary"
             paragraph
-            sx={{ mb: 6, maxWidth: '800px', mx: 'auto' }}
+            sx={{ 
+              mb: { xs: 3, sm: 4, md: 6 }, 
+              maxWidth: { xs: '100%', md: '800px' }, 
+              mx: 'auto',
+              fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem', lg: '1.25rem' },
+              px: { xs: 1, sm: 3, md: 4 }
+            }}
           >
             Discover what makes our educational institution stand out from the rest
           </Typography>
-          <Grid container spacing={4}>
+          <Grid 
+            container 
+            spacing={{ xs: 2, sm: 2.5, md: 3, lg: 4 }}
+            sx={{
+              mx: 0,
+              width: '100%',
+              maxWidth: '100%',
+              '& .MuiGrid-item': {
+                maxWidth: '100%'
+              }
+            }}
+          >
             {highlights.map((highlight, index) => (
-              <Grid size={4} key={index}>
+              <Grid size={{ xs: 12, sm: 12, md: 4, lg: 4 }} key={index}>
                 <Card
                   sx={{
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
                     transition: 'transform 0.2s',
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
+                      transform: { xs: 'none', md: 'translateY(-4px)' },
                     },
                   }}
                 >
@@ -208,8 +345,20 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     height="200"
                     image={highlight.image}
                     alt={highlight.title}
+                    sx={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      objectFit: 'cover',
+                      height: { xs: 180, sm: 200, md: 220 }
+                    }}
                   />
-                  <CardContent sx={{ flexGrow: 1 }}>
+                  <CardContent sx={{ 
+                    flexGrow: 1,
+                    p: { xs: 2, sm: 2.5, md: 3 },
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box'
+                  }}>
                     <Typography gutterBottom variant="h5" component="h3">
                       {highlight.title}
                     </Typography>
@@ -224,23 +373,67 @@ export function HomePage({ onNavigate }: HomePageProps) {
         </Box>
 
         {/* Recent Updates & Announcements */}
-        <Paper sx={{ p: 4, backgroundColor: 'grey.50' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-            <Typography variant="h4" component="h2">
+        <Box sx={{ px: { xs: 1, sm: 0, md: 0 } }}>
+          <Paper sx={{ 
+            p: { xs: 2, sm: 3, md: 4, lg: 5 }, 
+            backgroundColor: 'grey.50',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            borderRadius: { xs: 1, md: 2 }
+          }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', md: 'center' },
+            mb: { xs: 3, md: 4 },
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 2, md: 0 }
+          }}>
+            <Typography 
+              variant="h4" 
+              component="h2"
+              sx={{ fontSize: { xs: '1.5rem', md: '2rem' } }}
+            >
               Latest Updates & Announcements
             </Typography>
             <Button
               variant="outlined"
               onClick={() => onNavigate('announcements')}
               endIcon={<ArrowForward />}
+              size="medium"
+              sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}
             >
               View All Announcements
             </Button>
           </Box>
-          <Grid container spacing={3}>
-            <Grid size={6}>
-              <Card sx={{ border: '2px solid', borderColor: 'primary.main', borderRadius: 2 }}>
-                <CardContent>
+          <Grid 
+            container 
+            spacing={{ xs: 2, sm: 2.5, md: 3 }}
+            sx={{
+              mx: 0,
+              width: '100%',
+              maxWidth: '100%',
+              '& .MuiGrid-item': {
+                maxWidth: '100%'
+              }
+            }}
+          >
+            <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
+              <Card sx={{ 
+                border: '2px solid', 
+                borderColor: 'primary.main', 
+                borderRadius: { xs: 1, md: 2 },
+                width: '100%',
+                maxWidth: '100%',
+                boxSizing: 'border-box'
+              }}>
+                <CardContent sx={{
+                  p: { xs: 2, sm: 2.5, md: 3 },
+                  width: '100%',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box'
+                }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Box
                       sx={{
@@ -263,9 +456,19 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid size={6}>
-              <Card>
-                <CardContent>
+            <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
+              <Card sx={{
+                width: '100%',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+                borderRadius: { xs: 1, md: 2 }
+              }}>
+                <CardContent sx={{
+                  p: { xs: 2, sm: 2.5, md: 3 },
+                  width: '100%',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box'
+                }}>
                   <Typography variant="h6" component="h3" gutterBottom>
                     New Gallery Updates
                   </Typography>
@@ -285,8 +488,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
               </Card>
             </Grid>
           </Grid>
-        </Paper>
-      </Box>
-    </Container>
+          </Paper>
+        </Box>
+        </Box>
+        </Box>
+      </Container>
+    </Box>
   );
 }

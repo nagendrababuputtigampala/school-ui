@@ -41,6 +41,21 @@ interface Achievement {
 export function AchievementsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
 
+  // Match responsive behavior: prevent horizontal scroll & set viewport
+  React.useEffect(() => {
+    document.body.style.overflowX = 'hidden';
+    const viewport = document.querySelector('meta[name=viewport]');
+    if (viewport) {
+      viewport.setAttribute(
+        'content',
+        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+      );
+    }
+    return () => {
+      document.body.style.overflowX = 'auto';
+    };
+  }, []);
+
   const achievements: Achievement[] = [
     {
       id: '1',
@@ -177,39 +192,98 @@ export function AchievementsPage() {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
+    <Box sx={{
+      width: '100%',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
+      margin: 0,
+      padding: 0,
+      boxSizing: 'border-box',
+      '@media (max-width: 600px)': {
+        '& .MuiContainer-root': {
+          paddingLeft: '4px !important',
+          paddingRight: '4px !important'
+        },
+        '& .MuiGrid-container': {
+          margin: '0 !important',
+          width: '100% !important'
+        }
+      }
+    }}>
+      <Container
+        maxWidth="lg"
+        disableGutters
+        sx={{
+          px: { xs: 0.5, sm: 1, md: 2, lg: 3 },
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'hidden'
+        }}
+      >
+      <Box sx={{ py: { xs: 3, md: 4 } }}>
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 8 }}>
-          <Typography variant="h2" component="h1" gutterBottom>
+        <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, md: 0 } }}>
+          <Typography 
+            variant="h2" 
+            component="h1" 
+            gutterBottom
+            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
+          >
             Our Achievements
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ maxWidth: '800px', mx: 'auto' }}>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            sx={{ 
+              maxWidth: '800px', mx: 'auto', px: { xs: 1.5, md: 0 },
+              fontSize: { xs: '1rem', md: '1.15rem' }
+            }}
+          >
             Celebrating excellence in academics, sports, arts, and community service. 
             Our students and faculty continue to set new standards of achievement.
           </Typography>
         </Box>
 
         {/* Statistics */}
-        <Grid container spacing={3} sx={{ mb: 6 }}>
+        <Grid 
+          container 
+          spacing={{ xs: 2, sm: 3, md: 4 }} 
+          sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+        >
           {stats.map((stat, index) => (
-            <Grid size={3} key={index}>
-              <Card sx={{ textAlign: 'center', p: 3 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3, lg: 3 }} key={index}>
+              <Card 
+                sx={{ 
+                  textAlign: 'center', 
+                  p: { xs: 2, sm: 2.5, md: 3 },
+                  height: '100%',
+                  transition: 'transform 0.2s',
+                  '&:hover': { transform: { xs: 'none', md: 'translateY(-4px)' } }
+                }}
+              >
                 <Avatar
                   sx={{
                     bgcolor: stat.color,
-                    width: 56,
-                    height: 56,
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
                     mx: 'auto',
-                    mb: 2,
+                    mb: { xs: 1.5, md: 2 },
                   }}
                 >
-                  <EmojiEvents />
+                  <EmojiEvents sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 </Avatar>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
+                <Typography 
+                  variant="h4" 
+                  component="div" 
+                  sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}
+                >
                   {stat.value}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' } }}
+                >
                   {stat.label}
                 </Typography>
               </Card>
@@ -218,7 +292,7 @@ export function AchievementsPage() {
         </Grid>
 
         {/* Category Tabs */}
-        <Paper sx={{ mb: 4 }}>
+        <Paper sx={{ mb: { xs: 3, md: 4 }, px: { xs: 1, md: 2 } }}>
           <Tabs
             value={selectedCategory}
             onChange={(_, newValue) => setSelectedCategory(newValue)}
@@ -243,9 +317,13 @@ export function AchievementsPage() {
 
         {/* Achievement Grid */}
         {filteredAchievements.length > 0 ? (
-          <Grid container spacing={4} sx={{ mb: 6 }}>
+          <Grid 
+            container 
+            spacing={{ xs: 2, sm: 3, md: 4 }} 
+            sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+          >
             {filteredAchievements.map((achievement) => (
-              <Grid size={6} key={achievement.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 6, lg: 4 }} key={achievement.id}>
                 <Card
                   sx={{
                     height: '100%',
@@ -253,41 +331,53 @@ export function AchievementsPage() {
                     flexDirection: 'column',
                     transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 4,
+                      transform: { xs: 'none', md: 'translateY(-4px)' },
+                      boxShadow: { xs: 2, md: 4 },
                     },
                   }}
                 >
                   <CardMedia
                     component="img"
-                    height="200"
+                    height={200}
+                    sx={{ height: { xs: 160, sm: 190, md: 200 }, objectFit: 'cover' }}
                     image={achievement.image}
                     alt={achievement.title}
                   />
-                  <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Typography variant="h6" component="h3" sx={{ flexGrow: 1, pr: 1 }}>
+                  <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: { xs: 2, md: 3 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: { xs: 1.5, md: 2 }, gap: 1 }}>
+                      <Typography 
+                        variant="h6" 
+                        component="h3" 
+                        sx={{ flexGrow: 1, pr: 1, fontSize: { xs: '1rem', md: '1.1rem' } }}
+                      >
                         {achievement.title}
                       </Typography>
                       <Chip label={achievement.year} color="primary" size="small" />
                     </Box>
-                    
-                    <Typography variant="body2" color="text.secondary" paragraph sx={{ flexGrow: 1 }}>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      paragraph 
+                      sx={{ flexGrow: 1, fontSize: { xs: '0.85rem', md: '0.9rem' } }}
+                    >
                       {achievement.description}
                     </Typography>
 
-                    <Box sx={{ mt: 'auto', space: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ mt: 'auto' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1.5, md: 2 }, gap: 1 }}>
                         {getLevelChip(achievement.level)}
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, textAlign: 'right' }}
+                        >
                           {achievement.participants}
                         </Typography>
                       </Box>
-                      
-                      <Paper sx={{ p: 2, backgroundColor: 'success.light', color: 'success.contrastText' }}>
+                      <Paper sx={{ p: { xs: 1.5, md: 2 }, backgroundColor: 'success.light', color: 'success.contrastText' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <EmojiEvents />
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          <EmojiEvents sx={{ fontSize: { xs: 18, md: 20 } }} />
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: { xs: '0.8rem', md: '0.9rem' } }}>
                             {achievement.award}
                           </Typography>
                         </Box>
@@ -299,17 +389,23 @@ export function AchievementsPage() {
             ))}
           </Grid>
         ) : (
-          <Paper sx={{ p: 6, textAlign: 'center', mb: 6 }}>
-            <EmojiEvents sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
+          <Paper sx={{ p: { xs: 4, md: 6 }, textAlign: 'center', mb: { xs: 5, md: 6 } }}>
+            <EmojiEvents sx={{ fontSize: { xs: 48, md: 64 }, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.15rem' } }}>
               No achievements found in this category.
             </Typography>
           </Paper>
         )}
 
         {/* Recognition Levels */}
-        <Paper sx={{ p: 4, mb: 6, backgroundColor: 'grey.50' }}>
-          <Typography variant="h4" component="h2" textAlign="center" gutterBottom>
+        <Paper sx={{ p: { xs: 3, md: 4 }, mb: { xs: 5, md: 6 }, backgroundColor: 'grey.50' }}>
+          <Typography 
+            variant="h4" 
+            component="h2" 
+            textAlign="center" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
+          >
             Recognition Levels
           </Typography>
           <Typography
@@ -317,63 +413,95 @@ export function AchievementsPage() {
             textAlign="center"
             color="text.secondary"
             paragraph
-            sx={{ mb: 4, maxWidth: '600px', mx: 'auto' }}
+            sx={{ mb: { xs: 3, md: 4 }, maxWidth: '600px', mx: 'auto', fontSize: { xs: '0.95rem', md: '1rem' }, px: { xs: 1.5, md: 0 } }}
           >
             Our achievements span across multiple levels of recognition, from local competitions 
             to international honors.
           </Typography>
-          <Grid container spacing={2} justifyContent="center">
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: { xs: 1, sm: 1.5, md: 2 }, 
+              justifyContent: 'center' 
+            }}
+          >
             {levels.map((level) => {
               const IconComponent = level.icon;
               const count = achievements.filter(a => a.level === level.id).length;
               return (
-                <Grid  key={level.id}>
-                  <Chip
-                    label={`${level.label} (${count})`}
-                    icon={<IconComponent />}
-                    sx={{
-                      backgroundColor: level.color,
-                      color: 'white',
-                      fontWeight: 'bold',
-                      px: 2,
-                      py: 1,
-                      '& .MuiChip-icon': {
-                        color: 'white',
-                      },
-                    }}
-                  />
-                </Grid>
+                <Chip
+                  key={level.id}
+                  label={`${level.label} (${count})`}
+                  icon={<IconComponent />}
+                  sx={{
+                    backgroundColor: level.color,
+                    color: 'white',
+                    fontWeight: 'bold',
+                    px: { xs: 1.5, md: 2 },
+                    py: { xs: 0.75, md: 1 },
+                    fontSize: { xs: '0.7rem', md: '0.75rem' },
+                    '& .MuiChip-icon': { color: 'white', fontSize: { xs: '0.9rem', md: '1rem' } },
+                  }}
+                />
               );
             })}
-          </Grid>
+          </Box>
         </Paper>
 
         {/* Call to Action */}
         <Paper
           sx={{
-            p: 6,
+            p: { xs: 3.5, md: 6 },
             textAlign: 'center',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
           }}
         >
-          <Typography variant="h3" component="h2" gutterBottom>
+          <Typography 
+            variant="h3" 
+            component="h2" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' } }}
+          >
             Be Part of Our Success Story
           </Typography>
-          <Typography variant="h6" paragraph sx={{ maxWidth: '700px', mx: 'auto', opacity: 0.9 }}>
+          <Typography 
+            variant="h6" 
+            paragraph 
+            sx={{ 
+              maxWidth: '700px', 
+              mx: 'auto', 
+              opacity: 0.9,
+              fontSize: { xs: '1rem', md: '1.15rem' },
+              px: { xs: 1.5, md: 0 }
+            }}
+          >
             Join our community of achievers and unlock your potential. With dedicated faculty, 
             world-class facilities, and a culture of excellence, your success story starts here.
           </Typography>
-          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Box 
+            sx={{ 
+              mt: { xs: 3, md: 4 }, 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: { xs: 1.5, md: 2 }, 
+              flexWrap: 'wrap'
+            }}
+          >
             <Button
               variant="contained"
               size="large"
               sx={{
                 backgroundColor: 'white',
                 color: 'primary.main',
-                '&:hover': {
-                  backgroundColor: 'grey.100',
-                },
+                fontSize: { xs: '0.8rem', md: '0.9rem' },
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.25 },
+                '&:hover': { backgroundColor: 'grey.100' },
               }}
             >
               Apply Now
@@ -384,6 +512,9 @@ export function AchievementsPage() {
               sx={{
                 borderColor: 'white',
                 color: 'white',
+                fontSize: { xs: '0.8rem', md: '0.9rem' },
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.25 },
                 '&:hover': {
                   borderColor: 'grey.300',
                   backgroundColor: 'rgba(255,255,255,0.1)',
@@ -395,6 +526,7 @@ export function AchievementsPage() {
           </Box>
         </Paper>
       </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }

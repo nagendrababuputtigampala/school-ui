@@ -47,6 +47,18 @@ export function AlumniPage() {
   const [selectedIndustry, setSelectedIndustry] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Ensure no horizontal scroll on any screen size
+  React.useEffect(() => {
+    document.body.style.overflowX = 'hidden';
+    const viewport = document.querySelector('meta[name=viewport]');
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    }
+    return () => {
+      document.body.style.overflowX = 'auto';
+    };
+  }, []);
+
   const alumniMembers: AlumniMember[] = [
     {
       id: '1',
@@ -197,39 +209,101 @@ export function AlumniPage() {
   ];
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
+    <Box sx={{ 
+      width: '100%',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
+      minHeight: '100vh',
+      margin: 0,
+      padding: 0,
+      boxSizing: 'border-box',
+      '@media (max-width: 600px)': {
+        '& .MuiContainer-root': {
+          paddingLeft: '4px !important',
+          paddingRight: '4px !important'
+        },
+        '& .MuiGrid-container': {
+          margin: '0 !important',
+          width: '100% !important'
+        }
+      }
+    }}>    
+      <Container 
+        maxWidth="lg" 
+        disableGutters={true}
+        sx={{ 
+          overflowX: 'hidden',
+          px: { xs: 0.5, sm: 1, md: 2, lg: 3 },
+          width: '100%',
+          maxWidth: '100%'
+        }}
+      >
+        <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 8 }}>
-          <Typography variant="h2" component="h1" gutterBottom>
+        <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, sm: 0 } }}>
+          <Typography 
+            variant="h2" 
+            component="h1" 
+            gutterBottom
+            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
+          >
             Alumni Network
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ maxWidth: '800px', mx: 'auto' }}>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            sx={{ 
+              maxWidth: '800px', 
+              mx: 'auto',
+              fontSize: { xs: '1rem', md: '1.25rem' },
+              px: { xs: 1, md: 0 }
+            }}
+          >
             Discover the incredible achievements of our graduates who are making a difference 
             in their fields and communities around the world.
           </Typography>
         </Box>
 
         {/* Statistics */}
-        <Grid container spacing={3} sx={{ mb: 6 }}>
+        <Grid 
+          container 
+          spacing={{ xs: 2, sm: 3, md: 4 }} 
+          sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+        >
           {stats.map((stat, index) => (
-            <Grid size={3} key={index}>
-              <Card sx={{ textAlign: 'center', p: 3 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3, lg: 3 }} key={index}>
+              <Card 
+                sx={{ 
+                  textAlign: 'center', 
+                  p: { xs: 2, sm: 2.5, md: 3 },
+                  height: '100%',
+                  transition: 'transform 0.2s',
+                  '&:hover': { transform: { xs: 'none', md: 'translateY(-4px)' } }
+                }}
+              >
                 <Avatar
                   sx={{
                     bgcolor: stat.color,
-                    width: 56,
-                    height: 56,
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
                     mx: 'auto',
-                    mb: 2,
+                    mb: { xs: 1.5, md: 2 },
                   }}
                 >
-                  <EmojiEvents />
+                  <EmojiEvents sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 </Avatar>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
+                <Typography 
+                  variant="h4" 
+                  component="div" 
+                  sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}
+                >
                   {stat.value}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' } }}
+                >
                   {stat.label}
                 </Typography>
               </Card>
@@ -238,8 +312,8 @@ export function AlumniPage() {
         </Grid>
 
         {/* Search and Filters */}
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
+        <Box sx={{ mb: { xs: 3, md: 4 } }}>
+          <Box sx={{ maxWidth: 500, mx: 'auto', mb: { xs: 2, md: 3 }, px: { xs: 1, md: 0 } }}>
             <TextField
               fullWidth
               placeholder="Search alumni by name, position, company, or achievements..."
@@ -255,8 +329,8 @@ export function AlumniPage() {
             />
           </Box>
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Paper sx={{ minWidth: 200 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 1.5, md: 2 }, mb: { xs: 2.5, md: 3 }, flexWrap: 'wrap' }}>
+            <Paper sx={{ minWidth: 200, width: { xs: '100%', sm: 'auto' } }}>
               <Tabs
                 value={selectedDecade}
                 onChange={(_, newValue) => setSelectedDecade(newValue)}
@@ -269,8 +343,7 @@ export function AlumniPage() {
               </Tabs>
             </Paper>
           </Box>
-
-          <Paper>
+          <Paper sx={{ px: { xs: 1, md: 2 } }}>
             <Tabs
               value={selectedIndustry}
               onChange={(_, newValue) => setSelectedIndustry(newValue)}
@@ -296,9 +369,13 @@ export function AlumniPage() {
 
         {/* Alumni Grid */}
         {filteredAlumni.length > 0 ? (
-          <Grid container spacing={4} sx={{ mb: 6 }}>
+          <Grid 
+            container 
+            spacing={{ xs: 2, sm: 3, md: 4 }} 
+            sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+          >
             {filteredAlumni.map((member) => (
-              <Grid size={4} key={member.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={member.id}>
                 <Card
                   sx={{
                     height: '100%',
@@ -306,57 +383,84 @@ export function AlumniPage() {
                     flexDirection: 'column',
                     transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 3,
+                      transform: { xs: 'none', md: 'translateY(-4px)' },
+                      boxShadow: { xs: 2, md: 3 },
                     },
                   }}
                 >
                   <CardMedia
                     component="img"
-                    height="250"
+                    height={250}
+                    sx={{ height: { xs: 180, sm: 220, md: 250 }, objectFit: 'cover' }}
                     image={member.image}
                     alt={member.name}
                   />
-                  <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Typography variant="h6" component="h3" gutterBottom>
+                  <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      component="h3" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}
+                    >
                       {member.name}
                     </Typography>
-                    <Typography variant="subtitle1" color="primary" gutterBottom>
+                    <Typography 
+                      variant="subtitle1" 
+                      color="primary" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '0.85rem', md: '0.95rem' } }}
+                    >
                       Class of {member.graduationYear}
                     </Typography>
                     
                     <Box sx={{ mb: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Work sx={{ fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body2">
+                        <Work sx={{ fontSize: { xs: 14, md: 16 }, color: 'text.secondary' }} />
+                        <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}>
                           {member.currentPosition}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Business sx={{ fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body2">
+                        <Business sx={{ fontSize: { xs: 14, md: 16 }, color: 'text.secondary' }} />
+                        <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}>
                           {member.company}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <LocationOn sx={{ fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body2">
+                        <LocationOn sx={{ fontSize: { xs: 14, md: 16 }, color: 'text.secondary' }} />
+                        <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}>
                           {member.location}
                         </Typography>
                       </Box>
                     </Box>
 
-                    <Typography variant="body2" color="text.secondary" paragraph sx={{ flexGrow: 1 }}>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      paragraph 
+                      sx={{ flexGrow: 1, fontSize: { xs: '0.75rem', md: '0.85rem' } }}
+                    >
                       {member.bio}
                     </Typography>
 
                     <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        gutterBottom
+                        sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
+                      >
                         <strong>Key Achievements:</strong>
                       </Typography>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {member.achievements.slice(0, 2).map((achievement, index) => (
-                          <Chip key={index} label={achievement} size="small" variant="outlined" />
+                          <Chip 
+                            key={index} 
+                            label={achievement} 
+                            size="small" 
+                            variant="outlined" 
+                            sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' } }}
+                          />
                         ))}
                         {member.achievements.length > 2 && (
                           <Chip 
@@ -364,6 +468,7 @@ export function AlumniPage() {
                             size="small" 
                             variant="outlined" 
                             color="primary"
+                            sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' } }}
                           />
                         )}
                       </Box>
@@ -373,7 +478,7 @@ export function AlumniPage() {
                       <Button
                         startIcon={<LinkedIn />}
                         size="small"
-                        sx={{ mt: 'auto', alignSelf: 'flex-start' }}
+                        sx={{ mt: 'auto', alignSelf: 'flex-start', fontSize: { xs: '0.65rem', md: '0.7rem' } }}
                       >
                         Connect
                       </Button>
@@ -384,17 +489,23 @@ export function AlumniPage() {
             ))}
           </Grid>
         ) : (
-          <Paper sx={{ p: 6, textAlign: 'center', mb: 6 }}>
-            <People sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
+          <Paper sx={{ p: { xs: 4, md: 6 }, textAlign: 'center', mb: { xs: 5, md: 6 } }}>
+            <People sx={{ fontSize: { xs: 48, md: 64 }, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.15rem' } }}>
               No alumni found matching your criteria.
             </Typography>
           </Paper>
         )}
 
         {/* Alumni Network Benefits */}
-        <Paper sx={{ p: 4, mb: 6, backgroundColor: 'grey.50' }}>
-          <Typography variant="h4" component="h2" textAlign="center" gutterBottom>
+        <Paper sx={{ p: { xs: 3, md: 4 }, mb: { xs: 5, md: 6 }, backgroundColor: 'grey.50' }}>
+          <Typography 
+            variant="h4" 
+            component="h2" 
+            textAlign="center" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
+          >
             Alumni Network Benefits
           </Typography>
           <Typography
@@ -402,80 +513,107 @@ export function AlumniPage() {
             textAlign="center"
             color="text.secondary"
             paragraph
-            sx={{ mb: 4, maxWidth: '700px', mx: 'auto' }}
+            sx={{ mb: { xs: 3, md: 4 }, maxWidth: '700px', mx: 'auto', fontSize: { xs: '0.95rem', md: '1rem' }, px: { xs: 1.5, md: 0 } }}
           >
             Our strong alumni network provides valuable opportunities for mentorship, 
             career development, and lifelong connections.
           </Typography>
-          <Grid container spacing={3}>
-            <Grid size={4}>
-              <Card sx={{ textAlign: 'center', p: 3, height: '100%' }}>
-                <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56, mx: 'auto', mb: 2 }}>
-                  <People />
-                </Avatar>
-                <Typography variant="h6" gutterBottom>
-                  Mentorship Program
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Connect with experienced alumni who can guide your career journey
-                </Typography>
-              </Card>
-            </Grid>
-            <Grid size={4}>
-              <Card sx={{ textAlign: 'center', p: 3, height: '100%' }}>
-                <Avatar sx={{ bgcolor: 'success.main', width: 56, height: 56, mx: 'auto', mb: 2 }}>
-                  <Work />
-                </Avatar>
-                <Typography variant="h6" gutterBottom>
-                  Job Opportunities
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Access exclusive job postings and career opportunities through our network
-                </Typography>
-              </Card>
-            </Grid>
-            <Grid size={4}>
-              <Card sx={{ textAlign: 'center', p: 3, height: '100%' }}>
-                <Avatar sx={{ bgcolor: 'info.main', width: 56, height: 56, mx: 'auto', mb: 2 }}>
-                  <TrendingUp />
-                </Avatar>
-                <Typography variant="h6" gutterBottom>
-                  Professional Development
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Attend exclusive events, workshops, and networking sessions
-                </Typography>
-              </Card>
-            </Grid>
+          <Grid 
+            container 
+            spacing={{ xs: 2, sm: 3, md: 4 }}
+            sx={{ mx: 0, width: '100%' }}
+          >
+            {[
+              { title: 'Mentorship Program', desc: 'Connect with experienced alumni who can guide your career journey', icon: People, color: 'primary.main' },
+              { title: 'Job Opportunities', desc: 'Access exclusive job postings and career opportunities through our network', icon: Work, color: 'success.main' },
+              { title: 'Professional Development', desc: 'Attend exclusive events, workshops, and networking sessions', icon: TrendingUp, color: 'info.main' },
+            ].map((b, i) => {
+              const IconComp = b.icon;
+              return (
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
+                  <Card 
+                    sx={{ 
+                      textAlign: 'center', 
+                      p: { xs: 2, md: 3 }, 
+                      height: '100%',
+                      transition: 'transform 0.2s',
+                      '&:hover': { transform: { xs: 'none', md: 'translateY(-4px)' } }
+                    }}
+                  >
+                    <Avatar sx={{ bgcolor: b.color, width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 }, mx: 'auto', mb: { xs: 1.5, md: 2 } }}>
+                      <IconComp sx={{ fontSize: { xs: 24, md: 28 } }} />
+                    </Avatar>
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}
+                    >
+                      {b.title}
+                    </Typography>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
+                    >
+                      {b.desc}
+                    </Typography>
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
         </Paper>
 
         {/* Call to Action */}
         <Paper
           sx={{
-            p: 6,
+            p: { xs: 3.5, md: 6 },
             textAlign: 'center',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
           }}
         >
-          <Typography variant="h3" component="h2" gutterBottom>
+          <Typography 
+            variant="h3" 
+            component="h2" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' } }}
+          >
             Join Our Alumni Network
           </Typography>
-          <Typography variant="h6" paragraph sx={{ maxWidth: '700px', mx: 'auto', opacity: 0.9 }}>
+          <Typography 
+            variant="h6" 
+            paragraph 
+            sx={{ 
+              maxWidth: '700px', mx: 'auto', opacity: 0.9,
+              fontSize: { xs: '1rem', md: '1.15rem' }, px: { xs: 1.5, md: 0 }
+            }}
+          >
             Are you an EduConnect graduate? Connect with us and become part of our thriving 
             alumni community. Share your success story and help inspire current students.
           </Typography>
-          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Box 
+            sx={{ 
+              mt: { xs: 3, md: 4 }, 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: { xs: 1.5, md: 2 }, 
+              flexWrap: 'wrap'
+            }}
+          >
             <Button
               variant="contained"
               size="large"
               sx={{
                 backgroundColor: 'white',
                 color: 'primary.main',
-                '&:hover': {
-                  backgroundColor: 'grey.100',
-                },
+                fontSize: { xs: '0.8rem', md: '0.9rem' },
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.25 },
+                '&:hover': { backgroundColor: 'grey.100' },
               }}
             >
               Update Your Profile
@@ -486,6 +624,9 @@ export function AlumniPage() {
               sx={{
                 borderColor: 'white',
                 color: 'white',
+                fontSize: { xs: '0.8rem', md: '0.9rem' },
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.25 },
                 '&:hover': {
                   borderColor: 'grey.300',
                   backgroundColor: 'rgba(255,255,255,0.1)',
@@ -496,7 +637,8 @@ export function AlumniPage() {
             </Button>
           </Box>
         </Paper>
-      </Box>
-    </Container>
+        </Box>
+      </Container>
+    </Box>
   );
 }

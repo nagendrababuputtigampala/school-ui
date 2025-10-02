@@ -29,10 +29,10 @@ export function Footer() {
         mt: 'auto',
       }}
     >
-      <Container maxWidth="lg">
-        <Grid container spacing={4}>
+      <Container maxWidth="lg" sx={{ overflowX: 'hidden' }}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
           {/* School Info */}
-          <Grid size={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
               EduConnect
             </Typography>
@@ -68,7 +68,7 @@ export function Footer() {
           </Grid>
 
           {/* Quick Links */}
-          <Grid size={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Typography variant="h6" gutterBottom>
               Quick Links
             </Typography>
@@ -109,7 +109,7 @@ export function Footer() {
           </Grid>
 
           {/* Academic Programs */}
-          <Grid size={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Typography variant="h6" gutterBottom>
               Programs
             </Typography>
@@ -150,7 +150,7 @@ export function Footer() {
           </Grid>
 
           {/* Contact Info */}
-          <Grid size={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Typography variant="h6" gutterBottom>
               Contact Us
             </Typography>
@@ -180,11 +180,23 @@ export function Footer() {
 
         <Divider sx={{ my: 4, backgroundColor: 'rgba(255,255,255,0.2)' }} />
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          flexWrap: 'wrap', 
+          gap: { xs: 2, md: 2 },
+          flexDirection: { xs: 'column', md: 'row' }
+        }}>
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
             © 2024 EduConnect. All rights reserved.
           </Typography>
-          <Box sx={{ display: 'flex', gap: 3 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 2, md: 3 },
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'center', sm: 'flex-start' }
+          }}>
             <Link 
               href="#" 
               color="inherit" 
