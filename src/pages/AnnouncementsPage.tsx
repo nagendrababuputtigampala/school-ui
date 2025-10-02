@@ -25,7 +25,7 @@ import {
   LocalHospital,
   Group,
   PushPin,
-  NotificationsActive,
+  NotificationsActive
 } from '@mui/icons-material';
 
 interface Announcement {
@@ -46,6 +46,18 @@ export function AnnouncementsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedAudience, setSelectedAudience] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Ensure no horizontal scroll on any screen size
+  React.useEffect(() => {
+    document.body.style.overflowX = 'hidden';
+    const viewport = document.querySelector('meta[name=viewport]');
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    }
+    return () => {
+      document.body.style.overflowX = 'auto';
+    };
+  }, []);
 
   const announcements: Announcement[] = [
     {
@@ -213,72 +225,81 @@ export function AnnouncementsPage() {
 
   const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
     const CategoryIcon = getCategoryIcon(announcement.category);
-    
     return (
       <Card
         sx={{
-          transition: 'transform 0.2s, box-shadow 0.2s',
+          transition: 'transform 0.25s, box-shadow 0.25s',
           '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: 3,
+            transform: { xs: 'none', md: 'translateY(-4px)' },
+            boxShadow: { xs: 1, md: 4 },
           },
           border: announcement.isPinned ? 2 : announcement.isUrgent ? 2 : 1,
           borderColor: announcement.isPinned ? 'primary.main' : announcement.isUrgent ? 'error.main' : 'divider',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
         <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-            <Avatar sx={{ bgcolor: `${getCategoryColor(announcement.category)}.main` }}>
-              <CategoryIcon />
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, sm: 2 }, mb: { xs: 1.5, sm: 2 } }}>
+            <Avatar sx={{ bgcolor: `${getCategoryColor(announcement.category)}.main`, width: { xs: 40, sm: 48 }, height: { xs: 40, sm: 48 } }}>
+              <CategoryIcon fontSize={typeof window !== 'undefined' && window.innerWidth < 600 ? 'small' : 'medium'} />
             </Avatar>
             <Box sx={{ flexGrow: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 {announcement.isPinned && <PushPin color="primary" />}
                 {announcement.isUrgent && <Warning color="error" />}
               </Box>
-              <Typography variant="h6" component="h3" gutterBottom>
+              <Typography
+                component="h3"
+                gutterBottom
+                sx={{ fontSize: { xs: '1rem', sm: '1.05rem', md: '1.15rem' }, fontWeight: 600, lineHeight: 1.25, pr: { xs: 0, md: 2 } }}
+              >
                 {announcement.title}
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <Chip
-                  label={announcement.category}
-                  size="small"
-                  color={getCategoryColor(announcement.category) as any}
-                />
-                <Chip
-                  label={announcement.audience}
-                  size="small"
-                  variant="outlined"
-                />
+              <Box sx={{ display: 'flex', gap: 1, mb: { xs: 1.5, sm: 2 }, flexWrap: 'wrap' }}>
+                <Chip label={announcement.category} size="small" color={getCategoryColor(announcement.category) as any} />
+                <Chip label={announcement.audience} size="small" variant="outlined" />
               </Box>
             </Box>
           </Box>
-
-          <Typography variant="body2" color="text.secondary" paragraph>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            paragraph
+            sx={{ fontSize: { xs: '0.72rem', sm: '0.8rem', md: '0.875rem' }, lineHeight: 1.4 }}
+          >
             {announcement.content}
           </Typography>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: { xs: 1.5, sm: 2 },
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1, sm: 0 }
+            }}
+          >
+            <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, alignItems: 'center', flexWrap: 'wrap' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Event sx={{ fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}>
                   {new Date(announcement.date).toLocaleDateString()}
                 </Typography>
               </Box>
               {announcement.endDate && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}>
                   Until {new Date(announcement.endDate).toLocaleDateString()}
                 </Typography>
               )}
             </Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}>
               {announcement.author}
             </Typography>
           </Box>
-
           {announcement.tags.length > 0 && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 'auto' }}>
               {announcement.tags.map(tag => (
                 <Chip key={tag} label={tag} size="small" variant="outlined" />
               ))}
@@ -290,41 +311,111 @@ export function AnnouncementsPage() {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
+    <Box sx={{ 
+      width: '100%',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
+      minHeight: '100vh',
+      margin: 0,
+      padding: 0,
+      boxSizing: 'border-box',
+      '@media (max-width: 600px)': {
+        '& .MuiContainer-root': {
+          paddingLeft: '4px !important',
+          paddingRight: '4px !important'
+        },
+        '& .MuiGrid-container': {
+          margin: '0 !important',
+          width: '100% !important'
+        }
+      }
+    }}>    
+      <Container 
+        maxWidth="lg" 
+        disableGutters={true}
+        sx={{ 
+          overflowX: 'hidden',
+          px: { xs: 0.5, sm: 1, md: 2, lg: 3 },
+          width: '100%',
+          maxWidth: '100%'
+        }}
+      >
+        <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
-          <Typography variant="h2" component="h1" gutterBottom>
+        <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, sm: 0 } }}>
+          <Typography 
+            variant="h2" 
+            component="h1" 
+            gutterBottom
+            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
+          >
             Announcements
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ maxWidth: '800px', mx: 'auto' }}>
-            Stay informed with the latest news, updates, and important information from EduConnect. 
-            Find announcements for students, parents, staff, and the general public.
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            sx={{ 
+              maxWidth: '800px', 
+              mx: 'auto',
+              fontSize: { xs: '1rem', md: '1.25rem' },
+              px: { xs: 1, md: 0 }
+            }}
+          >
+            Stay updated with the latest news, events, and important information from EduConnect. 
+            Filter by category or audience to find announcements relevant to you.
           </Typography>
         </Box>
 
         {/* Quick Stats */}
-        <Grid container spacing={3} sx={{ mb: 6 }}>
+        <Grid
+          container
+          spacing={{ xs: 2, sm: 3 }}
+          sx={{ mb: { xs: 4, md: 6 }, px: { xs: 0.5, sm: 1, md: 0 } }}
+        >
           {stats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
-              <Grid size={3} key={index}>
-                <Card sx={{ textAlign: 'center', p: 3 }}>
+              <Grid
+                key={index}
+                size={{ xs: 6, sm: 4, md: 3 }}
+                sx={{ display: 'flex' }}
+              >
+                <Card
+                  sx={{
+                    textAlign: 'center',
+                    p: { xs: 2, sm: 2.5, md: 3 },
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                  }}
+                >
                   <Avatar
                     sx={{
                       bgcolor: `${stat.color}.main`,
-                      width: 56,
-                      height: 56,
+                      width: { xs: 44, sm: 52, md: 56 },
+                      height: { xs: 44, sm: 52, md: 56 },
                       mx: 'auto',
-                      mb: 2,
+                      mb: { xs: 1, sm: 1.5, md: 2 },
                     }}
                   >
-                    <IconComponent />
+                    <IconComponent fontSize={typeof window !== 'undefined' && window.innerWidth < 600 ? 'small' : 'medium'} />
                   </Avatar>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  <Typography
+                    component="div"
+                    sx={{
+                      fontWeight: 'bold',
+                      mb: 0.5,
+                      fontSize: { xs: '1.25rem', sm: '1.75rem', md: '2rem' }
+                    }}
+                  >
                     {stat.value}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' } }}
+                  >
                     {stat.label}
                   </Typography>
                 </Card>
@@ -395,14 +486,14 @@ export function AnnouncementsPage() {
         <Box sx={{ mb: 6 }}>
           {/* Pinned Announcements */}
           {pinnedAnnouncements.length > 0 && (
-            <Box sx={{ mb: 6 }}>
-              <Typography variant="h4" component="h2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ mb: { xs: 4, md: 6 } }}>
+              <Typography component="h2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1.3rem', sm: '1.5rem', md: '1.75rem' }, fontWeight: 600 }}>
                 <PushPin color="primary" />
                 Pinned Announcements
               </Typography>
-              <Grid container spacing={3}>
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
                 {pinnedAnnouncements.map((announcement) => (
-                  <Grid size={12} key={announcement.id}>
+                  <Grid size={{ xs: 12 }} key={announcement.id}>
                     <AnnouncementCard announcement={announcement} />
                   </Grid>
                 ))}
@@ -412,14 +503,14 @@ export function AnnouncementsPage() {
 
           {/* Urgent Announcements */}
           {urgentAnnouncements.length > 0 && (
-            <Box sx={{ mb: 6 }}>
-              <Typography variant="h4" component="h2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ mb: { xs: 4, md: 6 } }}>
+              <Typography component="h2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1.3rem', sm: '1.5rem', md: '1.75rem' }, fontWeight: 600 }}>
                 <Warning color="error" />
                 Urgent Announcements
               </Typography>
-              <Grid container spacing={3}>
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
                 {urgentAnnouncements.map((announcement) => (
-                  <Grid size={12} key={announcement.id}>
+                  <Grid size={{ xs: 12 }} key={announcement.id}>
                     <AnnouncementCard announcement={announcement} />
                   </Grid>
                 ))}
@@ -429,14 +520,14 @@ export function AnnouncementsPage() {
 
           {/* Regular Announcements */}
           {regularAnnouncements.length > 0 && (
-            <Box sx={{ mb: 6 }}>
-              <Typography variant="h4" component="h2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ mb: { xs: 4, md: 6 } }}>
+              <Typography component="h2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1.3rem', sm: '1.5rem', md: '1.75rem' }, fontWeight: 600 }}>
                 <Notifications color="primary" />
                 Recent Announcements
               </Typography>
-              <Grid container spacing={3}>
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
                 {regularAnnouncements.map((announcement) => (
-                  <Grid  size={12} key={announcement.id}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={announcement.id}>
                     <AnnouncementCard announcement={announcement} />
                   </Grid>
                 ))}
@@ -467,7 +558,8 @@ export function AnnouncementsPage() {
             Subscribe to Notifications
           </Button>
         </Paper>
-      </Box>
-    </Container>
+        </Box>
+      </Container>
+    </Box>
   );
 }
