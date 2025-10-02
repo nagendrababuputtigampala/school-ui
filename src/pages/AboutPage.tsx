@@ -224,7 +224,7 @@ export function AboutPage() {
           </Typography>
           <Grid container spacing={3}>
             {milestones.map((milestone, index) => (
-              <Grid size={6} key={index}>
+              <Grid size={12} key={index}>
                 <Card
                   sx={{
                     display: 'flex',
