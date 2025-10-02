@@ -4,13 +4,11 @@ import {
   Container,
   Typography,
   Card,
-  CardContent,
   Grid,
   TextField,
   Button,
   Paper,
   Avatar,
-  Chip,
   MenuItem,
   Alert,
 } from '@mui/material';
@@ -21,9 +19,7 @@ import {
   AccessTime,
   Send,
   Person,
-  School,
   Help,
-  Event,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 

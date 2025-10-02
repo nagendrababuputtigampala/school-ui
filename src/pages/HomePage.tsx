@@ -18,8 +18,7 @@ import {
   School,
   EmojiEvents,
   ArrowForward,
-} from '@mui/icons-material';
-import { ImageWithFallback } from '../images/ImageWithFallback';
+} from '@mui/icons-material'
 
 interface HomePageProps {
   onNavigate: (page: string) => void;

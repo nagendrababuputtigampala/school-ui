@@ -12,10 +12,6 @@ import {
   LinearProgress,
 } from '@mui/material';
 import {
-  School,
-  EmojiEvents,
-  Group,
-  TrendingUp,
   Star,
   Lightbulb,
   People,
