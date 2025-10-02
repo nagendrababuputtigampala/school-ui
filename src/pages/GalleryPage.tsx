@@ -46,6 +46,18 @@ export function GalleryPage() {
   const [selectedMediaType, setSelectedMediaType] = useState('all');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
 
+  // Ensure no horizontal scroll on any screen size
+  React.useEffect(() => {
+    document.body.style.overflowX = 'hidden';
+    const viewport = document.querySelector('meta[name=viewport]');
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    }
+    return () => {
+      document.body.style.overflowX = 'auto';
+    };
+  }, []);
+
   const galleryItems: GalleryItem[] = [
     {
       id: '1',
@@ -168,41 +180,103 @@ export function GalleryPage() {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
+    <Box sx={{ 
+      width: '100%',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
+      minHeight: '100vh',
+      margin: 0,
+      padding: 0,
+      boxSizing: 'border-box',
+      '@media (max-width: 600px)': {
+        '& .MuiContainer-root': {
+          paddingLeft: '4px !important',
+          paddingRight: '4px !important'
+        },
+        '& .MuiGrid-container': {
+          margin: '0 !important',
+          width: '100% !important'
+        }
+      }
+    }}>    
+      <Container 
+        maxWidth="lg" 
+        disableGutters={true}
+        sx={{ 
+          overflowX: 'hidden',
+          px: { xs: 0.5, sm: 1, md: 2, lg: 3 },
+          width: '100%',
+          maxWidth: '100%'
+        }}
+      >
+        <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
-          <Typography variant="h2" component="h1" gutterBottom>
+        <Box sx={{ textAlign: 'center', mb: { xs: 4, sm: 5, md: 6 }, px: { xs: 1, sm: 0 } }}>
+          <Typography 
+            variant="h2" 
+            component="h1" 
+            gutterBottom
+            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
+          >
             Gallery
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ maxWidth: '800px', mx: 'auto' }}>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            sx={{ 
+              maxWidth: '800px', 
+              mx: 'auto',
+              fontSize: { xs: '1rem', md: '1.25rem' },
+              px: { xs: 1, md: 0 }
+            }}
+          >
             Explore memorable moments, achievements, and daily life at EduConnect through our photo and video gallery. 
             From academic achievements to cultural celebrations, sports victories to artistic expressions.
           </Typography>
         </Box>
 
         {/* Gallery Stats */}
-        <Grid container spacing={3} sx={{ mb: 6 }}>
+        <Grid 
+          container 
+          spacing={{ xs: 2, sm: 3, md: 4 }} 
+          sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+        >
           {stats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
-              <Grid size={3} key={index}>
-                <Card sx={{ textAlign: 'center', p: 3 }}>
+              <Grid size={{ xs: 6, sm: 6, md: 3, lg: 3 }} key={index}>
+                <Card 
+                  sx={{ 
+                    textAlign: 'center', 
+                    p: { xs: 2, sm: 2.5, md: 3 },
+                    height: '100%',
+                    transition: 'transform 0.2s',
+                    '&:hover': { transform: { xs: 'none', md: 'translateY(-4px)' } }
+                  }}
+                >
                   <Avatar
                     sx={{
                       bgcolor: 'primary.main',
-                      width: 56,
-                      height: 56,
+                      width: { xs: 48, sm: 56 },
+                      height: { xs: 48, sm: 56 },
                       mx: 'auto',
-                      mb: 2,
+                      mb: { xs: 1.5, md: 2 },
                     }}
                   >
-                    <IconComponent />
+                    <IconComponent sx={{ fontSize: { xs: 24, sm: 28 } }} />
                   </Avatar>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  <Typography 
+                    variant="h4" 
+                    component="div" 
+                    sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}
+                  >
                     {stat.value}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
+                  >
                     {stat.label}
                   </Typography>
                 </Card>
@@ -212,7 +286,7 @@ export function GalleryPage() {
         </Grid>
 
         {/* Category Tabs */}
-        <Paper sx={{ mb: 4 }}>
+        <Paper sx={{ mb: { xs: 3, md: 4 }, px: { xs: 1, md: 2 } }}>
           <Tabs
             value={selectedCategory}
             onChange={(_, newValue) => setSelectedCategory(newValue)}
@@ -236,7 +310,7 @@ export function GalleryPage() {
         </Paper>
 
         {/* Media Type Filter */}
-        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
+        <Box sx={{ mb: { xs: 3, md: 4 }, display: 'flex', justifyContent: 'center', px: { xs: 1, md: 0 } }}>
           <Tabs
             value={selectedMediaType}
             onChange={(_, newValue) => setSelectedMediaType(newValue)}
@@ -250,16 +324,20 @@ export function GalleryPage() {
 
         {/* Gallery Grid */}
         {finalFilteredItems.length > 0 ? (
-          <Grid container spacing={3} sx={{ mb: 6 }}>
+          <Grid 
+            container 
+            spacing={{ xs: 2, sm: 3, md: 4 }} 
+            sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+          >
             {finalFilteredItems.map((item) => (
-              <Grid size={4} key={item.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={item.id}>
                 <Card
                   sx={{
                     cursor: 'pointer',
                     transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 3,
+                      transform: { xs: 'none', md: 'translateY(-4px)' },
+                      boxShadow: { xs: 2, md: 3 },
                     },
                   }}
                   onClick={() => handleItemClick(item)}
@@ -267,7 +345,8 @@ export function GalleryPage() {
                   <Box sx={{ position: 'relative' }}>
                     <CardMedia
                       component="img"
-                      height="200"
+                      height={200}
+                      sx={{ height: { xs: 160, sm: 180, md: 200 }, objectFit: 'cover' }}
                       image={item.imageUrl}
                       alt={item.title}
                     />
@@ -285,8 +364,8 @@ export function GalleryPage() {
                           justifyContent: 'center',
                         }}
                       >
-                        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.9)', color: 'primary.main' }}>
-                          <PlayArrow />
+                        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.9)', color: 'primary.main', width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 } }}>
+                          <PlayArrow sx={{ fontSize: { xs: 28, md: 32 } }} />
                         </Avatar>
                       </Box>
                     )}
@@ -295,11 +374,18 @@ export function GalleryPage() {
                         label={item.type === 'video' ? 'Video' : 'Photo'}
                         size="small"
                         color={item.type === 'video' ? 'secondary' : 'primary'}
+                        sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' } }}
                       />
                     </Box>
                   </Box>
-                  <CardContent>
-                    <Typography gutterBottom variant="h6" component="h3" noWrap>
+                  <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      gutterBottom 
+                      variant="h6" 
+                      component="h3" 
+                      noWrap
+                      sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}
+                    >
                       {item.title}
                     </Typography>
                     <Typography
@@ -310,18 +396,29 @@ export function GalleryPage() {
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
-                        mb: 2,
+                        mb: { xs: 1.5, md: 2 },
+                        fontSize: { xs: '0.75rem', md: '0.85rem' }
                       }}
                     >
                       {item.description}
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography 
+                        variant="caption" 
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' } }}
+                      >
                         {new Date(item.date).toLocaleDateString()}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
                         {item.tags.slice(0, 2).map(tag => (
-                          <Chip key={tag} label={tag} size="small" variant="outlined" />
+                          <Chip 
+                            key={tag} 
+                            label={tag} 
+                            size="small" 
+                            variant="outlined"
+                            sx={{ fontSize: { xs: '0.55rem', md: '0.6rem' }, height: 'auto', py: 0 }}
+                          />
                         ))}
                       </Box>
                     </Box>
@@ -331,50 +428,73 @@ export function GalleryPage() {
             ))}
           </Grid>
         ) : (
-          <Paper sx={{ p: 6, textAlign: 'center', mb: 6 }}>
-            <PhotoCamera sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
+          <Paper sx={{ p: { xs: 4, md: 6 }, textAlign: 'center', mb: { xs: 5, md: 6 } }}>
+            <PhotoCamera sx={{ fontSize: { xs: 48, md: 64 }, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.15rem' } }}>
               No media found in this category.
             </Typography>
           </Paper>
         )}
 
         {/* Recent Highlights */}
-        <Paper sx={{ p: 4, backgroundColor: 'grey.50' }}>
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Typography variant="h4" component="h2" gutterBottom>
+        <Paper sx={{ p: { xs: 3, md: 4 }, backgroundColor: 'grey.50' }}>
+          <Box sx={{ textAlign: 'center', mb: { xs: 3, md: 4 } }}>
+            <Typography 
+              variant="h4" 
+              component="h2" 
+              gutterBottom
+              sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
+            >
               Recent Highlights
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: '600px', mx: 'auto' }}>
+            <Typography 
+              variant="body1" 
+              color="text.secondary" 
+              sx={{ maxWidth: '600px', mx: 'auto', fontSize: { xs: '0.95rem', md: '1rem' }, px: { xs: 1.5, md: 0 } }}
+            >
               Stay updated with the latest photos and videos from our school events, 
               academic achievements, and student activities.
             </Typography>
           </Box>
-          <Grid container spacing={3}>
+          <Grid 
+            container 
+            spacing={{ xs: 2, sm: 3, md: 4 }}
+            sx={{ mx: 0, width: '100%' }}
+          >
             {galleryItems.slice(0, 3).map((item) => (
-              <Grid size={4} key={item.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.id}>
                 <Card
                   sx={{
                     cursor: 'pointer',
                     height: '100%',
                     transition: 'transform 0.2s',
                     '&:hover': {
-                      transform: 'translateY(-2px)',
+                      transform: { xs: 'none', md: 'translateY(-2px)' },
                     },
                   }}
                   onClick={() => handleItemClick(item)}
                 >
                   <CardMedia
                     component="img"
-                    height="160"
+                    height={160}
+                    sx={{ height: { xs: 140, md: 160 }, objectFit: 'cover' }}
                     image={item.imageUrl}
                     alt={item.title}
                   />
-                  <CardContent>
-                    <Typography gutterBottom variant="h6" component="h3">
+                  <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      gutterBottom 
+                      variant="h6" 
+                      component="h3"
+                      sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}
+                    >
                       {item.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
+                    >
                       {item.description}
                     </Typography>
                   </CardContent>
@@ -446,7 +566,8 @@ export function GalleryPage() {
             </>
           )}
         </Dialog>
-      </Box>
-    </Container>
+        </Box>
+      </Container>
+    </Box>
   );
 }

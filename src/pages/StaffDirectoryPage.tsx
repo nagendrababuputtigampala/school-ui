@@ -45,6 +45,18 @@ export function StaffDirectoryPage() {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Ensure no horizontal scroll on any screen size
+  React.useEffect(() => {
+    document.body.style.overflowX = 'hidden';
+    const viewport = document.querySelector('meta[name=viewport]');
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    }
+    return () => {
+      document.body.style.overflowX = 'auto';
+    };
+  }, []);
+
   const staffMembers: StaffMember[] = [
     {
       id: '1',
@@ -199,39 +211,101 @@ export function StaffDirectoryPage() {
   ];
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
+    <Box sx={{ 
+      width: '100%',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
+      minHeight: '100vh',
+      margin: 0,
+      padding: 0,
+      boxSizing: 'border-box',
+      '@media (max-width: 600px)': {
+        '& .MuiContainer-root': {
+          paddingLeft: '4px !important',
+          paddingRight: '4px !important'
+        },
+        '& .MuiGrid-container': {
+          margin: '0 !important',
+          width: '100% !important'
+        }
+      }
+    }}>    
+      <Container 
+        maxWidth="lg" 
+        disableGutters={true}
+        sx={{ 
+          overflowX: 'hidden',
+          px: { xs: 0.5, sm: 1, md: 2, lg: 3 },
+          width: '100%',
+          maxWidth: '100%'
+        }}
+      >
+        <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 8 }}>
-          <Typography variant="h2" component="h1" gutterBottom>
+        <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, sm: 0 } }}>
+          <Typography 
+            variant="h2" 
+            component="h1" 
+            gutterBottom
+            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
+          >
             Staff Directory
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ maxWidth: '800px', mx: 'auto' }}>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            sx={{ 
+              maxWidth: '800px', 
+              mx: 'auto',
+              fontSize: { xs: '1rem', md: '1.25rem' },
+              px: { xs: 1, md: 0 }
+            }}
+          >
             Meet our dedicated team of educators and staff members who are committed to 
             providing exceptional education and support to our students.
           </Typography>
         </Box>
 
         {/* Statistics */}
-        <Grid container spacing={3} sx={{ mb: 6 }}>
+        <Grid 
+          container 
+          spacing={{ xs: 2, sm: 3, md: 4 }} 
+          sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+        >
           {stats.map((stat, index) => (
-            <Grid size={3} key={index}>
-              <Card sx={{ textAlign: 'center', p: 3 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3 }} key={index}>
+              <Card 
+                sx={{ 
+                  textAlign: 'center', 
+                  p: { xs: 2, sm: 2.5, md: 3 },
+                  height: '100%',
+                  transition: 'transform 0.2s',
+                  '&:hover': { transform: { xs: 'none', md: 'translateY(-4px)' } }
+                }}
+              >
                 <Avatar
                   sx={{
                     bgcolor: 'primary.main',
-                    width: 56,
-                    height: 56,
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
                     mx: 'auto',
-                    mb: 2,
+                    mb: { xs: 1.5, md: 2 },
                   }}
                 >
-                  <School />
+                  <School sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 </Avatar>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
+                <Typography 
+                  variant="h4" 
+                  component="div" 
+                  sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}
+                >
                   {stat.value}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' } }}
+                >
                   {stat.label}
                 </Typography>
               </Card>
@@ -240,8 +314,8 @@ export function StaffDirectoryPage() {
         </Grid>
 
         {/* Search and Filters */}
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
+        <Box sx={{ mb: { xs: 3, md: 4 } }}>
+          <Box sx={{ maxWidth: 500, mx: 'auto', mb: { xs: 2, md: 3 }, px: { xs: 1, md: 0 } }}>
             <TextField
               fullWidth
               placeholder="Search staff by name, position, or specialization..."
@@ -256,8 +330,7 @@ export function StaffDirectoryPage() {
               }}
             />
           </Box>
-
-          <Paper>
+          <Paper sx={{ px: { xs: 1, md: 2 } }}>
             <Tabs
               value={selectedDepartment}
               onChange={(_, newValue) => setSelectedDepartment(newValue)}
@@ -283,9 +356,13 @@ export function StaffDirectoryPage() {
 
         {/* Staff Grid */}
         {filteredStaff.length > 0 ? (
-          <Grid container spacing={4} sx={{ mb: 6 }}>
+          <Grid 
+            container 
+            spacing={{ xs: 2, sm: 3, md: 4 }} 
+            sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+          >
             {filteredStaff.map((member) => (
-              <Grid size={4} key={member.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={member.id}>
                 <Card
                   sx={{
                     height: '100%',
@@ -293,21 +370,31 @@ export function StaffDirectoryPage() {
                     flexDirection: 'column',
                     transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 3,
+                      transform: { xs: 'none', md: 'translateY(-4px)' },
+                      boxShadow: { xs: 2, md: 3 },
                     },
                   }}
                 >
-                  <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Box sx={{ p: { xs: 2, md: 3 }, textAlign: 'center' }}>
                     <Avatar
                       src={member.image}
                       alt={member.name}
-                      sx={{ width: 100, height: 100, mx: 'auto', mb: 2 }}
+                      sx={{ width: { xs: 80, md: 100 }, height: { xs: 80, md: 100 }, mx: 'auto', mb: { xs: 1.5, md: 2 } }}
                     />
-                    <Typography variant="h6" component="h3" gutterBottom>
+                    <Typography 
+                      variant="h6" 
+                      component="h3" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}
+                    >
                       {member.name}
                     </Typography>
-                    <Typography variant="subtitle1" color="primary" gutterBottom>
+                    <Typography 
+                      variant="subtitle1" 
+                      color="primary" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '0.85rem', md: '0.95rem' } }}
+                    >
                       {member.position}
                     </Typography>
                     <Chip
@@ -317,38 +404,66 @@ export function StaffDirectoryPage() {
                       sx={{ mb: 2 }}
                     />
                   </Box>
-
-                  <CardContent sx={{ flexGrow: 1, pt: 0 }}>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <CardContent sx={{ flexGrow: 1, pt: 0, px: { xs: 2, md: 3 }, pb: { xs: 2, md: 3 } }}>
+                    <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        gutterBottom
+                        sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
+                      >
                         <strong>Education:</strong> {member.education}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        gutterBottom
+                        sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
+                      >
                         <strong>Experience:</strong> {member.experience}
                       </Typography>
                     </Box>
 
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                    <Box sx={{ mb: { xs: 2, md: 3 } }}>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        gutterBottom
+                        sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
+                      >
                         <strong>Specializations:</strong>
                       </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: { xs: 1.5, md: 2 } }}>
                         {member.specializations.map((spec, index) => (
-                          <Chip key={index} label={spec} size="small" variant="outlined" />
+                          <Chip 
+                            key={index} 
+                            label={spec} 
+                            size="small" 
+                            variant="outlined" 
+                            sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' } }}
+                          />
                         ))}
                       </Box>
                     </Box>
 
                     <Box sx={{ mt: 'auto' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Email sx={{ fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
+                        <Email sx={{ fontSize: { xs: 14, md: 16 }, color: 'text.secondary' }} />
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.7rem', md: '0.8rem' } }}
+                        >
                           {member.email}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Phone sx={{ fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
+                        <Phone sx={{ fontSize: { xs: 14, md: 16 }, color: 'text.secondary' }} />
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.7rem', md: '0.8rem' } }}
+                        >
                           {member.phone}
                         </Typography>
                       </Box>
@@ -359,17 +474,23 @@ export function StaffDirectoryPage() {
             ))}
           </Grid>
         ) : (
-          <Paper sx={{ p: 6, textAlign: 'center', mb: 6 }}>
-            <School sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
+          <Paper sx={{ p: { xs: 4, md: 6 }, textAlign: 'center', mb: { xs: 5, md: 6 } }}>
+            <School sx={{ fontSize: { xs: 48, md: 64 }, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.15rem' } }}>
               No staff members found matching your criteria.
             </Typography>
           </Paper>
         )}
 
         {/* Professional Development */}
-        <Paper sx={{ p: 4, mb: 6, backgroundColor: 'grey.50' }}>
-          <Typography variant="h4" component="h2" textAlign="center" gutterBottom>
+        <Paper sx={{ p: { xs: 3, md: 4 }, mb: { xs: 5, md: 6 }, backgroundColor: 'grey.50' }}>
+          <Typography 
+            variant="h4" 
+            component="h2" 
+            textAlign="center" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
+          >
             Professional Excellence
           </Typography>
           <Typography
@@ -377,69 +498,89 @@ export function StaffDirectoryPage() {
             textAlign="center"
             color="text.secondary"
             paragraph
-            sx={{ mb: 4, maxWidth: '700px', mx: 'auto' }}
+            sx={{ mb: { xs: 3, md: 4 }, maxWidth: '700px', mx: 'auto', fontSize: { xs: '0.95rem', md: '1rem' }, px: { xs: 1.5, md: 0 } }}
           >
             Our faculty members are committed to continuous professional development and 
             staying current with the latest educational practices and technologies.
           </Typography>
-          <Grid container spacing={2} justifyContent="center">
-            <Grid >
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: { xs: 1, sm: 1.5, md: 2 }, 
+              justifyContent: 'center'
+            }}
+          >
+            {[
+              { label: 'Advanced Degrees', color: 'primary' },
+              { label: 'Ongoing Training', color: 'secondary' },
+              { label: 'Research & Innovation', color: 'success' },
+              { label: 'Professional Certifications', color: 'info' }
+            ].map(chip => (
               <Chip
-                label="Advanced Degrees"
-                color="primary"
-                sx={{ px: 2, py: 1 }}
+                key={chip.label}
+                label={chip.label}
+                color={chip.color as any}
+                sx={{ 
+                  px: { xs: 1.5, md: 2 }, 
+                  py: { xs: 0.75, md: 1 },
+                  fontSize: { xs: '0.7rem', md: '0.75rem' }
+                }}
               />
-            </Grid>
-            <Grid >
-              <Chip
-                label="Ongoing Training"
-                color="secondary"
-                sx={{ px: 2, py: 1 }}
-              />
-            </Grid>
-            <Grid >
-              <Chip
-                label="Research & Innovation"
-                color="success"
-                sx={{ px: 2, py: 1 }}
-              />
-            </Grid>
-            <Grid >
-              <Chip
-                label="Professional Certifications"
-                color="info"
-                sx={{ px: 2, py: 1 }}
-              />
-            </Grid>
-          </Grid>
+            ))}
+          </Box>
         </Paper>
 
         {/* Contact Section */}
         <Paper
           sx={{
-            p: 6,
+            p: { xs: 3.5, md: 6 },
             textAlign: 'center',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
           }}
         >
-          <Typography variant="h3" component="h2" gutterBottom>
+          <Typography 
+            variant="h3" 
+            component="h2" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' } }}
+          >
             Need to Reach Someone?
           </Typography>
-          <Typography variant="h6" paragraph sx={{ maxWidth: '600px', mx: 'auto', opacity: 0.9 }}>
+          <Typography 
+            variant="h6" 
+            paragraph 
+            sx={{ 
+              maxWidth: '600px', mx: 'auto', opacity: 0.9,
+              fontSize: { xs: '1rem', md: '1.15rem' }, px: { xs: 1.5, md: 0 }
+            }}
+          >
             If you need to contact a specific staff member or department, feel free to reach 
             out directly using the contact information provided, or contact our main office.
           </Typography>
-          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Box 
+            sx={{ 
+              mt: { xs: 3, md: 4 }, 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: { xs: 1.5, md: 2 }, 
+              flexWrap: 'wrap'
+            }}
+          >
             <Button
               variant="contained"
               size="large"
               sx={{
                 backgroundColor: 'white',
                 color: 'primary.main',
-                '&:hover': {
-                  backgroundColor: 'grey.100',
-                },
+                fontSize: { xs: '0.75rem', md: '0.85rem' },
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.25 },
+                '&:hover': { backgroundColor: 'grey.100' },
               }}
             >
               Main Office: (555) 123-4567
@@ -450,6 +591,9 @@ export function StaffDirectoryPage() {
               sx={{
                 borderColor: 'white',
                 color: 'white',
+                fontSize: { xs: '0.75rem', md: '0.85rem' },
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.25 },
                 '&:hover': {
                   borderColor: 'grey.300',
                   backgroundColor: 'rgba(255,255,255,0.1)',
@@ -460,7 +604,8 @@ export function StaffDirectoryPage() {
             </Button>
           </Box>
         </Paper>
-      </Box>
-    </Container>
+        </Box>
+      </Container>
+    </Box>
   );
 }
