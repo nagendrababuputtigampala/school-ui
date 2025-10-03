@@ -65,14 +65,6 @@ export function AboutPage() {
     { label: 'Student Satisfaction', value: '97%', progress: 97 },
   ];
 
-  const milestones = [
-    { year: '1985', title: 'School Founded', description: 'EduConnect was established with a vision to provide quality education.' },
-    { year: '1990', title: 'First Graduation Class', description: 'Our first batch of 50 students graduated with honors.' },
-    { year: '2000', title: 'Technology Integration', description: 'Introduced computer labs and digital learning resources.' },
-    { year: '2010', title: 'Campus Expansion', description: 'Added new buildings including science labs and sports complex.' },
-    { year: '2020', title: 'Digital Transformation', description: 'Successfully transitioned to hybrid learning during the pandemic.' },
-    { year: '2024', title: 'Innovation Hub', description: 'Launched our state-of-the-art innovation and research center.' },
-  ];
 
   return (
     <Box sx={{ 
@@ -369,93 +361,7 @@ export function AboutPage() {
           </Grid>
         </Paper>
 
-        {/* History Timeline */}
-        <Box sx={{ mb: { xs: 6, md: 8 } }}>
-          <Typography 
-            variant="h3" 
-            component="h2" 
-            textAlign="center" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.75rem', md: '2.5rem' } }}
-          >
-            Our Journey
-          </Typography>
-          <Typography
-            variant="h6"
-            textAlign="center"
-            color="text.secondary"
-            paragraph
-            sx={{ 
-              mb: { xs: 4, md: 6 }, 
-              maxWidth: '600px', 
-              mx: 'auto',
-              fontSize: { xs: '1rem', md: '1.25rem' },
-              px: { xs: 2, md: 0 }
-            }}
-          >
-            Key milestones in our educational journey
-          </Typography>
-          <Grid 
-            container 
-            spacing={{ xs: 2, md: 3 }}
-            sx={{
-              mx: 0,
-              width: '100%'
-            }}
-          >
-            {milestones.map((milestone, index) => (
-              <Grid size={12} key={index}>
-                <Card
-                  sx={{
-                    display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    p: { xs: 2, md: 3 },
-                    transition: 'transform 0.2s',
-                    width: '100%',
-                    maxWidth: '100%',
-                    boxSizing: 'border-box',
-                    '&:hover': {
-                      transform: { xs: 'none', md: 'translateY(-2px)' },
-                    },
-                  }}
-                >
-                  <Box sx={{ 
-                    mr: { xs: 0, sm: 3 }, 
-                    mb: { xs: 2, sm: 0 },
-                    flexShrink: 0,
-                    textAlign: { xs: 'center', sm: 'left' }
-                  }}>
-                    <Chip
-                      label={milestone.year}
-                      color="primary"
-                      sx={{ 
-                        fontWeight: 'bold', 
-                        fontSize: { xs: '0.8rem', md: '0.9rem' }
-                      }}
-                    />
-                  </Box>
-                  <Box>
-                    <Typography 
-                      variant="h6" 
-                      component="h3" 
-                      gutterBottom
-                      sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}
-                    >
-                      {milestone.title}
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary"
-                      sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}
-                    >
-                      {milestone.description}
-                    </Typography>
-                  </Box>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
+       
 
         {/* Call to Action */}
         <Paper
