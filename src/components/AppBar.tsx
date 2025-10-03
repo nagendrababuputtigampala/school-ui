@@ -22,7 +22,6 @@ interface AppBarProps {
 }
 
 const navigationItems = [
-  { id: 'home', label: 'Home' },
   { id: 'about', label: 'About' },
   { id: 'achievements', label: 'Achievements' },
   { id: 'staff', label: 'Staff Directory' },
