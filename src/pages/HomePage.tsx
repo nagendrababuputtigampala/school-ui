@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -6,11 +6,12 @@ import {
   Button,
   Card,
   CardContent,
-  CardMedia,
   Grid,
   Paper,
   Chip,
   Avatar,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -19,14 +20,76 @@ import {
   EmojiEvents,
   ArrowForward,
 } from '@mui/icons-material'
+import { fetchHomePageData, fetchHeroImages, fetchTimelineMilestones, TimelineMilestone } from '../config/firebase';
+import { HeroCarousel } from '../components/HeroCarousel';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
 }
 
 export function HomePage({ onNavigate }: HomePageProps) {
+  const theme = useTheme();
+  const isWebScreen = useMediaQuery(theme.breakpoints.up('md')); // md and above (≥960px) considered as web
+  
+  const [homePageData, setHomePageData] = useState<Map<string, string> | null>(null);
+  const [heroImages, setHeroImages] = useState<string[]>([]);
+  const [timelineMilestones, setTimelineMilestones] = useState<TimelineMilestone[]>([]);
+  const [expandedMilestones, setExpandedMilestones] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  // Fetch homepage data from Firebase
+  useEffect(() => {
+    const loadHomePageData = async () => {
+      try {
+        const [data, images, timeline] = await Promise.all([
+          fetchHomePageData(),
+          fetchHeroImages(),
+          fetchTimelineMilestones()
+        ]);
+        setHomePageData(data);
+        setHeroImages(images);
+        setTimelineMilestones(timeline);
+      } catch (error) {
+        console.error('Error loading homepage data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadHomePageData();
+  }, []);
+
+  // Helper function to get data from the map with fallback
+  const getDataValue = (key: string, fallback: string): string => {
+    return homePageData?.get(key) || fallback;
+  };
+
+  // Helper functions for milestone expansion
+  const toggleMilestoneExpansion = (index: number) => {
+    setExpandedMilestones(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const isMilestoneExpanded = (index: number) => {
+    return expandedMilestones.has(index);
+  };
+
+  // Helper function to truncate text based on screen size
+  const getTruncatedText = (text: string, isWeb: boolean = false) => {
+    const maxLength = isWeb ? 300 : 150;
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + '...';
+  };
+
   // Ensure no horizontal scroll on any screen size
-  React.useEffect(() => {
+  useEffect(() => {
     document.body.style.overflowX = 'hidden';
     // Add mobile-specific viewport meta tag handling
     const viewport = document.querySelector('meta[name=viewport]');
@@ -38,30 +101,40 @@ export function HomePage({ onNavigate }: HomePageProps) {
     };
   }, []);
 
-  const stats = [
-    { label: 'Students', value: '2,500+', icon: People, color: '#1976d2' },
-    { label: 'Teachers', value: '150+', icon: School, color: '#388e3c' },
-    { label: 'Awards', value: '50+', icon: EmojiEvents, color: '#f57c00' },
-    { label: 'Years', value: '35+', icon: TrendingUp, color: '#7b1fa2' },
+  // Show loading state while fetching data
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <Typography variant="h6">Loading...</Typography>
+      </Box>
+    );
+  }
+
+  // Use Firebase timeline data with fallback to default milestones
+  const defaultMilestones: TimelineMilestone[] = [
+    { year: '1985', title: 'School Founded', description: 'EduConnect was established with a vision to provide quality education.' },
+    { year: '1990', title: 'First Graduation Class', description: 'Our first batch of 50 students graduated with honors.' },
+    { year: '2000', title: 'Technology Integration', description: 'Introduced computer labs and digital learning resources.' },
+    { year: '2010', title: 'Campus Expansion', description: 'Added new buildings including science labs and sports complex.' },
+    { year: '2020', title: 'Digital Transformation', description: 'Successfully transitioned to hybrid learning during the pandemic.' },
+    { year: '2024', title: 'Innovation Hub', description: 'Launched our state-of-the-art innovation and research center.' },
   ];
 
-  const highlights = [
-    {
-      title: 'Academic Excellence',
-      description: 'Consistently ranked among the top educational institutions with outstanding academic performance.',
-      image: 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBjbGFzc3Jvb20lMjBzdHVkZW50c3xlbnwxfHx8fDE3NTkzMTU0NzN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      title: 'Innovation & Technology',
-      description: 'State-of-the-art facilities and cutting-edge technology integrated into our curriculum.',
-      image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2llbmNlJTIwbGFib3JhdG9yeSUyMHNjaG9vbHxlbnwxfHx8fDE3NTkzMTU0NzV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      title: 'Sports & Activities',
-      description: 'Comprehensive sports programs and extracurricular activities for holistic development.',
-      image: 'https://images.unsplash.com/photo-1611195974226-ef16728f2939?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBzcG9ydHMlMjBmaWVsZHxlbnwxfHx8fDE3NTkzMTU0NzZ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
+  const milestones = timelineMilestones.length > 0 ? timelineMilestones : defaultMilestones;
+
+  const stats = [
+    { label: 'Students', value: getDataValue('studentsCount', '2,500+'), icon: People, color: '#1976d2' },
+    { label: 'Teachers', value: getDataValue('teachersCount', '150+'), icon: School, color: '#388e3c' },
+    { label: 'Awards', value: getDataValue('awardsCount', '50+'), icon: EmojiEvents, color: '#f57c00' },
+    { label: 'Years', value: getDataValue('yearsCount', '35+'), icon: TrendingUp, color: '#7b1fa2' },
   ];
+
+
 
   return (
     <Box sx={{ 
@@ -98,118 +171,12 @@ export function HomePage({ onNavigate }: HomePageProps) {
           mb: { xs: 6, sm: 8, md: 12 }
         }}>
         {/* Hero Section */}
-        <Paper
-          sx={{
-            position: 'relative',
-            backgroundColor: 'grey.800',
-            color: '#fff',
-            mb: { xs: 4, sm: 6, md: 8 },
-            backgroundSize: 'cover',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-            backgroundImage: `url(https://images.unsplash.com/photo-1523050854058-8df90110c9d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBidWlsZGluZyUyMGVkdWNhdGlvbnxlbnwxfHx8fDE3NTkyOTk2NzJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral)`,
-            minHeight: { xs: '300px', sm: '400px', md: '500px', lg: '600px' },
-            display: 'flex',
-            alignItems: 'center',
-            borderRadius: { xs: 0, sm: 1, md: 2 },
-            width: '100%',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            mx: { xs: 0, sm: 0, md: 0 }
-          }}
-        >
-      {/* Overlay */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          right: 0,
-          left: 0,
-          backgroundColor: 'rgba(0,0,0,.5)',
-          borderRadius: 2,
-        }}
-      />
-      <Box 
-        sx={{ 
-          position: 'relative', 
-          zIndex: 1, 
-          width: '100%',
-          maxWidth: { xs: '100%', md: '1200px' },
-          mx: 'auto',
-          px: { xs: 1, sm: 3, md: 4, lg: 6 }
-        }}
-      >
-        <Grid container spacing={{ xs: 2, md: 4 }} alignItems="center">
-          <Grid size={12}>
-            <Typography
-              component="h1"
-              variant="h2"
-              color="inherit"
-              gutterBottom
-              sx={{ 
-                fontWeight: 'bold',
-                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
-              }}
-            >
-              Welcome to EduConnect
-            </Typography>
-            <Typography 
-              variant="h5" 
-              color="inherit" 
-              paragraph 
-              sx={{ 
-                opacity: 0.9,
-                fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' }
-              }}
-            >
-              Empowering minds, shaping futures. Join our community of learners,
-              innovators, and leaders who are making a difference in the world.
-            </Typography>
-            <Box sx={{ 
-              mt: { xs: 2, sm: 3, md: 4 }, 
-              display: 'flex', 
-              gap: { xs: 1, sm: 1.5, md: 2 }, 
-              flexWrap: 'wrap',
-              flexDirection: { xs: 'column', sm: 'row' },
-              width: '100%',
-              maxWidth: { xs: '100%', sm: 'auto' }
-            }}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => onNavigate('about')}
-                endIcon={<ArrowForward />}
-                sx={{
-                  backgroundColor: 'white',
-                  color: 'primary.main',
-                  '&:hover': {
-                    backgroundColor: 'grey.100',
-                  },
-                }}
-              >
-                Learn More
-              </Button>
-              <Button
-                variant="outlined"
-                size="large"
-                onClick={() => onNavigate('contact')}
-                sx={{
-                  borderColor: 'white',
-                  color: 'white',
-                  '&:hover': {
-                    borderColor: 'grey.300',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                  },
-                }}
-              >
-                Contact Us
-              </Button>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
-    </Paper>
+        <HeroCarousel
+          images={heroImages}
+          welcomeTitle={getDataValue('welcomeTitle', 'Welcome to EduConnect')}
+          welcomeSubtitle={getDataValue('welcomeSubtitle', 'Empowering minds, shaping futures. Join our community of learners, innovators, and leaders who are making a difference in the world.')}
+          onNavigate={onNavigate}
+        />
 
         {/* Statistics */}
         <Box sx={{ px: { xs: 1, sm: 0, md: 0 } }}>
@@ -278,24 +245,16 @@ export function HomePage({ onNavigate }: HomePageProps) {
           })}
         </Grid>
 
-        {/* Highlights */}
-        <Box sx={{ 
-          mb: { xs: 4, sm: 6, md: 8 },
-          width: '100%',
-          maxWidth: '100%',
-          px: { xs: 1, sm: 0, md: 0 }
-        }}>
+     {/* History Timeline */}
+        <Box sx={{ mb: { xs: 6, md: 8 } }}>
           <Typography 
             variant="h3" 
             component="h2" 
             textAlign="center" 
             gutterBottom
-            sx={{ 
-              fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem', lg: '3rem' },
-              px: { xs: 1, sm: 2 }
-            }}
+            sx={{ fontSize: { xs: '1.75rem', md: '2.5rem' } }}
           >
-            Why Choose EduConnect?
+            Our Journey
           </Typography>
           <Typography
             variant="h6"
@@ -303,72 +262,110 @@ export function HomePage({ onNavigate }: HomePageProps) {
             color="text.secondary"
             paragraph
             sx={{ 
-              mb: { xs: 3, sm: 4, md: 6 }, 
-              maxWidth: { xs: '100%', md: '800px' }, 
+              mb: { xs: 4, md: 6 }, 
+              maxWidth: '600px', 
               mx: 'auto',
-              fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem', lg: '1.25rem' },
-              px: { xs: 1, sm: 3, md: 4 }
+              fontSize: { xs: '1rem', md: '1.25rem' },
+              px: { xs: 2, md: 0 }
             }}
           >
-            Discover what makes our educational institution stand out from the rest
+            Key milestones in our educational journey
           </Typography>
           <Grid 
             container 
-            spacing={{ xs: 2, sm: 2.5, md: 3, lg: 4 }}
+            spacing={{ xs: 2, md: 3 }}
             sx={{
               mx: 0,
-              width: '100%',
-              maxWidth: '100%',
-              '& .MuiGrid-item': {
-                maxWidth: '100%'
-              }
+              width: '100%'
             }}
           >
-            {highlights.map((highlight, index) => (
-              <Grid size={{ xs: 12, sm: 12, md: 4, lg: 4 }} key={index}>
+            {milestones.map((milestone, index) => {
+              const isExpanded = isMilestoneExpanded(index);
+              const maxLength = isWebScreen ? 300 : 150;
+              const shouldShowReadMore = milestone.description.length > maxLength;
+              const displayText = isExpanded ? milestone.description : getTruncatedText(milestone.description, isWebScreen);
+              
+              return (
+              <Grid size={12} key={index}>
                 <Card
                   sx={{
-                    height: '100%',
                     display: 'flex',
-                    flexDirection: 'column',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    p: { xs: 2, md: 3 },
                     transition: 'transform 0.2s',
                     width: '100%',
                     maxWidth: '100%',
                     boxSizing: 'border-box',
                     '&:hover': {
-                      transform: { xs: 'none', md: 'translateY(-4px)' },
+                      transform: { xs: 'none', md: 'translateY(-2px)' },
                     },
                   }}
                 >
-                  <CardMedia
-                    component="img"
-                    height="200"
-                    image={highlight.image}
-                    alt={highlight.title}
-                    sx={{
-                      width: '100%',
-                      maxWidth: '100%',
-                      objectFit: 'cover',
-                      height: { xs: 180, sm: 200, md: 220 }
-                    }}
-                  />
-                  <CardContent sx={{ 
-                    flexGrow: 1,
-                    p: { xs: 2, sm: 2.5, md: 3 },
-                    width: '100%',
-                    maxWidth: '100%',
-                    boxSizing: 'border-box'
+                  <Box sx={{ 
+                    mr: { xs: 0, sm: 3 }, 
+                    mb: { xs: 2, sm: 0 },
+                    flexShrink: 0,
+                    textAlign: { xs: 'center', sm: 'left' }
                   }}>
-                    <Typography gutterBottom variant="h5" component="h3">
-                      {highlight.title}
+                    <Chip
+                      label={milestone.year}
+                      color="primary"
+                      sx={{ 
+                        fontWeight: 'bold', 
+                        fontSize: { xs: '0.8rem', md: '0.9rem' }
+                      }}
+                    />
+                  </Box>
+                  <Box sx={{ width: '100%' }}>
+                    <Typography 
+                      variant="h6" 
+                      component="h3" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}
+                    >
+                      {milestone.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {highlight.description}
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ 
+                        fontSize: { xs: '0.875rem', md: '1rem' },
+                        mb: shouldShowReadMore ? 1 : 0,
+                        lineHeight: 1.6,
+                        display: '-webkit-box',
+                        WebkitLineClamp: isExpanded ? 'none' : 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: isExpanded ? 'visible' : 'hidden',
+                        textOverflow: isExpanded ? 'clip' : 'ellipsis'
+                      }}
+                    >
+                      {displayText}
                     </Typography>
-                  </CardContent>
+                    {shouldShowReadMore && (
+                      <Button
+                        size="small"
+                        onClick={() => toggleMilestoneExpansion(index)}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 'medium',
+                          fontSize: { xs: '0.75rem', md: '0.875rem' },
+                          p: 0,
+                          minWidth: 'auto',
+                          color: 'primary.main',
+                          '&:hover': {
+                            backgroundColor: 'transparent',
+                            textDecoration: 'underline'
+                          }
+                        }}
+                      >
+                        {isExpanded ? 'Read Less' : 'Read More'}
+                      </Button>
+                    )}
+                  </Box>
                 </Card>
               </Grid>
-            ))}
+            );
+            })}
           </Grid>
         </Box>
 

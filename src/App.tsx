@@ -4,7 +4,6 @@ import { CssBaseline, Box } from '@mui/material';
 import { AppBar } from './components/AppBar';
 import { SnackbarProvider } from 'notistack';
 import { HomePage } from './pages/HomePage';
-import { AboutPage } from './pages/AboutPage';
 import { AchievementsPage } from './pages/AchievementsPage';
 import { StaffDirectoryPage } from './pages/StaffDirectoryPage';
 import { AlumniPage } from './pages/AlumniPage';
@@ -105,8 +104,6 @@ export default function App() {
     switch (currentPage) {
       case 'home':
         return <HomePage onNavigate={setCurrentPage} />;
-      case 'about':
-        return <AboutPage />;
       case 'achievements':
         return <AchievementsPage />;
       case 'staff':

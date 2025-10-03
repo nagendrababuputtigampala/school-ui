@@ -37,6 +37,7 @@
     "clsx": "*",
     "cmdk": "^1.1.1",
     "embla-carousel-react": "^8.6.0",
+    "firebase": "^12.3.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.487.0",
     "next-themes": "^0.4.6",
@@ -57,7 +58,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix"
   },
   "eslintConfig": {
     "extends": [

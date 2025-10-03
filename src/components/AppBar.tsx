@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar as MuiAppBar,
   Toolbar,
@@ -15,6 +15,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { Menu as MenuIcon, Close as CloseIcon } from '@mui/icons-material';
+import { fetchSchoolName } from '../config/firebase';
 
 interface AppBarProps {
   currentPage: string;
@@ -23,7 +24,6 @@ interface AppBarProps {
 
 const navigationItems = [
   { id: 'home', label: 'Home' },
-  { id: 'about', label: 'About' },
   { id: 'achievements', label: 'Achievements' },
   { id: 'staff', label: 'Staff Directory' },
   { id: 'alumni', label: 'Alumni' },
@@ -34,6 +34,7 @@ const navigationItems = [
 
 export function AppBar({ currentPage, onNavigate }: AppBarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [schoolName, setSchoolName] = useState('EduConnect');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -45,6 +46,15 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
     onNavigate(page);
     setMobileOpen(false);
   };
+
+  // Load site name from Firestore on mount
+  useEffect(() => {
+    let isActive = true;
+    fetchSchoolName().then(name => {
+      if (isActive && name) setSchoolName(name);
+    });
+    return () => { isActive = false; };
+  }, []);
 
   const drawer = (
     <Box sx={{ width: 250 }}>
@@ -83,7 +93,7 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
         <Toolbar>
           {/* Logo */}
           <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', color: 'white' }}>
-            EduConnect
+            {schoolName}
           </Typography>
 
           <Box sx={{ flexGrow: 1 }} />
