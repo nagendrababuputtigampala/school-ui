@@ -3,8 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { AppBar } from './components/AppBar';
 import { SnackbarProvider } from 'notistack';
-import { HomePage } from './pages/HomePage';
-import { AboutPage } from './pages/AboutPage';
+import { About } from './pages/About';
 import { AchievementsPage } from './pages/AchievementsPage';
 import { StaffDirectoryPage } from './pages/StaffDirectoryPage';
 import { AlumniPage } from './pages/AlumniPage';
@@ -99,14 +98,12 @@ const theme = createTheme({
 });
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home');
+  const [currentPage, setCurrentPage] = useState('about');
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'home':
-        return <HomePage onNavigate={setCurrentPage} />;
       case 'about':
-        return <AboutPage />;
+        return <About onNavigate={setCurrentPage}/>;
       case 'achievements':
         return <AchievementsPage />;
       case 'staff':
@@ -120,7 +117,7 @@ export default function App() {
       case 'contact':
         return <ContactPage />;
       default:
-        return <HomePage onNavigate={setCurrentPage} />;
+        return <About onNavigate={setCurrentPage} />;
     }
   };
 
