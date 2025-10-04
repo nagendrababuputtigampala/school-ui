@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Container,
@@ -22,10 +22,31 @@ import {
   Help,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
+import { ContactUsInfo, fetchContactUsData } from '../config/firebase';
 
 export function ContactPage() {
   const { enqueueSnackbar } = useSnackbar();
+
+  const [contactUsData, setContactUsData] = useState<ContactUsInfo | null>(null);
+  const [loading, setLoading] = useState(true);
   
+  // Fetch contact us data from Firebase
+    useEffect(() => {
+      const loadContactUsData = async () => {
+        try {
+          const [data] = await Promise.all([fetchContactUsData()]);
+           console.log("Fetched contact us data:", data); 
+          setContactUsData(data);
+        } catch (error) {
+          console.error('Error loading homepage data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      loadContactUsData();
+    }, []);
+
   // Ensure no horizontal scroll on any screen size
   React.useEffect(() => {
     document.body.style.overflowX = 'hidden';
@@ -48,20 +69,11 @@ export function ContactPage() {
     message: '',
   });
 
-  const contactInfo = [
+  const fallbackContactInfo  = [
     { title: 'Address', content: '123 Education Street\nLearning City, LC 12345', icon: LocationOn, color: '#1976d2' },
     { title: 'Phone', content: '(555) 123-4567\n(555) 123-4568', icon: Phone, color: '#388e3c' },
     { title: 'Email', content: 'info@educonnect.edu\nadmissions@educonnect.edu', icon: Email, color: '#f57c00' },
     { title: 'Office Hours', content: 'Mon-Fri: 8:00 AM - 5:00 PM\nSat: 9:00 AM - 2:00 PM', icon: AccessTime, color: '#7b1fa2' },
-  ];
-
-  const departments = [
-    { name: 'Admissions Office', phone: '(555) 123-4570', email: 'admissions@educonnect.edu' },
-    { name: 'Academic Affairs', phone: '(555) 123-4571', email: 'academics@educonnect.edu' },
-    { name: 'Student Services', phone: '(555) 123-4572', email: 'students@educonnect.edu' },
-    { name: 'Athletics Department', phone: '(555) 123-4573', email: 'athletics@educonnect.edu' },
-    { name: 'Health Office', phone: '(555) 123-4574', email: 'health@educonnect.edu' },
-    { name: 'Transportation', phone: '(555) 123-4575', email: 'transport@educonnect.edu' },
   ];
 
   const categories = [
@@ -103,12 +115,9 @@ export function ContactPage() {
         disableGutters
         sx={{ px: { xs: 0.5, sm: 1, md: 2, lg: 3 }, width: '100%', maxWidth: '100%' }}
       >
-        <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
+        <Box sx={{ py: { xs: 1, sm: 2, md: 2 } }}>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, sm: 0 } }}>
-            <Typography component="h1" gutterBottom sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }, fontWeight: 600 }}>
-              Contact Us
-            </Typography>
             <Typography 
               color="text.secondary" 
               sx={{ maxWidth: '700px', mx: 'auto', fontSize: { xs: '1rem', md: '1.25rem' }, px: { xs: 1, md: 0 } }}
@@ -119,41 +128,75 @@ export function ContactPage() {
           </Box>
 
           {/* Contact Information Cards */}
-          <Box sx={{ px: { xs: 0.5, sm: 0 } }}>
-            <Grid container spacing={{ xs: 1.5, sm: 2, md: 3, lg: 4 }} sx={{ mb: { xs: 5, md: 8 } }}>
-              {contactInfo.map((info, index) => {
-                const IconComponent = info.icon;
-                return (
-                  <Grid size={{ xs: 6, sm: 6, md: 3 }} key={index} sx={{ display: 'flex' }}>
-                    <Card
-                      sx={{
-                        textAlign: 'center',
-                        p: { xs: 1.75, sm: 2.25, md: 3 },
-                        height: '100%',
-                        transition: 'transform 0.25s, box-shadow 0.25s',
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        '&:hover': { transform: { xs: 'none', md: 'translateY(-4px)' }, boxShadow: { xs: 1, md: 4 } },
-                      }}
-                    >
-                      <Avatar sx={{ bgcolor: info.color, width: { xs: 46, sm: 52, md: 56 }, height: { xs: 46, sm: 52, md: 56 }, mx: 'auto', mb: { xs: 1, sm: 1.5, md: 2 } }}>
-                        <IconComponent fontSize={typeof window !== 'undefined' && window.innerWidth < 600 ? 'small' : 'medium'} />
-                      </Avatar>
-                      <Typography component="h3" gutterBottom sx={{ fontSize: { xs: '0.85rem', sm: '0.95rem', md: '1.05rem' }, fontWeight: 600, lineHeight: 1.3 }}>
-                        {info.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' }, lineHeight: 1.35 }}>
-                        {info.content}
-                      </Typography>
-                    </Card>
-                  </Grid>
-                );
-              })}
-            </Grid>
-          </Box>
+          {loading ? (
+            <Typography>Loading...</Typography>
+          ) : contactUsData ? (
+            <Box sx={{ px: { xs: 0.5, sm: 0 } }}>
+              <Grid
+                container
+                spacing={{ xs: 1.5, sm: 2, md: 3, lg: 4 }}
+                sx={{ mb: { xs: 5, md: 8 } }}
+              >
+                {(() => {
+                  // Prepare info data (from DB or fallback)
+                  const infoData = contactUsData
+                    ? [
+                        { title: "Address", content: contactUsData.address.replace(/, /g, "\n"), icon: LocationOn, color: "#1976d2" },
+                        { title: "Phone", content: contactUsData.phone.join("\n"), icon: Phone, color: "#388e3c" },
+                        { title: "Email", content: contactUsData.email.join("\n"), icon: Email, color: "#f57c00" },
+                        { title: "Office Hours", content: contactUsData.officeHours.join("\n"), icon: AccessTime, color: "#7b1fa2" },
+                      ]
+                    : fallbackContactInfo;
+
+                  return infoData.map((info, index) => {
+                    const IconComponent = info.icon;
+                    return (
+                      <Grid
+                        size={{ xs: 6, sm: 6, md: 3 }}
+                        key={index}
+                        sx={{ display: "flex" }}
+                      >
+                        <Card
+                          sx={{
+                            textAlign: "center",
+                            p: { xs: 1.75, sm: 2.25, md: 3 },
+                            height: "100%",
+                            transition: "transform 0.25s, box-shadow 0.25s",
+                            width: "100%",
+                            boxSizing: "border-box",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            "&:hover": {
+                              transform: { xs: "none", md: "translateY(-4px)" },
+                              boxShadow: { xs: 1, md: 4 },
+                            },
+                          }}
+                        >
+                          <Avatar sx={{bgcolor: info.color, width: { xs: 46, sm: 52, md: 56 }, height: { xs: 46, sm: 52, md: 56 }, mx: "auto", mb: { xs: 1, sm: 1.5, md: 2 },}}
+                          >
+                            <IconComponent
+                              fontSize={typeof window !== "undefined" && window.innerWidth < 600 ? "small" : "medium"}
+                            />
+                          </Avatar>
+                          <Typography component="h3" gutterBottom sx={{fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1.05rem",}, fontWeight: 600, lineHeight: 1.3 }}
+                          >
+                            {info.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-line", fontSize: { xs: "0.65rem", sm: "0.7rem", md: "0.75rem", }, lineHeight: 1.35, }}
+                          >
+                            {info.content}
+                          </Typography>
+                        </Card>
+                      </Grid>
+                    );
+                  });
+                })()}
+              </Grid>
+            </Box>
+          ) : (
+            <Typography>No contact info found.</Typography>
+          )}
 
           <Grid container spacing={{ xs: 2.5, sm: 3.5, md: 5 }}>
             {/* Contact Form */}
@@ -197,41 +240,6 @@ export function ContactPage() {
                     <strong>Response Time:</strong> We typically respond to inquiries within 24-48 hours during business days.
                   </Typography>
                 </Alert>
-              </Card>
-            </Grid>
-
-            {/* Department Directory */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{ p: { xs: 2.5, sm: 3, md: 4 }, mb: 4 }}>
-                <Typography component="h2" gutterBottom sx={{ fontSize: { xs: '1.15rem', sm: '1.35rem', md: '1.55rem' }, fontWeight: 600 }}>
-                  Department Directory
-                </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' }, lineHeight: 1.5 }}>
-                  Contact specific departments directly for specialized assistance.
-                </Typography>
-                <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-                  {departments.map((dept, index) => (
-                    <Grid size={{ xs: 12, sm: 6 }} key={index}>
-                      <Paper sx={{ p: { xs: 1.25, sm: 1.5 }, backgroundColor: 'grey.50', height: '100%' }}>
-                        <Typography gutterBottom sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' } }}>
-                          {dept.name}
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-                          <Phone sx={{ fontSize: 15, color: 'text.secondary' }} />
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' } }}>
-                            {dept.phone}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                          <Email sx={{ fontSize: 15, color: 'text.secondary' }} />
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' } }}>
-                            {dept.email}
-                          </Typography>
-                        </Box>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
               </Card>
             </Grid>
           </Grid>
