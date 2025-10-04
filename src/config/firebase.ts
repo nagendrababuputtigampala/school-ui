@@ -9,6 +9,14 @@ export interface TimelineMilestone {
   description: string;
 }
 
+//Interface for Contact us page
+export interface ContactUsInfo {
+  address: string;
+  phone: string[];
+  email: string[];
+  officeHours: string[];
+}
+
 // Public Firebase config (client-side safe)
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_API_KEY ,
@@ -103,3 +111,26 @@ export async function fetchTimelineMilestones(): Promise<TimelineMilestone[]> {
     return [];
   }
 }
+
+  //Fetch contact us information from Firebase
+  export async function fetchContactUsData(): Promise<ContactUsInfo | null> {
+    try {
+      const ref = doc(db, "contactus", "d17tQpGkassKQKpUmdAr"); // adjust docId
+      const snap = await getDoc(ref);
+  
+      if (!snap.exists()) return null;
+      const data = snap.data();
+  
+      return {
+        address: data.Address || "",
+        phone: data.Phone ? data.Phone.split(",").map((p: string) => p.trim()) : [],
+        email: data.Email ? data.Email.split(",").map((e: string) => e.trim()) : [],
+        officeHours: data["Office Hours"]
+          ? data["Office Hours"].split(",").map((h: string) => h.trim())
+          : []
+      };
+    } catch (err) {
+      console.error("Error fetching contact data", err);
+      return null;
+    }
+  }
