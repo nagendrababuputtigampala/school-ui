@@ -14,7 +14,10 @@ export interface ContactUsInfo {
   address: string;
   phone: string[];
   email: string[];
+  whatsApp?: string;
   officeHours: string[];
+  latitude?: number;
+  longitude?: number;
 }
 
 // Public Firebase config (client-side safe)
@@ -125,9 +128,12 @@ export async function fetchTimelineMilestones(): Promise<TimelineMilestone[]> {
         address: data.Address || "",
         phone: data.Phone ? data.Phone.split(",").map((p: string) => p.trim()) : [],
         email: data.Email ? data.Email.split(",").map((e: string) => e.trim()) : [],
+        whatsApp: data.WhatsApp || "",
         officeHours: data["Office Hours"]
           ? data["Office Hours"].split(",").map((h: string) => h.trim())
-          : []
+          : [],
+        latitude: data.Latitude ?? null,
+        longitude: data.Longitude ?? null,
       };
     } catch (err) {
       console.error("Error fetching contact data", err);
