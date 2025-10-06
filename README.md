@@ -1,20 +1,27 @@
-# School Management System UI
+# School Management System UI - Multi-Tenant
 
-A modern, responsive school management system built with React, TypeScript, and Material-UI. Features dynamic content management through Firebase integration with real-time updates.
+A modern, responsive school management system built with React, TypeScript, and Material-UI. **Now supports multiple schools** with dynamic content management through Firebase integration and URL-based school identification.
 
 ## ✨ Features
 
-- 🏫 **Dynamic Homepage**: Hero carousel with Firebase-managed images
-- 📊 **Live Statistics**: Real-time stats for students, teachers, awards, and years
-- 📅 **Interactive Timeline**: School history with expandable descriptions
+- 🏫 **Multi-Tenant Architecture**: Support unlimited schools with unique URLs
+- 📊 **Dynamic Content**: Each school has its own data, branding, and content
+- 🎯 **URL-Based Routing**: Access schools via `/school/{schoolSlug}`
+- 📅 **Interactive Timeline**: School-specific history with expandable descriptions
 - 🎨 **Responsive Design**: Optimized for mobile, tablet, and desktop
-- 🔥 **Firebase Integration**: Real-time data management without deployments
+- 🔥 **Real-time Updates**: Content management without code deployments
 - 🎯 **Material-UI**: Modern, accessible components
+
+## 🌟 Multi-School Example URLs
+
+- **EduConnect Academy**: `http://localhost:3000/school/educonnect`
+- **Riverside High School**: `http://localhost:3000/school/riverside-high`
+- **Tech Institute**: `http://localhost:3000/school/tech-institute`
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 18, TypeScript, Material-UI
-- **Backend**: Firebase Firestore
+- **Frontend**: React 18, TypeScript, Material-UI, React Router
+- **Backend**: Firebase Firestore (multi-tenant structure)
 - **Build**: Create React App
 - **Styling**: Responsive Material-UI components
 
@@ -27,6 +34,7 @@ npm install
 cp .env.example .env
 # Edit .env with your Firebase config
 npm start
+# Visit http://localhost:3000/school/educonnect
 ```
 
 ## 📋 Prerequisites
@@ -35,7 +43,7 @@ npm start
 - Firebase project with Firestore enabled
 - Git for version control
 
-## 🔧 Setup Instructions
+## 🔧 Multi-Tenant Setup Instructions
 
 ### 1. Clone and Install
 
@@ -74,12 +82,16 @@ REACT_APP_APP_ID=your_firebase_app_id
 REACT_APP_MEASUREMENT_ID=your_measurement_id
 ```
 
-### 3. Add Sample Data (Optional)
+### 3. Setup School Data (Multi-Tenant)
 
-Create collection `schoolInfo` with document containing:
+Create collection `schools` with documents for each school:
 
+#### Sample School Document
 ```json
 {
+  "name": "EduConnect Academy",
+  "slug": "educonnect",
+  "domain": "educonnect.edu",
   "welcomeTitle": "Welcome to EduConnect",
   "welcomeSubtitle": "Empowering minds, shaping futures.",
   "studentsCount": "2,500+",
@@ -96,17 +108,28 @@ Create collection `schoolInfo` with document containing:
       "title": "School Founded",
       "description": "EduConnect was established with a vision to provide quality education."
     }
-  ]
+  ],
+  "primaryColor": "#1976d2",
+  "secondaryColor": "#dc004e",
+  "contactInfo": {
+    "address": "123 Education Street",
+    "phone": "+1 (555) 123-4567",
+    "email": "info@educonnect.edu"
+  }
 }
 ```
+
+#### Adding Multiple Schools
+1. Create additional documents in `schools` collection
+2. Use unique `slug` for each school (URL identifier)
+3. Access via: `http://localhost:3000/school/{slug}`
 
 ### 4. Start Development
 
 ```bash
 npm start
+# Default redirects to: http://localhost:3000/school/educonnect
 ```
-
-Visit `http://localhost:3000` to see the application.
 
 ## 📁 Project Structure
 
@@ -114,13 +137,17 @@ Visit `http://localhost:3000` to see the application.
 src/
 ├── components/
 │   ├── HeroCarousel.tsx    # Image carousel component
+│   ├── SimpleNav.tsx       # Navigation component
+│   ├── SchoolLayout.tsx    # School-specific layout
 │   └── ui/                 # Reusable UI components
+├── contexts/
+│   └── SchoolContext.tsx   # School data management
 ├── config/
 │   └── firebase.ts         # Firebase setup and functions
 ├── pages/
 │   ├── HomePage.tsx        # Main landing page
 │   └── ...                 # Other pages
-└── App.tsx                 # Main app component
+└── App.tsx                 # Main app with routing
 ```
 
 ## 🔨 Available Scripts
@@ -150,7 +177,14 @@ Configure environment variables in your hosting platform:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /schoolInfo/{document} {
+    // Allow read access to schools
+    match /schools/{schoolId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // Allow read access to page content (optional)
+    match /pageContent/{contentId} {
       allow read: if true;
       allow write: if false;
     }
@@ -158,21 +192,49 @@ service cloud.firestore {
 }
 ```
 
-## 🧪 Testing Your Setup
+## 🧪 Testing Your Multi-Tenant Setup
 
 ✅ Verify these work:
-- Application loads without errors
-- Firebase data displays correctly
-- Hero carousel auto-advances
-- Timeline "Read More" buttons work
-- Responsive design on mobile
+- **Default school loads**: `http://localhost:3000` → redirects to `/school/educonnect`
+- **School-specific URLs work**: `/school/{your-school-slug}`
+- **Each school shows unique data**: Name, content, images, timeline
+- **Navigation works**: Between pages within each school
+- **Responsive design**: On mobile and desktop
+- **Multiple schools**: Create and test additional schools
+
+## 🏫 Managing Multiple Schools
+
+### Adding a New School
+1. **Create Firestore document** in `schools` collection
+2. **Use unique slug** (e.g., "riverside-high")
+3. **Add school data** following the structure above
+4. **Access immediately** via `/school/riverside-high`
+
+### School-Specific Features
+- **Unique branding**: Each school can have different colors, logos
+- **Custom content**: Timeline, statistics, hero images per school
+- **Independent navigation**: All pages work within school context
+- **URL isolation**: `/school/school1/about` vs `/school/school2/about`
+
+### Example Multi-School Setup
+```
+🏫 EduConnect Academy     → /school/educonnect
+🏫 Riverside High School  → /school/riverside-high  
+🏫 Tech Institute         → /school/tech-institute
+🏫 Arts Academy          → /school/arts-academy
+```
 
 ## 🚨 Troubleshooting
 
 ### Firebase Connection Issues
 - Check `.env` file values (no extra spaces/quotes)
-- Verify Firestore is enabled
+- Verify Firestore is enabled with new `schools` collection
 - Check browser console for errors
+
+### School Not Found Errors
+- Verify school document exists in `schools` collection
+- Check `slug` field matches URL parameter
+- Ensure Firestore rules allow read access
 
 ### Build Issues
 ```bash
@@ -181,11 +243,16 @@ npm cache clean --force  # Clear cache
 rm -rf node_modules && npm install  # Reinstall dependencies
 ```
 
-### Port Already in Use
-```bash
-npx kill-port 3000   # Kill process on port 3000
-PORT=3001 npm start  # Use different port
-```
+### URL Routing Issues
+- Ensure React Router is properly installed
+- Check that school slug exists in Firestore
+- Verify URL format: `/school/{slug}`
+
+## 📚 Additional Resources
+
+- **[Multi-Tenant Setup Guide](./MULTI_TENANT_SETUP.md)**: Detailed migration instructions
+- **Firebase Documentation**: [Firestore Getting Started](https://firebase.google.com/docs/firestore)
+- **React Router Documentation**: [React Router v6](https://reactrouter.com/)
 
 ## 🤝 Contributing
 

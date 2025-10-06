@@ -25,6 +25,7 @@ import {
   TrendingUp,
   WorkspacePremium,
 } from '@mui/icons-material';
+import { useSchool } from '../contexts/SchoolContext';
 
 interface Achievement {
   id: string;
@@ -40,6 +41,7 @@ interface Achievement {
 
 export function AchievementsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const { schoolData, loading } = useSchool();
 
   // Match responsive behavior: prevent horizontal scroll & set viewport
   React.useEffect(() => {
@@ -56,7 +58,54 @@ export function AchievementsPage() {
     };
   }, []);
 
-  const achievements: Achievement[] = [
+  // Show loading state while fetching data
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <Typography variant="h6">Loading...</Typography>
+      </Box>
+    );
+  }
+
+  // Get achievements from school data or use fallback
+  const getAchievements = () => {
+    if (schoolData?.pages?.achievementsPage) {
+      const allAchievements: Achievement[] = [];
+      const achievementsData = schoolData.pages.achievementsPage;
+      
+      // Extract achievements from different sections
+      Object.keys(achievementsData).forEach(sectionKey => {
+        const section = achievementsData[sectionKey];
+        if (section.achievements && Array.isArray(section.achievements)) {
+          section.achievements.forEach((achievement: any, index: number) => {
+            allAchievements.push({
+              id: `${sectionKey}-${index}`,
+              title: achievement.title || '',
+              description: achievement.description || '',
+              category: sectionKey.replace('Section', '').toLowerCase(),
+              year: achievement.year || '2024',
+              level: achievement.level || 'school',
+              image: achievement.image || `https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400`,
+              participants: achievement.participants || '',
+              award: achievement.award || 'Achievement Award'
+            });
+          });
+        }
+      });
+      
+      return allAchievements;
+    }
+    
+    // Fallback achievements if no data from Firebase
+    return fallbackAchievements;
+  };
+
+  const fallbackAchievements: Achievement[] = [
     {
       id: '1',
       title: 'National Science Fair Champions',
@@ -147,6 +196,8 @@ export function AchievementsPage() {
     }
   ];
 
+  const achievements = getAchievements();
+
   const categories = [
     { id: 'all', label: 'All Achievements', icon: EmojiEvents },
     { id: 'academic', label: 'Academic', icon: School },
@@ -166,13 +217,13 @@ export function AchievementsPage() {
 
   const filteredAchievements = selectedCategory === 'all' 
     ? achievements 
-    : achievements.filter(achievement => achievement.category === selectedCategory);
+    : achievements.filter((achievement: Achievement) => achievement.category === selectedCategory);
 
   const stats = [
     { label: 'Total Awards', value: achievements.length, color: '#1976d2' },
-    { label: 'National Honors', value: achievements.filter(a => a.level === 'national').length, color: '#f57c00' },
-    { label: 'State Titles', value: achievements.filter(a => a.level === 'state').length, color: '#388e3c' },
-    { label: 'This Year', value: achievements.filter(a => a.year === '2024').length, color: '#d32f2f' },
+    { label: 'National Honors', value: achievements.filter((a: Achievement) => a.level === 'national').length, color: '#f57c00' },
+    { label: 'State Titles', value: achievements.filter((a: Achievement) => a.level === 'state').length, color: '#388e3c' },
+    { label: 'This Year', value: achievements.filter((a: Achievement) => a.year === '2024').length, color: '#d32f2f' },
   ];
 
   const getLevelChip = (level: string) => {
@@ -322,7 +373,7 @@ export function AchievementsPage() {
             spacing={{ xs: 2, sm: 3, md: 4 }} 
             sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
           >
-            {filteredAchievements.map((achievement) => (
+            {filteredAchievements.map((achievement: Achievement) => (
               <Grid size={{ xs: 12, sm: 6, md: 6, lg: 4 }} key={achievement.id}>
                 <Card
                   sx={{
@@ -428,7 +479,7 @@ export function AchievementsPage() {
           >
             {levels.map((level) => {
               const IconComponent = level.icon;
-              const count = achievements.filter(a => a.level === level.id).length;
+              const count = achievements.filter((a: Achievement) => a.level === level.id).length;
               return (
                 <Chip
                   key={level.id}

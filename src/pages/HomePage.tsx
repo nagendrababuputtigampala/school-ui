@@ -20,7 +20,8 @@ import {
   EmojiEvents,
   ArrowForward,
 } from '@mui/icons-material'
-import { fetchHomePageData, fetchHeroImages, fetchTimelineMilestones, TimelineMilestone } from '../config/firebase';
+import { useSchool } from '../contexts/SchoolContext';
+import { TimelineMilestone } from '../config/firebase';
 import { HeroCarousel } from '../components/HeroCarousel';
 
 interface HomePageProps {
@@ -30,38 +31,53 @@ interface HomePageProps {
 export function HomePage({ onNavigate }: HomePageProps) {
   const theme = useTheme();
   const isWebScreen = useMediaQuery(theme.breakpoints.up('md')); // md and above (≥960px) considered as web
+  const { schoolData, loading } = useSchool();
   
-  const [homePageData, setHomePageData] = useState<Map<string, string> | null>(null);
-  const [heroImages, setHeroImages] = useState<string[]>([]);
-  const [timelineMilestones, setTimelineMilestones] = useState<TimelineMilestone[]>([]);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<number>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
 
-  // Fetch homepage data from Firebase
+    // Fetch homepage data from Firebase
   useEffect(() => {
-    const loadHomePageData = async () => {
-      try {
-        const [data, images, timeline] = await Promise.all([
-          fetchHomePageData(),
-          fetchHeroImages(),
-          fetchTimelineMilestones()
-        ]);
-        setHomePageData(data);
-        setHeroImages(images);
-        setTimelineMilestones(timeline);
-      } catch (error) {
-        console.error('Error loading homepage data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Data comes from SchoolContext, no need to fetch here
+    // Loading is handled by SchoolContext
+    
+    // Extract announcements from school data
+    if (schoolData?.pages?.homePage?.announcementsSection?.recentUpdates) {
+      const updates = schoolData.pages.homePage.announcementsSection.recentUpdates;
+      // Sort by date (newest first) and take top 2
+      const sortedUpdates = updates
+        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 2);
+      setAnnouncements(sortedUpdates);
+    } else {
+      setAnnouncements([]);
+    }
+  }, [schoolData]);
 
-    loadHomePageData();
-  }, []);
-
-  // Helper function to get data from the map with fallback
-  const getDataValue = (key: string, fallback: string): string => {
-    return homePageData?.get(key) || fallback;
+  // Helper function to get data with fallback
+  const getData = (key: string, fallback: string = '') => {
+    if (!schoolData) return fallback;
+    
+    switch (key) {
+      case 'welcomeTitle':
+        return schoolData.welcomeTitle || fallback;
+      case 'welcomeSubtitle':
+        return schoolData.welcomeSubtitle || fallback;
+      case 'studentsCount':
+        return schoolData.studentsCount || fallback;
+      case 'teachersCount':
+        return schoolData.teachersCount || fallback;
+      case 'awardsCount':
+        return schoolData.awardsCount || fallback;
+      case 'yearsCount':
+        return schoolData.yearsCount || fallback;
+      case 'whyChooseTitle':
+        return schoolData.whyChooseTitle || fallback;
+      case 'whyChooseSubtitle':
+        return schoolData.whyChooseSubtitle || fallback;
+      default:
+        return fallback;
+    }
   };
 
   // Helper functions for milestone expansion
@@ -115,23 +131,14 @@ export function HomePage({ onNavigate }: HomePageProps) {
     );
   }
 
-  // Use Firebase timeline data with fallback to default milestones
-  const defaultMilestones: TimelineMilestone[] = [
-    { year: '1985', title: 'School Founded', description: 'EduConnect was established with a vision to provide quality education.' },
-    { year: '1990', title: 'First Graduation Class', description: 'Our first batch of 50 students graduated with honors.' },
-    { year: '2000', title: 'Technology Integration', description: 'Introduced computer labs and digital learning resources.' },
-    { year: '2010', title: 'Campus Expansion', description: 'Added new buildings including science labs and sports complex.' },
-    { year: '2020', title: 'Digital Transformation', description: 'Successfully transitioned to hybrid learning during the pandemic.' },
-    { year: '2024', title: 'Innovation Hub', description: 'Launched our state-of-the-art innovation and research center.' },
-  ];
 
-  const milestones = timelineMilestones.length > 0 ? timelineMilestones : defaultMilestones;
+  const milestones = schoolData?.timeline && schoolData.timeline.length > 0 ? schoolData.timeline : [] as TimelineMilestone[];
 
   const stats = [
-    { label: 'Students', value: getDataValue('studentsCount', '2,500+'), icon: People, color: '#1976d2' },
-    { label: 'Teachers', value: getDataValue('teachersCount', '150+'), icon: School, color: '#388e3c' },
-    { label: 'Awards', value: getDataValue('awardsCount', '50+'), icon: EmojiEvents, color: '#f57c00' },
-    { label: 'Years', value: getDataValue('yearsCount', '35+'), icon: TrendingUp, color: '#7b1fa2' },
+    { label: 'Students', value: getData('studentsCount', '2,500+'), icon: People, color: '#1976d2' },
+    { label: 'Teachers', value: getData('teachersCount', '150+'), icon: School, color: '#388e3c' },
+    { label: 'Awards', value: getData('awardsCount', '50+'), icon: EmojiEvents, color: '#f57c00' },
+    { label: 'Years', value: getData('yearsCount', '35+'), icon: TrendingUp, color: '#7b1fa2' },
   ];
 
 
@@ -172,9 +179,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
         }}>
         {/* Hero Section */}
         <HeroCarousel
-          images={heroImages}
-          welcomeTitle={getDataValue('welcomeTitle', 'Welcome to EduConnect')}
-          welcomeSubtitle={getDataValue('welcomeSubtitle', 'Empowering minds, shaping futures. Join our community of learners, innovators, and leaders who are making a difference in the world.')}
+          images={schoolData?.heroImages || []}
+          welcomeTitle={getData('welcomeTitle', 'Welcome to EduConnect')}
+          welcomeSubtitle={getData('welcomeSubtitle', 'Empowering minds, shaping futures. Join our community of learners, innovators, and leaders who are making a difference in the world.')}
           onNavigate={onNavigate}
         />
 
@@ -246,6 +253,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
         </Grid>
 
      {/* History Timeline */}
+        {milestones.length > 0 && (
         <Box sx={{ mb: { xs: 6, md: 8 } }}>
           <Typography 
             variant="h3" 
@@ -279,7 +287,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
               width: '100%'
             }}
           >
-            {milestones.map((milestone, index) => {
+            {milestones.map((milestone: TimelineMilestone, index: number) => {
               const isExpanded = isMilestoneExpanded(index);
               const maxLength = isWebScreen ? 300 : 150;
               const shouldShowReadMore = milestone.description.length > maxLength;
@@ -368,8 +376,10 @@ export function HomePage({ onNavigate }: HomePageProps) {
             })}
           </Grid>
         </Box>
+        )}
 
         {/* Recent Updates & Announcements */}
+        {announcements.length > 0 && (
         <Box sx={{ px: { xs: 1, sm: 0, md: 0 } }}>
           <Paper sx={{ 
             p: { xs: 2, sm: 3, md: 4, lg: 5 }, 
@@ -416,77 +426,61 @@ export function HomePage({ onNavigate }: HomePageProps) {
               }
             }}
           >
-            <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
-              <Card sx={{ 
-                border: '2px solid', 
-                borderColor: 'primary.main', 
-                borderRadius: { xs: 1, md: 2 },
-                width: '100%',
-                maxWidth: '100%',
-                boxSizing: 'border-box'
-              }}>
-                <CardContent sx={{
-                  p: { xs: 2, sm: 2.5, md: 3 },
+            {announcements.map((announcement, index) => (
+              <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }} key={announcement.id || index}>
+                <Card sx={{ 
+                  border: index === 0 ? '2px solid' : 'none',
+                  borderColor: index === 0 ? 'primary.main' : 'transparent',
+                  borderRadius: { xs: 1, md: 2 },
                   width: '100%',
                   maxWidth: '100%',
                   boxSizing: 'border-box'
                 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        backgroundColor: 'primary.main',
-                        mr: 1,
-                      }}
-                    />
-                    <Typography variant="h6" component="h3">
-                      Annual Day Celebration - March 20
+                  <CardContent sx={{
+                    p: { xs: 2, sm: 2.5, md: 3 },
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      {index === 0 && (
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            backgroundColor: 'primary.main',
+                            mr: 1,
+                          }}
+                        />
+                      )}
+                      <Typography variant="h6" component="h3">
+                        {announcement.title}
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                      {announcement.description}
                     </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Join us for our spectacular Annual Day celebration featuring student performances,
-                    cultural programs, and award ceremonies. All families are invited!
-                  </Typography>
-                  <Chip label="Event" size="small" color="primary" />
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
-              <Card sx={{
-                width: '100%',
-                maxWidth: '100%',
-                boxSizing: 'border-box',
-                borderRadius: { xs: 1, md: 2 }
-              }}>
-                <CardContent sx={{
-                  p: { xs: 2, sm: 2.5, md: 3 },
-                  width: '100%',
-                  maxWidth: '100%',
-                  boxSizing: 'border-box'
-                }}>
-                  <Typography variant="h6" component="h3" gutterBottom>
-                    New Gallery Updates
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Check out the latest photos and videos from our recent science fair,
-                    basketball championship, and student activities in our gallery section.
-                  </Typography>
-                  <Button
-                    onClick={() => onNavigate('gallery')}
-                    variant="outlined"
-                    size="small"
-                    endIcon={<ArrowForward />}
-                  >
-                    View Gallery
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Chip 
+                        label={announcement.category || announcement.type} 
+                        size="small" 
+                        color={announcement.priority === 'high' ? 'primary' : 'default'} 
+                      />
+                      {announcement.date && (
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(announcement.date).toLocaleDateString()}
+                        </Typography>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
           </Paper>
         </Box>
+        )}
         </Box>
         </Box>
       </Container>
