@@ -164,18 +164,6 @@ const ContactPage: React.FC = () => {
       {/* Header */}
       <Box sx={{ textAlign: "center", mb: 6 }}>
         <Typography
-          variant="h3"
-          component="h1"
-          sx={{
-            fontWeight: "bold",
-            color: "primary.main",
-            mb: 2,
-            fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
-          }}
-        >
-          Contact Us
-        </Typography>
-        <Typography
           variant="h6"
           sx={{
             color: "text.secondary",

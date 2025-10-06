@@ -8,7 +8,6 @@ import {
   Paper,
 } from '@mui/material';
 import {
-  ArrowForward,
   ArrowBackIos,
   ArrowForwardIos,
 } from '@mui/icons-material';
