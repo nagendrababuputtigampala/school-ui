@@ -1,16 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
-import { AppBar } from './components/AppBar';
 import { SnackbarProvider } from 'notistack';
-import { HomePage } from './pages/HomePage';
-import { AchievementsPage } from './pages/AchievementsPage';
-import { StaffDirectoryPage } from './pages/StaffDirectoryPage';
-import { AlumniPage } from './pages/AlumniPage';
-import { GalleryPage } from './pages/GalleryPage';
-import { AnnouncementsPage } from './pages/AnnouncementsPage';
-import { ContactPage } from './pages/ContactPage';
-import { Footer } from './components/Footer';
+import { SchoolProvider } from './contexts/SchoolContext';
+import { SchoolLayout } from './components/SchoolLayout';
 
 const theme = createTheme({
   palette: {
@@ -98,42 +92,28 @@ const theme = createTheme({
 });
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'home':
-        return <HomePage onNavigate={setCurrentPage} />;
-      case 'achievements':
-        return <AchievementsPage />;
-      case 'staff':
-        return <StaffDirectoryPage />;
-      case 'alumni':
-        return <AlumniPage />;
-      case 'gallery':
-        return <GalleryPage />;
-      case 'announcements':
-        return <AnnouncementsPage />;
-      case 'contact':
-        return <ContactPage />;
-      default:
-        return <HomePage onNavigate={setCurrentPage} />;
-    }
-  };
-
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <SnackbarProvider maxSnack={3}>
-        <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <AppBar currentPage={currentPage} onNavigate={setCurrentPage} />
-          
-          <Box component="main" sx={{ flexGrow: 1, py: 4 }}>
-            {renderPage()}
-          </Box>
-          
-          <Footer />
-        </Box>
+        <Router>
+          <Routes>
+            {/* Default route - redirect to default school */}
+            <Route path="/" element={<Navigate to="/school/educonnect" replace />} />
+            
+            {/* School-specific routes */}
+            <Route path="/school/:schoolId/*" element={
+              <SchoolProvider>
+                <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                  <SchoolLayout />
+                </Box>
+              </SchoolProvider>
+            } />
+            
+            {/* Fallback route */}
+            <Route path="*" element={<Navigate to="/school/educonnect" replace />} />
+          </Routes>
+        </Router>
       </SnackbarProvider>
     </ThemeProvider>
   );

@@ -8,7 +8,6 @@ import {
   Paper,
 } from '@mui/material';
 import {
-  ArrowForward,
   ArrowBackIos,
   ArrowForwardIos,
 } from '@mui/icons-material';
@@ -186,21 +185,6 @@ export function HeroCarousel({
               width: '100%',
               maxWidth: { xs: '100%', sm: 'auto' }
             }}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => onNavigate('about')}
-                endIcon={<ArrowForward />}
-                sx={{
-                  backgroundColor: 'white',
-                  color: 'primary.main',
-                  '&:hover': {
-                    backgroundColor: 'grey.100',
-                  },
-                }}
-              >
-                Learn More
-              </Button>
               <Button
                 variant="outlined"
                 size="large"

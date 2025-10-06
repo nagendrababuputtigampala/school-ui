@@ -15,7 +15,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { Menu as MenuIcon, Close as CloseIcon } from '@mui/icons-material';
-import { fetchSchoolName } from '../config/firebase';
+import { fetchSchoolData } from '../config/firebase';
 
 interface AppBarProps {
   currentPage: string;
@@ -50,8 +50,10 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
   // Load site name from Firestore on mount
   useEffect(() => {
     let isActive = true;
-    fetchSchoolName().then(name => {
-      if (isActive && name) setSchoolName(name);
+    fetchSchoolData('educonnect').then((schoolData: any) => {
+      if (isActive && schoolData?.name) setSchoolName(schoolData.name);
+    }).catch(() => {
+      // Keep default name if fetch fails
     });
     return () => { isActive = false; };
   }, []);
