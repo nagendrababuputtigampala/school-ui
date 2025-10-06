@@ -9,6 +9,9 @@ import {
   TextField,
   Button,
   Link,
+  Alert,
+  Snackbar,
+  CircularProgress,
 } from "@mui/material";
 import {
   LocationOn,
@@ -19,6 +22,7 @@ import {
   Person,
 } from '@mui/icons-material';
 import { fetchContactPageData, ContactUsInfo } from "../config/firebase";
+import emailjs from 'emailjs-com';
 
 interface ContactInfo {
   title: string;
@@ -27,10 +31,191 @@ interface ContactInfo {
   color: string;
 }
 
+interface FormData {
+  fullName: string;
+  email: string;
+  subject: string;
+  message: string;
+}
+
+interface FormErrors {
+  fullName?: string;
+  email?: string;
+  subject?: string;
+  message?: string;
+}
+
 const ContactPage: React.FC = () => {
   const { schoolId } = useParams<{ schoolId: string }>();
   const [contactUsData, setContactUsData] = useState<ContactUsInfo | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Initialize EmailJS when component mounts
+  useEffect(() => {
+    // Debug environment variables
+    console.log('EmailJS Environment Variables:', {
+      serviceId: process.env.REACT_APP_EMAILJS_SERVICE_ID,
+      templateId: process.env.REACT_APP_EMAILJS_TEMPLATE_ID,
+      publicKey: process.env.REACT_APP_EMAILJS_PUBLIC_KEY
+    });
+
+    // Initialize EmailJS only if environment variable is available
+    const publicKey = process.env.REACT_APP_EMAILJS_PUBLIC_KEY;
+    if (publicKey) {
+      emailjs.init(publicKey);
+      console.log('EmailJS initialized successfully with environment variable');
+    } else {
+      console.error('REACT_APP_EMAILJS_PUBLIC_KEY environment variable is missing');
+    }
+  }, []);
+  
+  // Form state
+  const [formData, setFormData] = useState<FormData>({
+    fullName: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Email validation function
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Form validation function
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+
+    if (!formData.fullName.trim()) {
+      errors.fullName = 'Full name is required';
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!validateEmail(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    if (!formData.subject.trim()) {
+      errors.subject = 'Subject is required';
+    }
+
+    if (!formData.message.trim()) {
+      errors.message = 'Message is required';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle form input changes
+  const handleInputChange = (field: keyof FormData) => (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: event.target.value
+    }));
+
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
+  };
+
+  // Email sending function
+  const sendEmail = async (): Promise<boolean> => {
+    try {
+      // Get environment variables
+      const serviceId = process.env.REACT_APP_EMAILJS_SERVICE_ID;
+      const templateId = process.env.REACT_APP_EMAILJS_TEMPLATE_ID;
+      const publicKey = process.env.REACT_APP_EMAILJS_PUBLIC_KEY;
+
+      console.log('EmailJS Config Check:', {
+        serviceId: serviceId ? '✓ Available' : '✗ Missing',
+        templateId: templateId ? '✓ Available' : '✗ Missing',
+        publicKey: publicKey ? '✓ Available' : '✗ Missing'
+      });
+
+      // Validate all required environment variables
+      if (!serviceId || !templateId || !publicKey) {
+        throw new Error('Missing EmailJS environment variables. Please check your .env.local file and restart the server.');
+      }
+
+      // Initialize EmailJS with the public key
+      emailjs.init(publicKey);
+
+      const templateParams = {
+        from_name: formData.fullName,
+        from_email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+        to_email: contactUsData?.email 
+          ? (Array.isArray(contactUsData.email) 
+            ? contactUsData.email[0] 
+            : contactUsData.email)
+          : 'info@school.edu',
+      };
+
+      console.log('Sending email with params:', templateParams);
+
+      await emailjs.send(
+        serviceId,
+        templateId,
+        templateParams
+      );
+      
+      console.log('Email sent successfully');
+      return true;
+    } catch (error) {
+      console.error('Error sending email:', error);
+      return false;
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const success = await sendEmail();
+      
+      if (success) {
+        setShowSuccess(true);
+        // Reset form
+        setFormData({
+          fullName: '',
+          email: '',
+          subject: '',
+          message: ''
+        });
+        setFormErrors({});
+      } else {
+        setErrorMessage('Failed to send email. Please try again or contact us directly.');
+        setShowError(true);
+      }
+    } catch (error) {
+      setErrorMessage('An unexpected error occurred. Please try again.');
+      setShowError(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Fallback contact info if database data isn't available
   const fallbackContactInfo: ContactInfo[] = [
@@ -163,6 +348,18 @@ const ContactPage: React.FC = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Header */}
       <Box sx={{ textAlign: "center", mb: 6 }}>
+        <Typography
+          variant="h3"
+          component="h1"
+          sx={{
+            fontWeight: "bold",
+            color: "primary.main",
+            mb: 2,
+            fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
+          }}
+        >
+          Contact Us
+        </Typography>
         <Typography
           variant="h6"
           sx={{
@@ -302,7 +499,7 @@ const ContactPage: React.FC = () => {
           <Typography variant="h4" component="h2" sx={{ mb: 3, textAlign: "center", fontWeight: "bold" }}>
             Send us a Message
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 3 }}>
+          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 3 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <Box>
                 <TextField
@@ -310,6 +507,11 @@ const ContactPage: React.FC = () => {
                   label="Full Name"
                   variant="outlined"
                   required
+                  value={formData.fullName}
+                  onChange={handleInputChange('fullName')}
+                  error={!!formErrors.fullName}
+                  helperText={formErrors.fullName}
+                  disabled={isSubmitting}
                 />
               </Box>
               <Box>
@@ -319,6 +521,11 @@ const ContactPage: React.FC = () => {
                   variant="outlined"
                   type="email"
                   required
+                  value={formData.email}
+                  onChange={handleInputChange('email')}
+                  error={!!formErrors.email}
+                  helperText={formErrors.email}
+                  disabled={isSubmitting}
                 />
               </Box>
             </Box>
@@ -328,6 +535,11 @@ const ContactPage: React.FC = () => {
                 label="Subject"
                 variant="outlined"
                 required
+                value={formData.subject}
+                onChange={handleInputChange('subject')}
+                error={!!formErrors.subject}
+                helperText={formErrors.subject}
+                disabled={isSubmitting}
               />
             </Box>
             <Box>
@@ -338,13 +550,20 @@ const ContactPage: React.FC = () => {
                 multiline
                 rows={6}
                 required
+                value={formData.message}
+                onChange={handleInputChange('message')}
+                error={!!formErrors.message}
+                helperText={formErrors.message}
+                disabled={isSubmitting}
               />
             </Box>
             <Box sx={{ textAlign: "center" }}>
               <Button
+                type="submit"
                 variant="contained"
                 size="large"
-                startIcon={<Send />}
+                startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <Send />}
+                disabled={isSubmitting}
                 sx={{
                   px: 4,
                   py: 1.5,
@@ -353,7 +572,7 @@ const ContactPage: React.FC = () => {
                   borderRadius: "25px",
                 }}
               >
-                Send Message
+                {isSubmitting ? 'Sending...' : 'Send Message'}
               </Button>
             </Box>
           </Box>
@@ -387,6 +606,37 @@ const ContactPage: React.FC = () => {
           </Card>
         )}
       </Box>
+
+      {/* Success/Error Notifications */}
+      <Snackbar
+        open={showSuccess}
+        autoHideDuration={6000}
+        onClose={() => setShowSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowSuccess(false)} 
+          severity="success" 
+          sx={{ width: '100%' }}
+        >
+          Your message has been sent successfully! We'll get back to you soon.
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={showError}
+        autoHideDuration={6000}
+        onClose={() => setShowError(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowError(false)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
