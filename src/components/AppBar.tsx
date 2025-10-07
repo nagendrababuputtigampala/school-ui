@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   AppBar as MuiAppBar,
   Toolbar,
@@ -33,6 +34,7 @@ const navigationItems = [
 ];
 
 export function AppBar({ currentPage, onNavigate }: AppBarProps) {
+  const { schoolId } = useParams<{ schoolId: string }>();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [schoolName, setSchoolName] = useState('EduConnect');
   const theme = useTheme();
@@ -49,14 +51,16 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
 
   // Load site name from Firestore on mount
   useEffect(() => {
+    if (!schoolId) return;
+    
     let isActive = true;
-    fetchSchoolData('educonnect').then((schoolData: any) => {
+    fetchSchoolData(schoolId).then((schoolData: any) => {
       if (isActive && schoolData?.name) setSchoolName(schoolData.name);
     }).catch(() => {
       // Keep default name if fetch fails
     });
     return () => { isActive = false; };
-  }, []);
+  }, [schoolId]);
 
   const drawer = (
     <Box sx={{ width: 250 }}>
