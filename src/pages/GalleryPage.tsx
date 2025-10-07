@@ -19,7 +19,6 @@ import {
 } from '@mui/material';
 import {
   PhotoCamera,
-  Videocam,
   Event,
   School,
   EmojiEvents,
@@ -163,13 +162,6 @@ export function GalleryPage() {
 
   const photoItems = filteredItems.filter(item => item.type === 'photo');
   const videoItems = filteredItems.filter(item => item.type === 'video');
-
-  const stats = [
-    { label: 'Photos', value: photoItems.length, icon: PhotoCamera },
-    { label: 'Videos', value: videoItems.length, icon: Videocam },
-    { label: 'Categories', value: categories.length - 1, icon: Event },
-    { label: 'Current Year', value: new Date().getFullYear(), icon: EmojiEvents },
-  ];
 
   const handleItemClick = (item: GalleryItem) => {
     setSelectedItem(item);

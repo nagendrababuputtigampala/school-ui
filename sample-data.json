@@ -10,12 +10,6 @@
       "secondaryColor": "#81C784"
     },
     "alumniPage": {
-      "stats": [
-        { "label": "Alumni Network", "value": "5,000+", "color": "#1976d2" },
-        { "label": "Countries Worldwide", "value": "25+", "color": "#388e3c" },
-        { "label": "Fortune 500 CEOs", "value": "12", "color": "#f57c00" },
-        { "label": "Advanced Degrees", "value": "78%", "color": "#7b1fa2" }
-      ],
       "alumniMembers": [
         {
           "id": "alumni-1",
