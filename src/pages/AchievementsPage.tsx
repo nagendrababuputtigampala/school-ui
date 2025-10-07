@@ -275,14 +275,6 @@ export function AchievementsPage() {
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, md: 0 } }}>
           <Typography 
-            variant="h2" 
-            component="h1" 
-            gutterBottom
-            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
-          >
-            Our Achievements
-          </Typography>
-          <Typography 
             variant="h6" 
             color="text.secondary" 
             sx={{ 
@@ -497,83 +489,6 @@ export function AchievementsPage() {
                 />
               );
             })}
-          </Box>
-        </Paper>
-
-        {/* Call to Action */}
-        <Paper
-          sx={{
-            p: { xs: 3.5, md: 6 },
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            width: '100%',
-            maxWidth: '100%',
-            boxSizing: 'border-box'
-          }}
-        >
-          <Typography 
-            variant="h3" 
-            component="h2" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' } }}
-          >
-            Be Part of Our Success Story
-          </Typography>
-          <Typography 
-            variant="h6" 
-            paragraph 
-            sx={{ 
-              maxWidth: '700px', 
-              mx: 'auto', 
-              opacity: 0.9,
-              fontSize: { xs: '1rem', md: '1.15rem' },
-              px: { xs: 1.5, md: 0 }
-            }}
-          >
-            Join our community of achievers and unlock your potential. With dedicated faculty, 
-            world-class facilities, and a culture of excellence, your success story starts here.
-          </Typography>
-          <Box 
-            sx={{ 
-              mt: { xs: 3, md: 4 }, 
-              display: 'flex', 
-              justifyContent: 'center', 
-              gap: { xs: 1.5, md: 2 }, 
-              flexWrap: 'wrap'
-            }}
-          >
-            <Button
-              variant="contained"
-              size="large"
-              sx={{
-                backgroundColor: 'white',
-                color: 'primary.main',
-                fontSize: { xs: '0.8rem', md: '0.9rem' },
-                px: { xs: 2, md: 3 },
-                py: { xs: 1, md: 1.25 },
-                '&:hover': { backgroundColor: 'grey.100' },
-              }}
-            >
-              Apply Now
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              sx={{
-                borderColor: 'white',
-                color: 'white',
-                fontSize: { xs: '0.8rem', md: '0.9rem' },
-                px: { xs: 2, md: 3 },
-                py: { xs: 1, md: 1.25 },
-                '&:hover': {
-                  borderColor: 'grey.300',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                },
-              }}
-            >
-              Schedule Visit
-            </Button>
           </Box>
         </Paper>
       </Box>

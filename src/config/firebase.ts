@@ -33,6 +33,29 @@ export interface ContactUsInfo {
   whatsApp?: string; // Make whatsApp optional
 }
 
+// Interface for staff member
+export interface StaffMember {
+  id: string;
+  name: string;
+  position: string;
+  department: string;
+  email: string;
+  phone: string;
+  education: string;
+  experience: string;
+  specializations: string[];
+  image: string;
+  schoolId: string;
+}
+
+// Interface for department
+export interface Department {
+  id: string;
+  label: string;
+  schoolId: string;
+  order?: number;
+}
+
 // Interface for school data
 export interface SchoolData {
   id: string;
@@ -296,6 +319,151 @@ export async function fetchContactPageData(schoolId: string): Promise<ContactUsI
     console.error(`Failed to fetch contact page data for school ${schoolId}:`, err);
     return null;
   }
+}
+
+// Fetch staff members for a specific school from Schools collection staffPage
+export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
+  try {
+    const schoolsRef = collection(db, 'Schools');
+    const schoolsSnapshot = await getDocs(schoolsRef);
+    
+    let schoolData: any = null;
+    
+    // Find the school document
+    for (const doc of schoolsSnapshot.docs) {
+      const data = doc.data();
+      if (data.id === schoolId || data.slug === schoolId) {
+        schoolData = data;
+        break;
+      }
+    }
+    
+    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage || !schoolData.pages.staffPage.staff) {
+      console.log(`No staff data found for school: ${schoolId}`);
+      return [];
+    }
+    
+    const staffArray = schoolData.pages.staffPage.staff;
+    const staffMembers: StaffMember[] = [];
+    
+    // Process each staff member from the simple array
+    staffArray.forEach((staff: any) => {
+      staffMembers.push({
+        id: staff.id || `staff-${staffMembers.length + 1}`,
+        name: staff.name || '',
+        position: staff.position || '',
+        department: staff.department || 'other',
+        email: staff.email || '',
+        phone: staff.phone || '',
+        education: staff.education || '',
+        experience: staff.experience || '',
+        specializations: staff.specializations || staff.specialties || [],
+        image: staff.image || '',
+        schoolId: staff.schoolId || schoolData.id
+      });
+    });
+    
+    return staffMembers;
+  } catch (err) {
+    console.error(`Failed to fetch staff data for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Fetch departments for a specific school from staffPage data in Schools collection
+export async function fetchDepartments(schoolId: string): Promise<Department[]> {
+  try {
+    const schoolsRef = collection(db, 'Schools');
+    const schoolsSnapshot = await getDocs(schoolsRef);
+    
+    let schoolData: any = null;
+    
+    // Find the school document
+    for (const doc of schoolsSnapshot.docs) {
+      const data = doc.data();
+      if (data.id === schoolId || data.slug === schoolId) {
+        schoolData = data;
+        break;
+      }
+    }
+    
+    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage || !schoolData.pages.staffPage.staff) {
+      console.log(`No staff data found for school: ${schoolId}`);
+      return [];
+    }
+    
+    const staffArray = schoolData.pages.staffPage.staff;
+    const departmentSet = new Set<string>();
+    
+    // Extract departments from staff array
+    staffArray.forEach((staff: any) => {
+      if (staff.department) {
+        departmentSet.add(staff.department);
+      } else {
+        departmentSet.add('other');
+      }
+    });
+    
+    // Convert to Department objects
+    const departments: Department[] = Array.from(departmentSet).map(deptId => ({
+      id: deptId,
+      label: formatDepartmentLabel(deptId),
+      schoolId: schoolId,
+      order: getDepartmentOrder(deptId)
+    }));
+    
+    // Sort by order
+    departments.sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    return departments;
+  } catch (err) {
+    console.error(`Failed to fetch departments for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Helper function to format department labels
+function formatDepartmentLabel(departmentId: string): string {
+  const labelMap: { [key: string]: string } = {
+    'administration': 'Administration',
+    'mathematics': 'Mathematics',
+    'science': 'Science',
+    'english': 'English',
+    'social_studies': 'Social Studies',
+    'arts': 'Arts',
+    'athletics': 'Athletics',
+    'counseling': 'Counseling',
+    'health': 'Health Services',
+    'music': 'Music',
+    'technology': 'Technology',
+    'library': 'Library',
+    'languages': 'World Languages',
+    'other': 'Other'
+  };
+  
+  return labelMap[departmentId.toLowerCase()] || departmentId.charAt(0).toUpperCase() + departmentId.slice(1);
+}
+
+// Helper function to get department order for sorting
+function getDepartmentOrder(departmentId: string): number {
+  const orderMap: { [key: string]: number } = {
+    'administration': 1,
+    'mathematics': 2,
+    'science': 3,
+    'english': 4,
+    'social_studies': 5,
+    'arts': 6,
+    'music': 7,
+    'languages': 8,
+    'technology': 9,
+    'athletics': 10,
+    'counseling': 11,
+    'health': 12,
+    'library': 13,
+    'other': 99
+  };
+  
+  return orderMap[departmentId.toLowerCase()] || 50;
 }
 
 

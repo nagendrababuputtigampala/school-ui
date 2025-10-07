@@ -186,64 +186,73 @@
       }
     },
     "staffPage": {
-      "administrationSection": {
-        "title": "Administration",
-        "staff": [
-          {
-            "name": "Dr. Sarah Johnson",
-            "position": "Principal",
-            "department": "Administration",
-            "email": "s.johnson@greenwood.edu",
-            "education": "Ed.D. Educational Leadership, Ph.D. Mathematics Education",
-            "experience": "15 years in education",
-            "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"
-          },
-          {
-            "name": "Mr. Michael Chen",
-            "position": "Vice Principal",
-            "department": "Administration",
-            "email": "m.chen@greenwood.edu",
-            "education": "M.Ed. Educational Administration",
-            "experience": "12 years in education",
-            "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
-          }
-        ]
-      },
-      "facultySection": {
-        "title": "Faculty",
-        "staff": [
-          {
-            "name": "Ms. Emily Rodriguez",
-            "position": "Head of Mathematics Department",
-            "department": "Mathematics",
-            "email": "e.rodriguez@greenwood.edu",
-            "education": "M.S. Mathematics, B.S. Mathematics Education",
-            "experience": "10 years teaching experience",
-            "specialties": ["Calculus", "Statistics", "AP Mathematics"],
-            "image": "https://images.unsplash.com/photo-1494790108755-2616b612b047"
-          },
-          {
-            "name": "Dr. James Wilson",
-            "position": "Science Department Chair",
-            "department": "Science",
-            "email": "j.wilson@greenwood.edu",
-            "education": "Ph.D. Chemistry, M.S. Chemical Engineering",
-            "experience": "8 years teaching experience",
-            "specialties": ["Chemistry", "AP Chemistry", "Environmental Science"],
-            "image": "https://images.unsplash.com/photo-1560250097-0b93528c311a"
-          },
-          {
-            "name": "Ms. Lisa Thompson",
-            "position": "English Literature Teacher",
-            "department": "English",
-            "email": "l.thompson@greenwood.edu",
-            "education": "M.A. English Literature, B.A. Creative Writing",
-            "experience": "7 years teaching experience",
-            "specialties": ["AP Literature", "Creative Writing", "Drama"],
-            "image": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80"
-          }
-        ]
-      }
+      "staff": [
+        {
+          "id": "staff-1",
+          "name": "Dr. Sarah Johnson",
+          "position": "Principal",
+          "department": "administration",
+          "email": "s.johnson@greenwood.edu",
+          "phone": "+1 (555) 123-4501",
+          "education": "Ed.D. Educational Leadership, Ph.D. Mathematics Education",
+          "experience": "15 years in education",
+          "specializations": ["Educational Leadership", "Mathematics Education", "School Administration"],
+          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+          "schoolId": "greenwood-high"
+        },
+        {
+          "id": "staff-2",
+          "name": "Mr. Michael Chen",
+          "position": "Vice Principal",
+          "department": "administration",
+          "email": "m.chen@greenwood.edu",
+          "phone": "+1 (555) 123-4502",
+          "education": "M.Ed. Educational Administration",
+          "experience": "12 years in education",
+          "specializations": ["Student Affairs", "Curriculum Development", "Staff Management"],
+          "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
+          "schoolId": "greenwood-high"
+        },
+        {
+          "id": "staff-3",
+          "name": "Ms. Emily Rodriguez",
+          "position": "Head of Mathematics Department",
+          "department": "mathematics",
+          "email": "e.rodriguez@greenwood.edu",
+          "phone": "+1 (555) 123-4503",
+          "education": "M.S. Mathematics, B.S. Mathematics Education",
+          "experience": "10 years teaching experience",
+          "specializations": ["Calculus", "Statistics", "AP Mathematics"],
+          "image": "https://images.unsplash.com/photo-1494790108755-2616b612b047",
+          "schoolId": "greenwood-high"
+        },
+        {
+          "id": "staff-4",
+          "name": "Dr. James Wilson",
+          "position": "Science Department Chair",
+          "department": "science",
+          "email": "j.wilson@greenwood.edu",
+          "phone": "+1 (555) 123-4504",
+          "education": "Ph.D. Chemistry, M.S. Chemical Engineering",
+          "experience": "8 years teaching experience",
+          "specializations": ["Chemistry", "AP Chemistry", "Environmental Science"],
+          "image": "https://images.unsplash.com/photo-1560250097-0b93528c311a",
+          "schoolId": "greenwood-high"
+        },
+        {
+          "id": "staff-5",
+          "name": "Ms. Lisa Thompson",
+          "position": "English Literature Teacher",
+          "department": "english",
+          "email": "l.thompson@greenwood.edu",
+          "phone": "+1 (555) 123-4505",
+          "education": "M.A. English Literature, B.A. Creative Writing",
+          "experience": "7 years teaching experience",
+          "specializations": ["AP Literature", "Creative Writing", "Drama"],
+          "image": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
+          "schoolId": "greenwood-high"
+        }
+      ]
     },
     "galleryPage": {
       "campusSection": {
@@ -395,6 +404,49 @@
         ]
       }
     },
+    "staffPage": {
+      "staff": [
+        {
+          "id": "staff-6",
+          "name": "Ms. Amanda Foster",
+          "position": "Principal",
+          "department": "administration",
+          "email": "a.foster@riverside-academy.org",
+          "phone": "+1 (555) 987-6543",
+          "education": "M.Ed. Educational Leadership",
+          "experience": "12 years in education",
+          "specializations": ["Innovative Teaching", "Environmental Education", "Arts Integration"],
+          "image": "https://images.unsplash.com/photo-1551836022-deb4988cc6c0",
+          "schoolId": "riverside-academy"
+        },
+        {
+          "id": "staff-7",
+          "name": "Mr. David Park",
+          "position": "Arts Director",
+          "department": "arts",
+          "email": "d.park@riverside-academy.org",
+          "phone": "+1 (555) 987-6544",
+          "education": "M.F.A. Fine Arts, B.A. Art Education",
+          "experience": "9 years teaching experience",
+          "specializations": ["Visual Arts", "Digital Media", "Art History"],
+          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+          "schoolId": "riverside-academy"
+        },
+        {
+          "id": "staff-8",
+          "name": "Dr. Maria Santos",
+          "position": "Environmental Science Coordinator",
+          "department": "science",
+          "email": "m.santos@riverside-academy.org",
+          "phone": "+1 (555) 987-6545",
+          "education": "Ph.D. Environmental Science, M.S. Biology",
+          "experience": "11 years teaching experience",
+          "specializations": ["Sustainability", "Marine Biology", "Climate Science"],
+          "image": "https://images.unsplash.com/photo-1494790108755-2616b612b047",
+          "schoolId": "riverside-academy"
+        }
+      ]
+    },
     "contactPage": {
       "address": "456 River Road, Riverside, RS 67890",
       "phone": ["+1 (555) 987-6543", "+1 (555) 987-6544"],
@@ -522,6 +574,49 @@
           "National Association of College Admission Counseling"
         ]
       }
+    },
+    "staffPage": {
+      "staff": [
+        {
+          "id": "staff-9",
+          "name": "Dr. Robert Martinez",
+          "position": "Principal",
+          "department": "administration",
+          "email": "r.martinez@summitprep.edu",
+          "phone": "+1 (555) 246-8135",
+          "education": "Ed.D. Educational Leadership, M.A. Mathematics",
+          "experience": "18 years in education",
+          "specializations": ["College Preparation", "Advanced Academics", "Leadership Development"],
+          "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
+          "schoolId": "summit-prep"
+        },
+        {
+          "id": "staff-10",
+          "name": "Ms. Jennifer Lee",
+          "position": "College Counselor",
+          "department": "counseling",
+          "email": "j.lee@summitprep.edu",
+          "phone": "+1 (555) 246-8136",
+          "education": "M.S. School Counseling, B.A. Psychology",
+          "experience": "8 years counseling experience",
+          "specializations": ["College Applications", "Career Guidance", "Academic Planning"],
+          "image": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
+          "schoolId": "summit-prep"
+        },
+        {
+          "id": "staff-11",
+          "name": "Dr. Alex Thompson",
+          "position": "AP Coordinator",
+          "department": "mathematics",
+          "email": "a.thompson@summitprep.edu",
+          "phone": "+1 (555) 246-8137",
+          "education": "Ph.D. Mathematics, M.S. Statistics",
+          "experience": "15 years teaching experience",
+          "specializations": ["AP Calculus", "AP Statistics", "Data Science"],
+          "image": "https://images.unsplash.com/photo-1560250097-0b93528c311a",
+          "schoolId": "summit-prep"
+        }
+      ]
     },
     "contactPage": {
       "address": "789 Summit Drive, Mountain View, MV 11223",
