@@ -1,0 +1,2 @@
+# SPA fallback rule - redirect all routes to index.html with 200 status
+/*    /index.html   200

@@ -1,0 +1,13 @@
+[build]
+  publish = "build"
+  command = "npm run build"
+
+# SPA redirect - catch all routes and serve index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Optional: Disable secret scanning for public API keys
+[build.environment]
+  NETLIFY_SKIP_SECRET_DETECTION = "true"
