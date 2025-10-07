@@ -213,14 +213,6 @@ export function GalleryPage() {
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: { xs: 4, sm: 5, md: 6 }, px: { xs: 1, sm: 0 } }}>
           <Typography 
-            variant="h2" 
-            component="h1" 
-            gutterBottom
-            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
-          >
-            Gallery
-          </Typography>
-          <Typography 
             variant="h6" 
             color="text.secondary" 
             sx={{ 
@@ -234,57 +226,6 @@ export function GalleryPage() {
             From academic achievements to cultural celebrations, sports victories to artistic expressions.
           </Typography>
         </Box>
-
-        {/* Gallery Stats */}
-        <Grid 
-          container 
-          spacing={{ xs: 2, sm: 3, md: 4 }} 
-          sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
-        >
-          {stats.map((stat, index) => {
-            const IconComponent = stat.icon;
-            return (
-              <Grid size={{ xs: 6, sm: 6, md: 3, lg: 3 }} key={index}>
-                <Card 
-                  sx={{ 
-                    textAlign: 'center', 
-                    p: { xs: 2, sm: 2.5, md: 3 },
-                    height: '100%',
-                    transition: 'transform 0.2s',
-                    '&:hover': { transform: { xs: 'none', md: 'translateY(-4px)' } }
-                  }}
-                >
-                  <Avatar
-                    sx={{
-                      bgcolor: 'primary.main',
-                      width: { xs: 48, sm: 56 },
-                      height: { xs: 48, sm: 56 },
-                      mx: 'auto',
-                      mb: { xs: 1.5, md: 2 },
-                    }}
-                  >
-                    <IconComponent sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                  </Avatar>
-                  <Typography 
-                    variant="h4" 
-                    component="div" 
-                    sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}
-                  >
-                    {stat.value}
-                  </Typography>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary"
-                    sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
-                  >
-                    {stat.label}
-                  </Typography>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
-
         {/* Category Tabs */}
         <Paper sx={{ mb: { xs: 3, md: 4 }, px: { xs: 1, md: 2 } }}>
           <Tabs
@@ -435,74 +376,6 @@ export function GalleryPage() {
             </Typography>
           </Paper>
         )}
-
-        {/* Recent Highlights */}
-        <Paper sx={{ p: { xs: 3, md: 4 }, backgroundColor: 'grey.50' }}>
-          <Box sx={{ textAlign: 'center', mb: { xs: 3, md: 4 } }}>
-            <Typography 
-              variant="h4" 
-              component="h2" 
-              gutterBottom
-              sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
-            >
-              Recent Highlights
-            </Typography>
-            <Typography 
-              variant="body1" 
-              color="text.secondary" 
-              sx={{ maxWidth: '600px', mx: 'auto', fontSize: { xs: '0.95rem', md: '1rem' }, px: { xs: 1.5, md: 0 } }}
-            >
-              Stay updated with the latest photos and videos from our school events, 
-              academic achievements, and student activities.
-            </Typography>
-          </Box>
-          <Grid 
-            container 
-            spacing={{ xs: 2, sm: 3, md: 4 }}
-            sx={{ mx: 0, width: '100%' }}
-          >
-            {galleryItems.slice(0, 3).map((item) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.id}>
-                <Card
-                  sx={{
-                    cursor: 'pointer',
-                    height: '100%',
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: { xs: 'none', md: 'translateY(-2px)' },
-                    },
-                  }}
-                  onClick={() => handleItemClick(item)}
-                >
-                  <CardMedia
-                    component="img"
-                    height={160}
-                    sx={{ height: { xs: 140, md: 160 }, objectFit: 'cover' }}
-                    image={item.imageUrl}
-                    alt={item.title}
-                  />
-                  <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                    <Typography 
-                      gutterBottom 
-                      variant="h6" 
-                      component="h3"
-                      sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}
-                    >
-                      {item.title}
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary"
-                      sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
-                    >
-                      {item.description}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Paper>
 
         {/* Dialog for viewing selected item */}
         <Dialog

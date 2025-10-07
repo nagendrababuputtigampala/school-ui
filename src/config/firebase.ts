@@ -56,6 +56,50 @@ export interface Department {
   order?: number;
 }
 
+// Interface for alumni member
+export interface AlumniMember {
+  id: string;
+  name: string;
+  graduationYear: string;
+  currentPosition: string;
+  company: string;
+  location: string;
+  industry: string;
+  achievements: string[];
+  image: string;
+  bio: string;
+  linkedIn?: string;
+  schoolId: string;
+}
+
+// Interface for alumni stats
+export interface AlumniStat {
+  label: string;
+  value: string;
+  color: string;
+}
+
+// Interface for alumni decades
+export interface AlumniDecade {
+  id: string;
+  label: string;
+}
+
+// Interface for alumni industries
+export interface AlumniIndustry {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+// Interface for alumni page data
+export interface AlumniPageData {
+  stats: AlumniStat[];
+  decades: AlumniDecade[];
+  industries: AlumniIndustry[];
+  alumniMembers: AlumniMember[];
+}
+
 // Interface for school data
 export interface SchoolData {
   id: string;
@@ -464,6 +508,116 @@ function getDepartmentOrder(departmentId: string): number {
   };
   
   return orderMap[departmentId.toLowerCase()] || 50;
+}
+
+// Fetch alumni data for a specific school from Schools collection alumniPage
+export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData | null> {
+  try {
+    const schoolsRef = collection(db, 'Schools');
+    const schoolsSnapshot = await getDocs(schoolsRef);
+    
+    let schoolData: any = null;
+    
+    // Find the school document
+    for (const doc of schoolsSnapshot.docs) {
+      const data = doc.data();
+      if (data.id === schoolId || data.slug === schoolId) {
+        schoolData = data;
+        break;
+      }
+    }
+    
+    if (!schoolData || !schoolData.pages || !schoolData.pages.alumniPage) {
+      console.log(`No alumni page found for school: ${schoolId}`);
+      return null;
+    }
+    
+    const alumniPage = schoolData.pages.alumniPage;
+    const alumniMembers = alumniPage.alumniMembers || [];
+    
+    // Generate decades dynamically from alumni members
+    const graduationYears = alumniMembers.map((member: AlumniMember) => parseInt(member.graduationYear));
+    const decadeNumbers = graduationYears.map((year: number) => Math.floor(year / 10) * 10);
+    const uniqueDecades = Array.from(new Set(decadeNumbers)) as number[];
+    uniqueDecades.sort((a: number, b: number) => b - a);
+    
+    const decades: AlumniDecade[] = [
+      { id: "all", label: "All Years" },
+      ...uniqueDecades.map(decade => ({
+        id: `${decade}s`,
+        label: `${decade}s`
+      }))
+    ];
+    
+    // Generate industries dynamically from alumni members
+    const industriesArray = alumniMembers
+      .map((member: AlumniMember) => member.industry)
+      .filter((industry: string | undefined): industry is string => Boolean(industry));
+    const uniqueIndustries = Array.from(new Set(industriesArray)) as string[];
+    
+    const industries: AlumniIndustry[] = [
+      { id: "all", label: "All Industries", icon: "Business" },
+      ...uniqueIndustries.map((industry: string) => ({
+        id: industry.toLowerCase().replace(/\s+/g, ''),
+        label: industry,
+        icon: "Business"
+      }))
+    ];
+    
+    return {
+      stats: alumniPage.stats || [],
+      decades,
+      industries,
+      alumniMembers
+    };
+  } catch (err) {
+    console.error(`Failed to fetch alumni data for school ${schoolId}:`, err);
+    return null;
+  }
+}
+
+// Fetch alumni members for a specific school from Schools collection alumniPage
+export async function fetchAlumniMembers(schoolId: string): Promise<AlumniMember[]> {
+  try {
+    const alumniData = await fetchAlumniData(schoolId);
+    return alumniData?.alumniMembers || [];
+  } catch (err) {
+    console.error(`Failed to fetch alumni members for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Fetch alumni stats for a specific school from Schools collection alumniPage
+export async function fetchAlumniStats(schoolId: string): Promise<AlumniStat[]> {
+  try {
+    const alumniData = await fetchAlumniData(schoolId);
+    return alumniData?.stats || [];
+  } catch (err) {
+    console.error(`Failed to fetch alumni stats for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Fetch alumni decades for a specific school from Schools collection alumniPage
+export async function fetchAlumniDecades(schoolId: string): Promise<AlumniDecade[]> {
+  try {
+    const alumniData = await fetchAlumniData(schoolId);
+    return alumniData?.decades || [];
+  } catch (err) {
+    console.error(`Failed to fetch alumni decades for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Fetch alumni industries for a specific school from Schools collection alumniPage
+export async function fetchAlumniIndustries(schoolId: string): Promise<AlumniIndustry[]> {
+  try {
+    const alumniData = await fetchAlumniData(schoolId);
+    return alumniData?.industries || [];
+  } catch (err) {
+    console.error(`Failed to fetch alumni industries for school ${schoolId}:`, err);
+    return [];
+  }
 }
 
 

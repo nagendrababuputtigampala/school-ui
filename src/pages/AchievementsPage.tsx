@@ -12,7 +12,6 @@ import {
   Tab,
   Paper,
   Avatar,
-  Button,
 } from '@mui/material';
 import {
   EmojiEvents,

@@ -9,6 +9,86 @@
       "primaryColor": "#2E7D32",
       "secondaryColor": "#81C784"
     },
+    "alumniPage": {
+      "stats": [
+        { "label": "Alumni Network", "value": "5,000+", "color": "#1976d2" },
+        { "label": "Countries Worldwide", "value": "25+", "color": "#388e3c" },
+        { "label": "Fortune 500 CEOs", "value": "12", "color": "#f57c00" },
+        { "label": "Advanced Degrees", "value": "78%", "color": "#7b1fa2" }
+      ],
+      "alumniMembers": [
+        {
+          "id": "alumni-1",
+          "name": "Dr. Amanda Foster",
+          "graduationYear": "2010",
+          "currentPosition": "Chief Technology Officer",
+          "company": "TechInnovate Solutions",
+          "location": "San Francisco, CA",
+          "industry": "technology",
+          "achievements": ["Forbes 30 Under 30", "Tech Innovation Award 2023", "Startup Founder"],
+          "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956",
+          "bio": "Leading digital transformation initiatives and pioneering AI solutions in healthcare technology.",
+          "linkedIn": "linkedin.com/in/amandafoster",
+          "schoolId": "greenwood-high"
+        },
+        {
+          "id": "alumni-2",
+          "name": "Marcus Johnson",
+          "graduationYear": "2008",
+          "currentPosition": "Senior Investment Banker",
+          "company": "Goldman Sachs",
+          "location": "New York, NY",
+          "industry": "finance",
+          "achievements": ["Top Performer 2022", "MBA from Wharton", "Financial Excellence Award"],
+          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+          "bio": "Specializes in corporate finance and mergers & acquisitions, helping companies achieve strategic growth.",
+          "linkedIn": "linkedin.com/in/marcusjohnson",
+          "schoolId": "greenwood-high"
+        },
+        {
+          "id": "alumni-3",
+          "name": "Dr. Sarah Kim",
+          "graduationYear": "2012",
+          "currentPosition": "Pediatric Surgeon",
+          "company": "Children's Hospital Boston",
+          "location": "Boston, MA",
+          "industry": "healthcare",
+          "achievements": ["Medical Excellence Award", "Research Publication Leader", "Community Service Recognition"],
+          "image": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2",
+          "bio": "Dedicated to improving children's health through innovative surgical techniques and compassionate care.",
+          "linkedIn": "linkedin.com/in/sarahkim",
+          "schoolId": "greenwood-high"
+        },
+        {
+          "id": "alumni-4",
+          "name": "Alex Rodriguez",
+          "graduationYear": "2014",
+          "currentPosition": "Environmental Engineer",
+          "company": "Green Solutions Inc.",
+          "location": "Seattle, WA",
+          "industry": "engineering",
+          "achievements": ["Sustainability Innovation Prize", "Green Building Certification", "Environmental Leadership Award"],
+          "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
+          "bio": "Focused on developing sustainable engineering solutions to combat climate change and protect our environment.",
+          "linkedIn": "linkedin.com/in/alexrodriguez",
+          "schoolId": "greenwood-high"
+        },
+        {
+          "id": "alumni-5",
+          "name": "Jennifer Wu",
+          "graduationYear": "2009",
+          "currentPosition": "Creative Director",
+          "company": "Global Advertising Agency",
+          "location": "Los Angeles, CA",
+          "industry": "creative",
+          "achievements": ["Cannes Lions Gold Winner", "Creative Excellence Award", "Industry Trendsetter"],
+          "image": "https://images.unsplash.com/photo-1494790108755-2616c67f20a0",
+          "bio": "Leading creative campaigns for major brands and mentoring the next generation of creative professionals.",
+          "linkedIn": "linkedin.com/in/jenniferwu",
+          "schoolId": "greenwood-high"
+        }
+      ]
+    },
     "homePage": {
       "heroSection": {
         "welcomeTitle": "Welcome to Greenwood High School",
@@ -447,6 +527,58 @@
         }
       ]
     },
+    "alumniPage": {
+      "stats": [
+        { "label": "Alumni Network", "value": "2,800+", "color": "#1976d2" },
+        { "label": "Countries Worldwide", "value": "18+", "color": "#388e3c" },
+        { "label": "Environmental Leaders", "value": "45", "color": "#f57c00" },
+        { "label": "Advanced Degrees", "value": "82%", "color": "#7b1fa2" }
+      ],
+      "alumniMembers": [
+        {
+          "id": "alumni-6",
+          "name": "Maya Patel",
+          "graduationYear": "2015",
+          "currentPosition": "Environmental Policy Director",
+          "company": "Green Future Initiative",
+          "location": "Portland, OR",
+          "industry": "environmental",
+          "achievements": ["UN Climate Action Award", "Environmental Policy Innovation", "Sustainability Leader 2023"],
+          "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956",
+          "bio": "Driving environmental policy change and sustainable development initiatives globally.",
+          "linkedIn": "linkedin.com/in/mayapatel",
+          "schoolId": "riverside-academy"
+        },
+        {
+          "id": "alumni-7",
+          "name": "David Chen",
+          "graduationYear": "2018",
+          "currentPosition": "Digital Artist & Filmmaker",
+          "company": "Creative Media Studios",
+          "location": "Los Angeles, CA",
+          "industry": "arts",
+          "achievements": ["Emmy Award Winner", "Sundance Film Festival", "Digital Arts Pioneer"],
+          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+          "bio": "Creating innovative digital art and documentary films that inspire environmental awareness.",
+          "linkedIn": "linkedin.com/in/davidchen",
+          "schoolId": "riverside-academy"
+        },
+        {
+          "id": "alumni-8",
+          "name": "Sofia Martinez",
+          "graduationYear": "2016",
+          "currentPosition": "Green Technology Startup Founder",
+          "company": "EcoTech Solutions",
+          "location": "Austin, TX",
+          "industry": "entrepreneurship",
+          "achievements": ["Clean Energy Innovation Award", "Young Entrepreneur of the Year", "Patent Holder"],
+          "image": "https://images.unsplash.com/photo-1494790108755-2616c67f20a0",
+          "bio": "Developing breakthrough renewable energy technologies for sustainable future.",
+          "linkedIn": "linkedin.com/in/sofiamartinez",
+          "schoolId": "riverside-academy"
+        }
+      ]
+    },
     "contactPage": {
       "address": "456 River Road, Riverside, RS 67890",
       "phone": ["+1 (555) 987-6543", "+1 (555) 987-6544"],
@@ -614,6 +746,59 @@
           "experience": "15 years teaching experience",
           "specializations": ["AP Calculus", "AP Statistics", "Data Science"],
           "image": "https://images.unsplash.com/photo-1560250097-0b93528c311a",
+          "schoolId": "summit-prep"
+        }
+      ]
+    },
+    "alumniPage": {
+      "stats": [
+        { "label": "Alumni Network", "value": "1,200+", "color": "#1976d2" },
+        { "label": "Ivy League Admits", "value": "95%", "color": "#388e3c" },
+        { "label": "Fortune 500 Leaders", "value": "28", "color": "#f57c00" },
+        { "label": "Advanced Degrees", "value": "92%", "color": "#7b1fa2" }
+      ],
+
+      "alumniMembers": [
+        {
+          "id": "alumni-9",
+          "name": "Jonathan Lee",
+          "graduationYear": "2019",
+          "currentPosition": "Investment Banking Analyst",
+          "company": "Morgan Stanley",
+          "location": "New York, NY",
+          "industry": "finance",
+          "achievements": ["Valedictorian", "Harvard Business School", "Top Analyst 2023"],
+          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+          "bio": "Excelling in investment banking while preparing for leadership roles in global finance.",
+          "linkedIn": "linkedin.com/in/jonathanlee",
+          "schoolId": "summit-prep"
+        },
+        {
+          "id": "alumni-10",
+          "name": "Priya Sharma",
+          "graduationYear": "2020",
+          "currentPosition": "Software Engineer",
+          "company": "Google",
+          "location": "Mountain View, CA",
+          "industry": "technology",
+          "achievements": ["MIT Graduate", "Google Code Jam Winner", "AI Research Publication"],
+          "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956",
+          "bio": "Developing cutting-edge AI technologies and contributing to open-source projects.",
+          "linkedIn": "linkedin.com/in/priyasharma",
+          "schoolId": "summit-prep"
+        },
+        {
+          "id": "alumni-11",
+          "name": "Michael Torres",
+          "graduationYear": "2018",
+          "currentPosition": "Management Consultant",
+          "company": "McKinsey & Company",
+          "location": "Chicago, IL",
+          "industry": "consulting",
+          "achievements": ["Rhodes Scholar", "Oxford MBA", "Strategy Innovation Award"],
+          "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
+          "bio": "Helping Fortune 500 companies solve complex business challenges and drive growth.",
+          "linkedIn": "linkedin.com/in/michaeltorres",
           "schoolId": "summit-prep"
         }
       ]
