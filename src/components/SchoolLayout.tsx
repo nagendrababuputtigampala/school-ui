@@ -12,6 +12,7 @@ import { GalleryPage } from '../pages/GalleryPage';
 import { AnnouncementsPage } from '../pages/AnnouncementsPage';
 import ContactPage from '../pages/ContactPage';
 import { AboutPage } from '../pages/AboutPage';
+import { AdminPage } from '../pages/AdminPage';
 
 export function SchoolLayout() {
   const { schoolData, loading, error } = useSchool();
@@ -62,6 +63,7 @@ export function SchoolLayout() {
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </Box>
       
