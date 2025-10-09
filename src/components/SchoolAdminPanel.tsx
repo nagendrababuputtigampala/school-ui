@@ -531,6 +531,354 @@ export function SchoolAdminPanel() {
                 </TableContainer>
               </Box>
             )}
+
+            {/* Staff Directory Page */}
+            {activePage === 'staff' && (
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Box>
+                    <Typography variant="h4" gutterBottom>Staff Directory</Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      Manage staff members and their information
+                    </Typography>
+                  </Box>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => setStaffDialog(true)}
+                    startIcon={<Plus />}
+                  >
+                    Add Staff Member
+                  </Button>
+                </Box>
+
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Department</TableCell>
+                        <TableCell>Position</TableCell>
+                        <TableCell>Experience</TableCell>
+                        <TableCell>Email</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {staffMembers.map((staff) => (
+                        <TableRow key={staff.id}>
+                          <TableCell>{staff.name}</TableCell>
+                          <TableCell>
+                            <Chip label={staff.department} size="small" />
+                          </TableCell>
+                          <TableCell>{staff.position}</TableCell>
+                          <TableCell>{staff.experience}</TableCell>
+                          <TableCell>{staff.email}</TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => setEditingStaff(staff)}
+                              >
+                                <Edit />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setStaffMembers(staffMembers.filter(s => s.id !== staff.id))}
+                              >
+                                <Trash2 />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+
+            {/* Alumni Page */}
+            {activePage === 'alumni' && (
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Box>
+                    <Typography variant="h4" gutterBottom>Alumni</Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      Manage alumni information and achievements
+                    </Typography>
+                  </Box>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => setAlumniDialog(true)}
+                    startIcon={<Plus />}
+                  >
+                    Add Alumni
+                  </Button>
+                </Box>
+
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Graduation Year</TableCell>
+                        <TableCell>Current Position</TableCell>
+                        <TableCell>Company</TableCell>
+                        <TableCell>Industry</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {alumniMembers.map((alumni) => (
+                        <TableRow key={alumni.id}>
+                          <TableCell>{alumni.name}</TableCell>
+                          <TableCell>{alumni.graduationYear}</TableCell>
+                          <TableCell>{alumni.currentPosition}</TableCell>
+                          <TableCell>{alumni.company}</TableCell>
+                          <TableCell>
+                            <Chip label={alumni.industry} size="small" />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => setEditingAlumni(alumni)}
+                              >
+                                <Edit />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setAlumniMembers(alumniMembers.filter(a => a.id !== alumni.id))}
+                              >
+                                <Trash2 />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+
+            {/* Gallery Page */}
+            {activePage === 'gallery' && (
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Box>
+                    <Typography variant="h4" gutterBottom>Gallery</Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      Manage school gallery images and media
+                    </Typography>
+                  </Box>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => setGalleryDialog(true)}
+                    startIcon={<Plus />}
+                  >
+                    Add Image
+                  </Button>
+                </Box>
+
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Title</TableCell>
+                        <TableCell>Category</TableCell>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {galleryImages.map((image) => (
+                        <TableRow key={image.id}>
+                          <TableCell>{image.title}</TableCell>
+                          <TableCell>
+                            <Chip label={image.category} size="small" />
+                          </TableCell>
+                          <TableCell>{image.date}</TableCell>
+                          <TableCell sx={{ maxWidth: 300 }}>
+                            <Typography variant="body2" noWrap>
+                              {image.description}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => setEditingGallery(image)}
+                              >
+                                <Edit />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setGalleryImages(galleryImages.filter(g => g.id !== image.id))}
+                              >
+                                <Trash2 />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+
+            {/* Announcements Page */}
+            {activePage === 'announcements' && (
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Box>
+                    <Typography variant="h4" gutterBottom>Announcements</Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      Manage school announcements and notices
+                    </Typography>
+                  </Box>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => setAnnouncementDialog(true)}
+                    startIcon={<Plus />}
+                  >
+                    Add Announcement
+                  </Button>
+                </Box>
+
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Title</TableCell>
+                        <TableCell>Category</TableCell>
+                        <TableCell>Priority</TableCell>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {announcements.map((announcement) => (
+                        <TableRow key={announcement.id}>
+                          <TableCell>{announcement.title}</TableCell>
+                          <TableCell>
+                            <Chip label={announcement.category} size="small" />
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={announcement.priority} 
+                              size="small" 
+                              color={announcement.priority === 'High' ? 'error' : announcement.priority === 'Medium' ? 'warning' : 'default'}
+                            />
+                          </TableCell>
+                          <TableCell>{announcement.date}</TableCell>
+                          <TableCell sx={{ maxWidth: 300 }}>
+                            <Typography variant="body2" noWrap>
+                              {announcement.description}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => setEditingAnnouncement(announcement)}
+                              >
+                                <Edit />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setAnnouncements(announcements.filter(a => a.id !== announcement.id))}
+                              >
+                                <Trash2 />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+
+            {/* Contact Page */}
+            {activePage === 'contact' && (
+              <Card>
+                <CardHeader 
+                  title={<Typography variant="h5">Contact Information</Typography>}
+                />
+                <CardContent>
+                  <Stack spacing={3}>
+                    <Box>
+                      <FormLabel>School Address</FormLabel>
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        value={contactData.address}
+                        onChange={(e) => setContactData({ ...contactData, address: e.target.value })}
+                        placeholder="Enter school address"
+                        margin="dense"
+                      />
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
+                      <Box sx={{ flex: 1 }}>
+                        <FormLabel>Phone Number</FormLabel>
+                        <TextField
+                          fullWidth
+                          value={contactData.phone}
+                          onChange={(e) => setContactData({ ...contactData, phone: e.target.value })}
+                          placeholder="Enter phone number"
+                          margin="dense"
+                        />
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <FormLabel>Email Address</FormLabel>
+                        <TextField
+                          fullWidth
+                          value={contactData.email}
+                          onChange={(e) => setContactData({ ...contactData, email: e.target.value })}
+                          placeholder="Enter email address"
+                          margin="dense"
+                        />
+                      </Box>
+                    </Box>
+                    
+                    <Box>
+                      <FormLabel>Office Hours</FormLabel>
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        value={contactData.officeHours}
+                        onChange={(e) => setContactData({ ...contactData, officeHours: e.target.value })}
+                        placeholder="Enter office hours"
+                        margin="dense"
+                      />
+                    </Box>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 2 }}>
+                      <Button 
+                        variant="contained" 
+                        onClick={handleSave} 
+                        disabled={isSaving}
+                        startIcon={<Save />}
+                      >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </Button>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
           </Box>
         </Box>
       </Box>
