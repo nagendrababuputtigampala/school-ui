@@ -15,6 +15,7 @@ const navigationItems = [
   { id: 'gallery', label: 'Gallery' },
   { id: 'announcements', label: 'Announcements' },
   { id: 'contact', label: 'Contact' },
+  { id: 'admin', label: 'Admin' },
 ];
 
 export function SimpleNav({ schoolData }: SimpleNavProps) {
