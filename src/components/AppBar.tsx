@@ -31,6 +31,7 @@ const navigationItems = [
   { id: 'gallery', label: 'Gallery' },
   { id: 'announcements', label: 'Announcements' },
   { id: 'contact', label: 'Contact Us' },
+  { id: 'admin', label: 'Admin' },
 ];
 
 export function AppBar({ currentPage, onNavigate }: AppBarProps) {
@@ -63,9 +64,17 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
   }, [schoolId]);
 
   const drawer = (
-    <Box sx={{ width: 250 }}>
+    <Box sx={{ width: 250, backgroundColor: theme.palette.background.paper }}>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-        <IconButton onClick={handleDrawerToggle}>
+        <IconButton 
+          onClick={handleDrawerToggle}
+          sx={{ 
+            color: theme.palette.text.primary,
+            '&:hover': {
+              backgroundColor: theme.palette.action.hover,
+            }
+          }}
+        >
           <CloseIcon />
         </IconButton>
       </Box>
@@ -79,13 +88,28 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
                 '&.Mui-selected': {
                   backgroundColor: theme.palette.primary.main,
                   color: theme.palette.primary.contrastText,
+                  fontWeight: 700,
+                  borderLeft: `4px solid ${theme.palette.primary.contrastText}`,
                   '&:hover': {
                     backgroundColor: theme.palette.primary.dark,
                   },
                 },
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                },
+                color: theme.palette.text.primary,
+                transition: 'all 0.2s ease',
               }}
             >
-              <ListItemText primary={item.label} />
+              <ListItemText 
+                primary={item.label}
+                sx={{
+                  '& .MuiTypography-root': {
+                    fontWeight: currentPage === item.id ? 700 : 400,
+                    fontSize: currentPage === item.id ? '1.05rem' : '1rem',
+                  }
+                }}
+              />
             </ListItemButton>
           </ListItem>
         ))}
@@ -113,12 +137,19 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
                   color="inherit"
                   onClick={() => onNavigate(item.id)}
                   sx={{
-                    backgroundColor: currentPage === item.id ? 'rgba(255,255,255,0.2)' : 'transparent',
+                    backgroundColor: currentPage === item.id ? 'rgba(255,255,255,0.25)' : 'transparent',
+                    color: 'white',
+                    fontWeight: currentPage === item.id ? 700 : 400,
+                    borderBottom: currentPage === item.id ? '3px solid white' : '3px solid transparent',
                     '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      backgroundColor: 'rgba(255,255,255,0.15)',
+                      color: 'white',
                     },
-                    borderRadius: 1,
+                    borderRadius: '4px 4px 0 0',
                     px: 2,
+                    minHeight: '40px',
+                    transition: 'all 0.3s ease',
+                    textTransform: 'none',
                   }}
                 >
                   {item.label}

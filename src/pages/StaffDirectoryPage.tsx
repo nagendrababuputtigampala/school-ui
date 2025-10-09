@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -13,7 +14,7 @@ import {
   InputAdornment,
   Tabs,
   Tab,
-  Button,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search,
@@ -26,27 +27,51 @@ import {
   Business,
   LocalHospital,
   MenuBook,
+  Category,
 } from '@mui/icons-material';
-
-interface StaffMember {
-  id: string;
-  name: string;
-  position: string;
-  department: string;
-  email: string;
-  phone: string;
-  education: string;
-  experience: string;
-  specializations: string[];
-  image: string;
-}
+import { fetchStaffData, fetchDepartments, StaffMember, Department } from '../config/firebase';
 
 export function StaffDirectoryPage() {
+  const { schoolId } = useParams<{ schoolId: string }>();
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch staff and department data from Firebase
+  useEffect(() => {
+    const loadData = async () => {
+      if (!schoolId) {
+        setError('School ID not found');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const [staffData, departmentData] = await Promise.all([
+          fetchStaffData(schoolId),
+          fetchDepartments(schoolId)
+        ]);
+        
+        setStaffMembers(staffData);
+        setDepartments(departmentData);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading staff data:', err);
+        setError('Failed to load staff data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [schoolId]);
 
   // Ensure no horizontal scroll on any screen size
-  React.useEffect(() => {
+  useEffect(() => {
     document.body.style.overflowX = 'hidden';
     const viewport = document.querySelector('meta[name=viewport]');
     if (viewport) {
@@ -57,144 +82,38 @@ export function StaffDirectoryPage() {
     };
   }, []);
 
-  const staffMembers: StaffMember[] = [
-    {
-      id: '1',
-      name: 'Dr. Sarah Johnson',
-      position: 'Principal',
-      department: 'administration',
-      email: 's.johnson@educonnect.edu',
-      phone: '(555) 123-4570',
-      education: 'Ph.D. in Educational Leadership, Harvard University',
-      experience: '15 years in educational administration',
-      specializations: ['Educational Leadership', 'Curriculum Development', 'School Management'],
-      image: 'https://images.unsplash.com/photo-1494790108755-2616c67f20a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc1OTMxNTUxNnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '2',
-      name: 'Michael Chen',
-      position: 'Vice Principal',
-      department: 'administration',
-      email: 'm.chen@educonnect.edu',
-      phone: '(555) 123-4571',
-      education: 'M.Ed. in Educational Administration, Stanford University',
-      experience: '12 years in academic administration',
-      specializations: ['Student Affairs', 'Academic Planning', 'Faculty Development'],
-      image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBwb3J0cmFpdHxlbnwxfHx8fDE3NTkzMTU1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '3',
-      name: 'Dr. Emily Rodriguez',
-      position: 'Mathematics Department Head',
-      department: 'mathematics',
-      email: 'e.rodriguez@educonnect.edu',
-      phone: '(555) 123-4572',
-      education: 'Ph.D. in Mathematics, MIT',
-      experience: '10 years teaching advanced mathematics',
-      specializations: ['Calculus', 'Statistics', 'Competition Math'],
-      image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWFjaGVyJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzU5MzE1NTIwfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '4',
-      name: 'James Wilson',
-      position: 'Science Department Head',
-      department: 'science',
-      email: 'j.wilson@educonnect.edu',
-      phone: '(555) 123-4573',
-      education: 'Ph.D. in Chemistry, CalTech',
-      experience: '14 years in science education',
-      specializations: ['Chemistry', 'Physics', 'Environmental Science'],
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2llbmNlJTIwdGVhY2hlcnxlbnwxfHx8fDE3NTkzMTU1MjJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '5',
-      name: 'Lisa Thompson',
-      position: 'English Department Head',
-      department: 'english',
-      email: 'l.thompson@educonnect.edu',
-      phone: '(555) 123-4574',
-      education: 'M.A. in English Literature, Yale University',
-      experience: '11 years teaching English and Literature',
-      specializations: ['Creative Writing', 'American Literature', 'Public Speaking'],
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbmdsaXNoJTIwdGVhY2hlcnxlbnwxfHx8fDE3NTkzMTU1MjR8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '6',
-      name: 'Robert Martinez',
-      position: 'History Department Head',
-      department: 'social_studies',
-      email: 'r.martinez@educonnect.edu',
-      phone: '(555) 123-4575',
-      education: 'Ph.D. in History, Columbia University',
-      experience: '13 years in social studies education',
-      specializations: ['World History', 'Government', 'Economics'],
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoaXN0b3J5JTIwdGVhY2hlcnxlbnwxfHx8fDE3NTkzMTU1MjZ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '7',
-      name: 'Maria Gonzalez',
-      position: 'Art Department Head',
-      department: 'arts',
-      email: 'm.gonzalez@educonnect.edu',
-      phone: '(555) 123-4576',
-      education: 'M.F.A. in Fine Arts, RISD',
-      experience: '9 years teaching visual arts',
-      specializations: ['Painting', 'Sculpture', 'Digital Art'],
-      image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnQlMjB0ZWFjaGVyfGVufDF8fHx8MTc1OTMxNTUyOHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '8',
-      name: 'Coach David Brown',
-      position: 'Athletic Director',
-      department: 'athletics',
-      email: 'd.brown@educonnect.edu',
-      phone: '(555) 123-4577',
-      education: 'M.S. in Exercise Science, University of Florida',
-      experience: '16 years in athletic program management',
-      specializations: ['Basketball', 'Track & Field', 'Sports Medicine'],
-      image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhdGhsZXRpYyUyMGRpcmVjdG9yfGVufDF8fHx8MTc1OTMxNTUzMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '9',
-      name: 'Dr. Jennifer Lee',
-      position: 'School Counselor',
-      department: 'counseling',
-      email: 'j.lee@educonnect.edu',
-      phone: '(555) 123-4578',
-      education: 'Ph.D. in School Psychology, UCLA',
-      experience: '8 years in student counseling',
-      specializations: ['Academic Guidance', 'College Preparation', 'Mental Health'],
-      image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Vuc2Vsb3IlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NTkzMTU1MzJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    },
-    {
-      id: '10',
-      name: 'Nurse Patricia Adams',
-      position: 'School Nurse',
-      department: 'health',
-      email: 'p.adams@educonnect.edu',
-      phone: '(555) 123-4579',
-      education: 'BSN in Nursing, Johns Hopkins University',
-      experience: '7 years in school health services',
-      specializations: ['First Aid', 'Health Education', 'Emergency Care'],
-      image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBudXJzZXxlbnwxfHx8fDE3NTkzMTU1MzR8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'
-    }
-  ];
+  // Icon mapping for common departments
+  const getDepartmentIcon = (departmentId: string) => {
+    const iconMap: { [key: string]: React.ComponentType<any> } = {
+      'all': School,
+      'administration': Business,
+      'mathematics': MenuBook,
+      'science': Science,
+      'english': MenuBook,
+      'social_studies': MenuBook,
+      'arts': Palette,
+      'athletics': EmojiEvents,
+      'counseling': School,
+      'health': LocalHospital,
+      'other': Category
+    };
+    return iconMap[departmentId.toLowerCase()] || Category;
+  };
 
-  const departments = [
+  // Build departments list with "All Staff" option
+  const allDepartments = [
     { id: 'all', label: 'All Staff', icon: School },
-    { id: 'administration', label: 'Administration', icon: Business },
-    { id: 'mathematics', label: 'Mathematics', icon: MenuBook },
-    { id: 'science', label: 'Science', icon: Science },
-    { id: 'english', label: 'English', icon: MenuBook },
-    { id: 'social_studies', label: 'Social Studies', icon: MenuBook },
-    { id: 'arts', label: 'Arts', icon: Palette },
-    { id: 'athletics', label: 'Athletics', icon: EmojiEvents },
-    { id: 'counseling', label: 'Counseling', icon: School },
-    { id: 'health', label: 'Health Services', icon: LocalHospital },
+    ...departments.map(dept => ({
+      id: dept.id,
+      label: dept.label,
+      icon: getDepartmentIcon(dept.id)
+    }))
   ];
 
   const filteredStaff = staffMembers.filter(member => {
+    // Handle department filtering
     const matchesDepartment = selectedDepartment === 'all' || member.department === selectedDepartment;
+    
     const matchesSearch = searchQuery === '' || 
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -206,9 +125,34 @@ export function StaffDirectoryPage() {
   const stats = [
     { label: 'Total Faculty', value: staffMembers.length },
     { label: 'Ph.D. Holders', value: staffMembers.filter(s => s.education.includes('Ph.D.')).length },
-    { label: 'Departments', value: departments.length - 1 },
+    { label: 'Departments', value: departments.length },
     { label: 'Avg. Experience', value: '11 years' },
   ];
+
+  // Loading state
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '50vh' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h6" color="error" textAlign="center">
+          {error}
+        </Typography>
+      </Container>
+    );
+  }
 
   return (
     <Box sx={{ 
@@ -243,14 +187,6 @@ export function StaffDirectoryPage() {
         <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, sm: 0 } }}>
-          <Typography 
-            variant="h2" 
-            component="h1" 
-            gutterBottom
-            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
-          >
-            Staff Directory
-          </Typography>
           <Typography 
             variant="h6" 
             color="text.secondary" 
@@ -338,7 +274,7 @@ export function StaffDirectoryPage() {
               scrollButtons="auto"
               sx={{ borderBottom: 1, borderColor: 'divider' }}
             >
-              {departments.map((department) => {
+              {allDepartments.map((department) => {
                 const IconComponent = department.icon;
                 return (
                   <Tab
@@ -398,7 +334,7 @@ export function StaffDirectoryPage() {
                       {member.position}
                     </Typography>
                     <Chip
-                      label={departments.find(d => d.id === member.department)?.label || member.department}
+                      label={allDepartments.find(d => d.id === member.department)?.label || 'Other'}
                       size="small"
                       variant="outlined"
                       sx={{ mb: 2 }}
@@ -481,129 +417,6 @@ export function StaffDirectoryPage() {
             </Typography>
           </Paper>
         )}
-
-        {/* Professional Development */}
-        <Paper sx={{ p: { xs: 3, md: 4 }, mb: { xs: 5, md: 6 }, backgroundColor: 'grey.50' }}>
-          <Typography 
-            variant="h4" 
-            component="h2" 
-            textAlign="center" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
-          >
-            Professional Excellence
-          </Typography>
-          <Typography
-            variant="body1"
-            textAlign="center"
-            color="text.secondary"
-            paragraph
-            sx={{ mb: { xs: 3, md: 4 }, maxWidth: '700px', mx: 'auto', fontSize: { xs: '0.95rem', md: '1rem' }, px: { xs: 1.5, md: 0 } }}
-          >
-            Our faculty members are committed to continuous professional development and 
-            staying current with the latest educational practices and technologies.
-          </Typography>
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              gap: { xs: 1, sm: 1.5, md: 2 }, 
-              justifyContent: 'center'
-            }}
-          >
-            {[
-              { label: 'Advanced Degrees', color: 'primary' },
-              { label: 'Ongoing Training', color: 'secondary' },
-              { label: 'Research & Innovation', color: 'success' },
-              { label: 'Professional Certifications', color: 'info' }
-            ].map(chip => (
-              <Chip
-                key={chip.label}
-                label={chip.label}
-                color={chip.color as any}
-                sx={{ 
-                  px: { xs: 1.5, md: 2 }, 
-                  py: { xs: 0.75, md: 1 },
-                  fontSize: { xs: '0.7rem', md: '0.75rem' }
-                }}
-              />
-            ))}
-          </Box>
-        </Paper>
-
-        {/* Contact Section */}
-        <Paper
-          sx={{
-            p: { xs: 3.5, md: 6 },
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            width: '100%',
-            maxWidth: '100%',
-            boxSizing: 'border-box'
-          }}
-        >
-          <Typography 
-            variant="h3" 
-            component="h2" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' } }}
-          >
-            Need to Reach Someone?
-          </Typography>
-          <Typography 
-            variant="h6" 
-            paragraph 
-            sx={{ 
-              maxWidth: '600px', mx: 'auto', opacity: 0.9,
-              fontSize: { xs: '1rem', md: '1.15rem' }, px: { xs: 1.5, md: 0 }
-            }}
-          >
-            If you need to contact a specific staff member or department, feel free to reach 
-            out directly using the contact information provided, or contact our main office.
-          </Typography>
-          <Box 
-            sx={{ 
-              mt: { xs: 3, md: 4 }, 
-              display: 'flex', 
-              justifyContent: 'center', 
-              gap: { xs: 1.5, md: 2 }, 
-              flexWrap: 'wrap'
-            }}
-          >
-            <Button
-              variant="contained"
-              size="large"
-              sx={{
-                backgroundColor: 'white',
-                color: 'primary.main',
-                fontSize: { xs: '0.75rem', md: '0.85rem' },
-                px: { xs: 2, md: 3 },
-                py: { xs: 1, md: 1.25 },
-                '&:hover': { backgroundColor: 'grey.100' },
-              }}
-            >
-              Main Office: (555) 123-4567
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              sx={{
-                borderColor: 'white',
-                color: 'white',
-                fontSize: { xs: '0.75rem', md: '0.85rem' },
-                px: { xs: 2, md: 3 },
-                py: { xs: 1, md: 1.25 },
-                '&:hover': {
-                  borderColor: 'grey.300',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                },
-              }}
-            >
-              Email Directory
-            </Button>
-          </Box>
-        </Paper>
         </Box>
       </Container>
     </Box>

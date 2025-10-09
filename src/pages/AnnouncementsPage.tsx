@@ -344,14 +344,6 @@ export function AnnouncementsPage() {
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, sm: 0 } }}>
           <Typography 
-            variant="h2" 
-            component="h1" 
-            gutterBottom
-            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
-          >
-            Announcements
-          </Typography>
-          <Typography 
             variant="h6" 
             color="text.secondary" 
             sx={{ 

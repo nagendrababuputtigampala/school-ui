@@ -33,6 +33,73 @@ export interface ContactUsInfo {
   whatsApp?: string; // Make whatsApp optional
 }
 
+// Interface for staff member
+export interface StaffMember {
+  id: string;
+  name: string;
+  position: string;
+  department: string;
+  email: string;
+  phone: string;
+  education: string;
+  experience: string;
+  specializations: string[];
+  image: string;
+  schoolId: string;
+}
+
+// Interface for department
+export interface Department {
+  id: string;
+  label: string;
+  schoolId: string;
+  order?: number;
+}
+
+// Interface for alumni member
+export interface AlumniMember {
+  id: string;
+  name: string;
+  graduationYear: string;
+  currentPosition: string;
+  company: string;
+  location: string;
+  industry: string;
+  achievements: string[];
+  image: string;
+  bio: string;
+  linkedIn?: string;
+  schoolId: string;
+}
+
+// Interface for alumni stats
+export interface AlumniStat {
+  label: string;
+  value: string;
+  color: string;
+}
+
+// Interface for alumni decades
+export interface AlumniDecade {
+  id: string;
+  label: string;
+}
+
+// Interface for alumni industries
+export interface AlumniIndustry {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+// Interface for alumni page data
+export interface AlumniPageData {
+  stats: AlumniStat[];
+  decades: AlumniDecade[];
+  industries: AlumniIndustry[];
+  alumniMembers: AlumniMember[];
+}
+
 // Interface for school data
 export interface SchoolData {
   id: string;
@@ -295,6 +362,261 @@ export async function fetchContactPageData(schoolId: string): Promise<ContactUsI
   } catch (err) {
     console.error(`Failed to fetch contact page data for school ${schoolId}:`, err);
     return null;
+  }
+}
+
+// Fetch staff members for a specific school from Schools collection staffPage
+export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
+  try {
+    const schoolsRef = collection(db, 'Schools');
+    const schoolsSnapshot = await getDocs(schoolsRef);
+    
+    let schoolData: any = null;
+    
+    // Find the school document
+    for (const doc of schoolsSnapshot.docs) {
+      const data = doc.data();
+      if (data.id === schoolId || data.slug === schoolId) {
+        schoolData = data;
+        break;
+      }
+    }
+    
+    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage || !schoolData.pages.staffPage.staff) {
+      console.log(`No staff data found for school: ${schoolId}`);
+      return [];
+    }
+    
+    const staffArray = schoolData.pages.staffPage.staff;
+    const staffMembers: StaffMember[] = [];
+    
+    // Process each staff member from the simple array
+    staffArray.forEach((staff: any) => {
+      staffMembers.push({
+        id: staff.id || `staff-${staffMembers.length + 1}`,
+        name: staff.name || '',
+        position: staff.position || '',
+        department: staff.department || 'other',
+        email: staff.email || '',
+        phone: staff.phone || '',
+        education: staff.education || '',
+        experience: staff.experience || '',
+        specializations: staff.specializations || staff.specialties || [],
+        image: staff.image || '',
+        schoolId: staff.schoolId || schoolData.id
+      });
+    });
+    
+    return staffMembers;
+  } catch (err) {
+    console.error(`Failed to fetch staff data for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Fetch departments for a specific school from staffPage data in Schools collection
+export async function fetchDepartments(schoolId: string): Promise<Department[]> {
+  try {
+    const schoolsRef = collection(db, 'Schools');
+    const schoolsSnapshot = await getDocs(schoolsRef);
+    
+    let schoolData: any = null;
+    
+    // Find the school document
+    for (const doc of schoolsSnapshot.docs) {
+      const data = doc.data();
+      if (data.id === schoolId || data.slug === schoolId) {
+        schoolData = data;
+        break;
+      }
+    }
+    
+    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage || !schoolData.pages.staffPage.staff) {
+      console.log(`No staff data found for school: ${schoolId}`);
+      return [];
+    }
+    
+    const staffArray = schoolData.pages.staffPage.staff;
+    const departmentSet = new Set<string>();
+    
+    // Extract departments from staff array
+    staffArray.forEach((staff: any) => {
+      if (staff.department) {
+        departmentSet.add(staff.department);
+      } else {
+        departmentSet.add('other');
+      }
+    });
+    
+    // Convert to Department objects
+    const departments: Department[] = Array.from(departmentSet).map(deptId => ({
+      id: deptId,
+      label: formatDepartmentLabel(deptId),
+      schoolId: schoolId,
+      order: getDepartmentOrder(deptId)
+    }));
+    
+    // Sort by order
+    departments.sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    return departments;
+  } catch (err) {
+    console.error(`Failed to fetch departments for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Helper function to format department labels
+function formatDepartmentLabel(departmentId: string): string {
+  const labelMap: { [key: string]: string } = {
+    'administration': 'Administration',
+    'mathematics': 'Mathematics',
+    'science': 'Science',
+    'english': 'English',
+    'social_studies': 'Social Studies',
+    'arts': 'Arts',
+    'athletics': 'Athletics',
+    'counseling': 'Counseling',
+    'health': 'Health Services',
+    'music': 'Music',
+    'technology': 'Technology',
+    'library': 'Library',
+    'languages': 'World Languages',
+    'other': 'Other'
+  };
+  
+  return labelMap[departmentId.toLowerCase()] || departmentId.charAt(0).toUpperCase() + departmentId.slice(1);
+}
+
+// Helper function to get department order for sorting
+function getDepartmentOrder(departmentId: string): number {
+  const orderMap: { [key: string]: number } = {
+    'administration': 1,
+    'mathematics': 2,
+    'science': 3,
+    'english': 4,
+    'social_studies': 5,
+    'arts': 6,
+    'music': 7,
+    'languages': 8,
+    'technology': 9,
+    'athletics': 10,
+    'counseling': 11,
+    'health': 12,
+    'library': 13,
+    'other': 99
+  };
+  
+  return orderMap[departmentId.toLowerCase()] || 50;
+}
+
+// Fetch alumni data for a specific school from Schools collection alumniPage
+export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData | null> {
+  try {
+    const schoolsRef = collection(db, 'Schools');
+    const schoolsSnapshot = await getDocs(schoolsRef);
+    
+    let schoolData: any = null;
+    
+    // Find the school document
+    for (const doc of schoolsSnapshot.docs) {
+      const data = doc.data();
+      if (data.id === schoolId || data.slug === schoolId) {
+        schoolData = data;
+        break;
+      }
+    }
+    
+    if (!schoolData || !schoolData.pages || !schoolData.pages.alumniPage) {
+      console.log(`No alumni page found for school: ${schoolId}`);
+      return null;
+    }
+    
+    const alumniPage = schoolData.pages.alumniPage;
+    const alumniMembers = alumniPage.alumniMembers || [];
+    
+    // Generate decades dynamically from alumni members
+    const graduationYears = alumniMembers.map((member: AlumniMember) => parseInt(member.graduationYear));
+    const decadeNumbers = graduationYears.map((year: number) => Math.floor(year / 10) * 10);
+    const uniqueDecades = Array.from(new Set(decadeNumbers)) as number[];
+    uniqueDecades.sort((a: number, b: number) => b - a);
+    
+    const decades: AlumniDecade[] = [
+      { id: "all", label: "All Years" },
+      ...uniqueDecades.map(decade => ({
+        id: `${decade}s`,
+        label: `${decade}s`
+      }))
+    ];
+    
+    // Generate industries dynamically from alumni members
+    const industriesArray = alumniMembers
+      .map((member: AlumniMember) => member.industry)
+      .filter((industry: string | undefined): industry is string => Boolean(industry));
+    const uniqueIndustries = Array.from(new Set(industriesArray)) as string[];
+    
+    const industries: AlumniIndustry[] = [
+      { id: "all", label: "All Industries", icon: "Business" },
+      ...uniqueIndustries.map((industry: string) => ({
+        id: industry.toLowerCase().replace(/\s+/g, ''),
+        label: industry,
+        icon: "Business"
+      }))
+    ];
+    
+    return {
+      stats: alumniPage.stats || [],
+      decades,
+      industries,
+      alumniMembers
+    };
+  } catch (err) {
+    console.error(`Failed to fetch alumni data for school ${schoolId}:`, err);
+    return null;
+  }
+}
+
+// Fetch alumni members for a specific school from Schools collection alumniPage
+export async function fetchAlumniMembers(schoolId: string): Promise<AlumniMember[]> {
+  try {
+    const alumniData = await fetchAlumniData(schoolId);
+    return alumniData?.alumniMembers || [];
+  } catch (err) {
+    console.error(`Failed to fetch alumni members for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Fetch alumni stats for a specific school from Schools collection alumniPage
+export async function fetchAlumniStats(schoolId: string): Promise<AlumniStat[]> {
+  try {
+    const alumniData = await fetchAlumniData(schoolId);
+    return alumniData?.stats || [];
+  } catch (err) {
+    console.error(`Failed to fetch alumni stats for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Fetch alumni decades for a specific school from Schools collection alumniPage
+export async function fetchAlumniDecades(schoolId: string): Promise<AlumniDecade[]> {
+  try {
+    const alumniData = await fetchAlumniData(schoolId);
+    return alumniData?.decades || [];
+  } catch (err) {
+    console.error(`Failed to fetch alumni decades for school ${schoolId}:`, err);
+    return [];
+  }
+}
+
+// Fetch alumni industries for a specific school from Schools collection alumniPage
+export async function fetchAlumniIndustries(schoolId: string): Promise<AlumniIndustry[]> {
+  try {
+    const alumniData = await fetchAlumniData(schoolId);
+    return alumniData?.industries || [];
+  } catch (err) {
+    console.error(`Failed to fetch alumni industries for school ${schoolId}:`, err);
+    return [];
   }
 }
 
