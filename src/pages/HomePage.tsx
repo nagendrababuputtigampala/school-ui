@@ -16,7 +16,6 @@ import {
 import {
   TrendingUp,
   People,
-  School,
   EmojiEvents,
   ArrowForward,
   History,
