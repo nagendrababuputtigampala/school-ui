@@ -19,6 +19,7 @@ import {
   School,
   EmojiEvents,
   ArrowForward,
+  History,
 } from '@mui/icons-material'
 import { useSchool } from '../contexts/SchoolContext';
 import { TimelineMilestone } from '../config/firebase';
@@ -69,8 +70,10 @@ export function HomePage({ onNavigate }: HomePageProps) {
         return schoolData.teachersCount || fallback;
       case 'awardsCount':
         return schoolData.awardsCount || fallback;
-      case 'yearsCount':
-        return schoolData.yearsCount || fallback;
+      case 'yearEstablished':
+        return schoolData.yearEstablished || fallback;
+      case 'successRate':
+        return schoolData.successRate || fallback;
       case 'whyChooseTitle':
         return schoolData.whyChooseTitle || fallback;
       case 'whyChooseSubtitle':
@@ -136,9 +139,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
   const stats = [
     { label: 'Students', value: getData('studentsCount', '2,500+'), icon: People, color: '#1976d2' },
-    { label: 'Teachers', value: getData('teachersCount', '150+'), icon: School, color: '#388e3c' },
+    // Temporarily hide teachers count until we replace it with a teachers-per-student metric.
+    // { label: 'Teachers', value: getData('teachersCount', '150+'), icon: School, color: '#388e3c' },
     { label: 'Awards', value: getData('awardsCount', '50+'), icon: EmojiEvents, color: '#f57c00' },
-    { label: 'Years', value: getData('yearsCount', '35+'), icon: TrendingUp, color: '#7b1fa2' },
+    { label: 'Established', value: getData('yearEstablished', '1995'), icon: History, color: '#7b1fa2' },
+    { label: 'Success Rate', value: getData('successRate', '98%'), icon: TrendingUp, color: '#ff9800' },
   ];
 
 
