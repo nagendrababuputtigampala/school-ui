@@ -111,7 +111,8 @@ export interface SchoolData {
   studentsCount: string;
   teachersCount: string;
   awardsCount: string;
-  yearsCount: string;
+  yearEstablished: string;
+  successRate: string;
   whyChooseTitle?: string;
   whyChooseSubtitle?: string;
   heroImages: string[];
@@ -199,7 +200,8 @@ export async function fetchSchoolData(identifier: string): Promise<SchoolData | 
           studentsCount: homePage.statisticsSection.studentsCount,
           teachersCount: homePage.statisticsSection.teachersCount,
           awardsCount: homePage.statisticsSection.awardsCount,
-          yearsCount: homePage.statisticsSection.yearsCount,
+          yearEstablished: homePage.statisticsSection.yearEstablished || '',
+          successRate: homePage.statisticsSection.successRate || '',
           whyChooseTitle: homePage.whyChooseSection?.whyChooseTitle,
           whyChooseSubtitle: homePage.whyChooseSection?.whyChooseSubtitle,
           heroImages: homePage.heroSection.heroImages,
@@ -228,7 +230,8 @@ export async function fetchSchoolData(identifier: string): Promise<SchoolData | 
       studentsCount: data.studentsCount || '0',
       teachersCount: data.teachersCount || '0',
       awardsCount: data.awardsCount || '0',
-      yearsCount: data.yearsCount || '0',
+      yearEstablished: data.yearEstablished || data.pages?.homePage?.statisticsSection?.yearEstablished || '',
+      successRate: data.successRate || data.pages?.homePage?.statisticsSection?.successRate || '',
       whyChooseTitle: data.whyChooseTitle,
       whyChooseSubtitle: data.whyChooseSubtitle,
       heroImages: data.heroImages || [],
@@ -305,7 +308,8 @@ export async function fetchHomePageData(): Promise<Map<string, string> | null> {
   homePageMap.set('studentsCount', schoolData.studentsCount);
   homePageMap.set('teachersCount', schoolData.teachersCount);
   homePageMap.set('awardsCount', schoolData.awardsCount);
-  homePageMap.set('yearsCount', schoolData.yearsCount);
+  homePageMap.set('yearEstablished', schoolData.yearEstablished);
+  homePageMap.set('successRate', schoolData.successRate);
   
   return homePageMap;
 }

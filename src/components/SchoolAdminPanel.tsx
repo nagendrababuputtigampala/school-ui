@@ -43,13 +43,9 @@ import {
   Mail,
   Add as Plus,
   Delete as Trash2,
-  CloudUpload as Upload,
   Edit,
-  Close as X,
   ChevronLeft,
-  ChevronRight,
-  PushPin as Pin,
-  PushPinOutlined as PinOff
+  ChevronRight
 } from '@mui/icons-material';
 
 type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact';
@@ -117,21 +113,20 @@ export function SchoolAdminPanel() {
   
   // Sidebar states
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarPinned, setSidebarPinned] = useState(true);
 
   // Dialog states
   const [achievementDialog, setAchievementDialog] = useState(false);
-  const [staffDialog, setStaffDialog] = useState(false);
-  const [alumniDialog, setAlumniDialog] = useState(false);
-  const [galleryDialog, setGalleryDialog] = useState(false);
-  const [announcementDialog, setAnnouncementDialog] = useState(false);
+  const [, setStaffDialog] = useState(false);
+  const [, setAlumniDialog] = useState(false);
+  const [, setGalleryDialog] = useState(false);
+  const [, setAnnouncementDialog] = useState(false);
 
   // Edit states
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
-  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
-  const [editingAlumni, setEditingAlumni] = useState<AlumniMember | null>(null);
-  const [editingGallery, setEditingGallery] = useState<GalleryImage | null>(null);
-  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [, setEditingStaff] = useState<StaffMember | null>(null);
+  const [, setEditingAlumni] = useState<AlumniMember | null>(null);
+  const [, setEditingGallery] = useState<GalleryImage | null>(null);
+  const [, setEditingAnnouncement] = useState<Announcement | null>(null);
 
   // Home Page Data
   const [homeData, setHomeData] = useState({
