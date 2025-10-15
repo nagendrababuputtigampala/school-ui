@@ -155,10 +155,6 @@ export function SchoolAdminPanel() {
   const [principalMessageExpanded, setPrincipalMessageExpanded] = useState(false);
   const [homeErrors, setHomeErrors] = useState<{ yearEstablished?: string; successRate?: string }>({});
   const [contactErrors, setContactErrors] = useState<{ phone?: string; email?: string }>({});
-  const [staffErrors, setStaffErrors] = useState<{ email?: string; phone?: string }>({});
-  const [alumniErrors, setAlumniErrors] = useState<{ email?: string; phone?: string }>({});
-  const [galleryErrors, setGalleryErrors] = useState<{ imageUrl?: string }>({});
-  const [announcementErrors, setAnnouncementErrors] = useState<{ title?: string; date?: string }>({});
 const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', color: 'text.secondary' };
   const updateHomeField = (key: string, value: string) => {
     setHomeData((prev: any) => ({ ...(prev || {}), [key]: value }));
