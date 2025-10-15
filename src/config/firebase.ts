@@ -1,6 +1,6 @@
 // Firebase initialization and helper functions
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, updateDoc } from 'firebase/firestore';
 import { sampleSchoolData } from '../data/schoolData';
 
 // Interface for timeline milestone
@@ -159,6 +159,20 @@ const firebaseConfig = {
 // Initialize (guard against re-init in hot reload)
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+
+async function findSchoolDocument(identifier: string) {
+  const schoolsRef = collection(db, 'Schools');
+  const schoolsSnapshot = await getDocs(schoolsRef);
+
+  for (const docSnap of schoolsSnapshot.docs) {
+    const data = docSnap.data();
+    if (data.slug === identifier || data.id === identifier) {
+      return { docRef: docSnap.ref, data };
+    }
+  }
+
+  return null;
+}
 
 // Fetch school data by slug or ID from Schools collection with fallback to local data
 export async function fetchSchoolData(identifier: string): Promise<SchoolData | null> {
@@ -366,6 +380,275 @@ export async function fetchContactPageData(schoolId: string): Promise<ContactUsI
   } catch (err) {
     console.error(`Failed to fetch contact page data for school ${schoolId}:`, err);
     return null;
+  }
+}
+
+export interface AdminHomePagePayload {
+  welcomeTitle: string;
+  welcomeSubTitle: string;
+  principalName: string;
+  principalMessage: string;
+  yearEstablished: string;
+  students: string;
+  successRate: string;
+}
+
+export interface AdminContactPagePayload {
+  address: string;
+  phone: string;
+  email: string;
+  officeHours: string;
+}
+
+export async function updateHomePageContent(identifier: string, payload: AdminHomePagePayload): Promise<void> {
+  try {
+    const schoolDoc = await findSchoolDocument(identifier);
+    if (!schoolDoc) {
+      throw new Error(`School not found: ${identifier}`);
+    }
+
+    const updates: Record<string, any> = {
+      welcomeTitle: payload.welcomeTitle,
+      welcomeSubtitle: payload.welcomeSubTitle,
+      yearEstablished: payload.yearEstablished,
+      studentsCount: payload.students,
+      successRate: payload.successRate,
+      'pages.homePage.welcomeTitle': payload.welcomeTitle,
+      'pages.homePage.welcomeSubtitle': payload.welcomeSubTitle,
+      'pages.homePage.principalName': payload.principalName,
+      'pages.homePage.principalMessage': payload.principalMessage,
+      'pages.homePage.principalSection.name': payload.principalName,
+      'pages.homePage.principalSection.message': payload.principalMessage,
+      'pages.homePage.statisticsSection.yearEstablished': payload.yearEstablished,
+      'pages.homePage.statisticsSection.studentsCount': payload.students,
+      'pages.homePage.statisticsSection.successRate': payload.successRate,
+    };
+
+    await updateDoc(schoolDoc.docRef, updates);
+  } catch (err) {
+    console.error(`Failed to update home page for school ${identifier}:`, err);
+    throw err;
+  }
+}
+
+export async function updateContactPageContent(identifier: string, payload: AdminContactPagePayload): Promise<void> {
+  try {
+    const schoolDoc = await findSchoolDocument(identifier);
+    if (!schoolDoc) {
+      throw new Error(`School not found: ${identifier}`);
+    }
+
+    const parseList = (value: string, separator: RegExp | string) => {
+      if (!value || !value.trim()) {
+        return [];
+      }
+      return value
+        .split(separator as any)
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+    };
+
+    const phoneArray = parseList(payload.phone, ',');
+    const emailArray = parseList(payload.email, ',');
+    const officeHoursArray = parseList(payload.officeHours, /\r?\n/);
+
+    const updates: Record<string, any> = {
+      'pages.contactPage.address': payload.address,
+      'pages.contactPage.phone': phoneArray,
+      'pages.contactPage.email': emailArray,
+      'pages.contactPage.officeHours': officeHoursArray,
+      'contactInfo.address': payload.address,
+      'contactInfo.phone': phoneArray,
+      'contactInfo.email': emailArray,
+      'contactInfo.officeHours': officeHoursArray,
+    };
+
+    await updateDoc(schoolDoc.docRef, updates);
+  } catch (err) {
+    console.error(`Failed to update contact page for school ${identifier}:`, err);
+    throw err;
+  }
+}
+
+export async function updateAchievementsPageContent(
+  identifier: string,
+  sections: Record<string, { title: string; achievements: any[] }>
+): Promise<void> {
+  try {
+    const schoolDoc = await findSchoolDocument(identifier);
+    if (!schoolDoc) {
+      throw new Error(`School not found: ${identifier}`);
+    }
+
+    const normalizedSections: Record<string, any> = {};
+
+    Object.entries(sections).forEach(([key, sectionValue]) => {
+      normalizedSections[key] = {
+        title: sectionValue.title,
+        achievements: (sectionValue.achievements || []).map((item: any, index: number) => ({
+          id: item.id || `${key}-${index + 1}`,
+          title: item.title || '',
+          description: item.description || '',
+          level: item.level || '',
+          year: item.year || item.date || '',
+          date: item.date || '',
+        })),
+      };
+    });
+
+    const updates: Record<string, any> = {
+      'pages.achievementsPage': normalizedSections,
+    };
+
+    await updateDoc(schoolDoc.docRef, updates);
+  } catch (err) {
+    console.error(`Failed to update achievements page for school ${identifier}:`, err);
+    throw err;
+  }
+}
+
+export async function updateStaffPageContent(identifier: string, staffMembers: any[]): Promise<void> {
+  try {
+    const schoolDoc = await findSchoolDocument(identifier);
+    if (!schoolDoc) {
+      throw new Error(`School not found: ${identifier}`);
+    }
+
+    const parseCSV = (value: string) =>
+      value
+        ? value
+            .split(',')
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0)
+        : [];
+
+    const normalizedStaff = (staffMembers || []).map((staff: any, index: number) => ({
+      id: staff.id || `staff-${index + 1}`,
+      name: staff.name || '',
+      department: staff.department || 'other',
+      position: staff.position || '',
+      experience: staff.experience || '',
+      email: staff.email || '',
+      phone: staff.phone || '',
+      education: staff.education || '',
+      specializations: Array.isArray(staff.specializations)
+        ? staff.specializations
+        : parseCSV(staff.specializations || ''),
+      image: staff.imageUrl || staff.image || '',
+      schoolId: staff.schoolId || identifier,
+    }));
+
+    const updates: Record<string, any> = {
+      'pages.staffPage.staff': normalizedStaff,
+    };
+
+    await updateDoc(schoolDoc.docRef, updates);
+  } catch (err) {
+    console.error(`Failed to update staff page for school ${identifier}:`, err);
+    throw err;
+  }
+}
+
+export async function updateAlumniPageContent(identifier: string, alumniMembers: any[]): Promise<void> {
+  try {
+    const schoolDoc = await findSchoolDocument(identifier);
+    if (!schoolDoc) {
+      throw new Error(`School not found: ${identifier}`);
+    }
+
+    const parseCSV = (value: string) =>
+      value
+        ? value
+            .split(',')
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0)
+        : [];
+
+    const normalizedAlumni = (alumniMembers || []).map((alumni: any, index: number) => ({
+      id: alumni.id || `alumni-${index + 1}`,
+      name: alumni.name || '',
+      bio: alumni.bio || '',
+      company: alumni.company || '',
+      currentPosition: alumni.currentPosition || '',
+      graduationYear: alumni.graduationYear || '',
+      image: alumni.imageUrl || alumni.image || '',
+      industry: alumni.industry || '',
+      location: alumni.location || '',
+      linkedIn: alumni.linkedinUrl || alumni.linkedIn || '',
+      achievements: Array.isArray(alumni.achievements)
+        ? alumni.achievements
+        : parseCSV(alumni.achievements || ''),
+    }));
+
+    const updates: Record<string, any> = {
+      'pages.alumniPage.alumniMembers': normalizedAlumni,
+    };
+
+    await updateDoc(schoolDoc.docRef, updates);
+  } catch (err) {
+    console.error(`Failed to update alumni page for school ${identifier}:`, err);
+    throw err;
+  }
+}
+
+export async function updateGalleryPageContent(identifier: string, galleryItems: any[]): Promise<void> {
+  try {
+    const schoolDoc = await findSchoolDocument(identifier);
+    if (!schoolDoc) {
+      throw new Error(`School not found: ${identifier}`);
+    }
+
+    const normalizedGallery = (galleryItems || []).map((item: any, index: number) => ({
+      id: item.id || `gallery-${index + 1}`,
+      title: item.title || '',
+      category: item.category || '',
+      description: item.description || '',
+      date: item.date || '',
+      imageUrl: item.imageUrl || item.image || '',
+    }));
+
+    const updates: Record<string, any> = {
+      'pages.galleryPage.galleryImages': normalizedGallery,
+    };
+
+    await updateDoc(schoolDoc.docRef, updates);
+  } catch (err) {
+    console.error(`Failed to update gallery page for school ${identifier}:`, err);
+    throw err;
+  }
+}
+
+export async function updateAnnouncementsPageContent(identifier: string, announcements: any[]): Promise<void> {
+  try {
+    const schoolDoc = await findSchoolDocument(identifier);
+    if (!schoolDoc) {
+      throw new Error(`School not found: ${identifier}`);
+    }
+
+    const normalizedAnnouncements = (announcements || []).map((announcement: any, index: number) => {
+      const priority = (announcement.priority || 'medium').toLowerCase();
+      const type = (announcement.type || 'announcement').toLowerCase();
+
+      return {
+        id: announcement.id || `announcement-${index + 1}`,
+        title: announcement.title || '',
+        description: announcement.description || '',
+        date: announcement.date || '',
+        category: announcement.category || '',
+        priority,
+        type,
+      };
+    });
+
+    const updates: Record<string, any> = {
+      'pages.announcementsPage.announcements': normalizedAnnouncements,
+      'pages.homePage.announcementsSection.recentUpdates': normalizedAnnouncements.slice(0, 3),
+    };
+
+    await updateDoc(schoolDoc.docRef, updates);
+  } catch (err) {
+    console.error(`Failed to update announcements for school ${identifier}:`, err);
+    throw err;
   }
 }
 
