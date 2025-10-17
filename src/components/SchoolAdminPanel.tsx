@@ -65,7 +65,11 @@ import {
   WhatsApp as WhatsAppIcon,
   AccessTime,
   Facebook as FacebookIcon,
-  Instagram as InstagramIcon
+  Instagram as InstagramIcon,
+  Public,
+  Star,
+  TrendingUp,
+  WorkspacePremium
 } from '@mui/icons-material';
 
 type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact';
@@ -222,6 +226,52 @@ export function SchoolAdminPanel() {
       students: 'Example: 1500 or 2500+.',
       successRate: 'Enter a percentage between 0 and 100.',
     },
+  };
+
+  type LevelStyle = { label: string; color: string; icon: typeof Public };
+  const levelStyles: Record<string, LevelStyle> = {
+    international: { label: 'International', color: '#d32f2f', icon: Public },
+    national: { label: 'National', color: '#f57c00', icon: Star },
+    state: { label: 'State', color: '#388e3c', icon: TrendingUp },
+    district: { label: 'District', color: '#1976d2', icon: WorkspacePremium },
+    school: { label: 'School', color: '#7b1fa2', icon: School },
+  };
+
+  const renderLevelChip = (level: string) => {
+    const key = (level || '').toLowerCase();
+    const style = levelStyles[key];
+    if (!style) {
+      return (
+        <Chip
+          label={level || 'Level'}
+          size="small"
+          sx={{ fontWeight: 600 }}
+        />
+      );
+    }
+    const IconComponent = style.icon;
+    return (
+      <Chip
+        label={style.label}
+        size="small"
+        icon={
+          <IconComponent
+            sx={{
+              color: 'inherit !important',
+              fontSize: 18,
+            }}
+          />
+        }
+        sx={{
+          fontWeight: 600,
+          backgroundColor: style.color,
+          color: '#fff',
+          '& .MuiChip-icon': {
+            color: 'inherit !important',
+          },
+        }}
+      />
+    );
   };
 
   const multilineFieldMap: Record<'contact' | 'home', Set<string>> = {
@@ -1456,14 +1506,42 @@ export function SchoolAdminPanel() {
                         <TableRow key={achievement.id}>
                           <TableCell>{achievement.title}</TableCell>
                           <TableCell>
-                            <Chip sx={{ fontWeight: 600 }} label={achievement.level} size="small" />
+                            {renderLevelChip(achievement.level)}
                           </TableCell>
                           <TableCell>{achievement.date}</TableCell>
-                          <TableCell sx={{ maxWidth: 300 }}>
-                            <Typography variant="body2" noWrap>
-                              {achievement.description}
+                        <TableCell sx={{ maxWidth: 320 }}>
+                          <Box
+                            sx={{
+                              maxHeight: 48,
+                              overflow: 'hidden',
+                              pr: 1,
+                              transition: 'max-height 0.2s ease',
+                              '&:hover': {
+                                maxHeight: 200,
+                                overflowY: 'auto',
+                                '& .description-text': {
+                                  display: 'block',
+                                  WebkitLineClamp: 'unset',
+                                },
+                              },
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              className="description-text"
+                              sx={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'normal',
+                              }}
+                            >
+                              {achievement.description || '—'}
                             </Typography>
-                          </TableCell>
+                          </Box>
+                        </TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                               <IconButton
@@ -1695,10 +1773,38 @@ export function SchoolAdminPanel() {
                             <Chip sx={{ fontWeight: 600 }} label={image.category} size="small" />
                           </TableCell>
                           <TableCell>{image.date}</TableCell>
-                          <TableCell sx={{ maxWidth: 300 }}>
-                            <Typography variant="body2" noWrap>
-                              {image.description}
-                            </Typography>
+                          <TableCell sx={{ maxWidth: 320 }}>
+                            <Box
+                              sx={{
+                                maxHeight: 48,
+                                overflow: 'hidden',
+                                pr: 1,
+                                transition: 'max-height 0.2s ease',
+                                '&:hover': {
+                                  maxHeight: 200,
+                                  overflowY: 'auto',
+                                  '& .description-text': {
+                                    display: 'block',
+                                    WebkitLineClamp: 'unset',
+                                  },
+                                },
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                className="description-text"
+                                sx={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'normal',
+                                }}
+                              >
+                                {image.description || '—'}
+                              </Typography>
+                            </Box>
                           </TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
@@ -1798,10 +1904,38 @@ export function SchoolAdminPanel() {
                             })()}
                           </TableCell>
                           <TableCell>{announcement.date}</TableCell>
-                          <TableCell sx={{ maxWidth: 300 }}>
-                            <Typography variant="body2" noWrap>
-                              {announcement.description}
-                            </Typography>
+                          <TableCell sx={{ maxWidth: 320 }}>
+                            <Box
+                              sx={{
+                                maxHeight: 48,
+                                overflow: 'hidden',
+                                pr: 1,
+                                transition: 'max-height 0.2s ease',
+                                '&:hover': {
+                                  maxHeight: 200,
+                                  overflowY: 'auto',
+                                  '& .description-text': {
+                                    display: 'block',
+                                    WebkitLineClamp: 'unset',
+                                  },
+                                },
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                className="description-text"
+                                sx={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'normal',
+                                }}
+                              >
+                                {announcement.description || '—'}
+                              </Typography>
+                            </Box>
                           </TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
