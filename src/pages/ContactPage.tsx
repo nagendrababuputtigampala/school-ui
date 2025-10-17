@@ -318,9 +318,12 @@ const ContactPage: React.FC = () => {
     }
 
     if (contactUsData.whatsApp) {
+      const whatsAppContent = Array.isArray(contactUsData.whatsApp)
+        ? contactUsData.whatsApp.join("\n")
+        : contactUsData.whatsApp;
       items.push({
         title: "WhatsApp",
-        content: contactUsData.whatsApp,
+        content: whatsAppContent,
         icon: Person,
         color: "#25d366",
       });
