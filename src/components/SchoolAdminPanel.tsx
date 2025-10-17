@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ReactElement } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   fetchSchoolData,
@@ -60,7 +60,14 @@ import {
   Delete as Trash2,
   Edit,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LocationOn,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  WhatsApp as WhatsAppIcon,
+  AccessTime,
+  Facebook as FacebookIcon,
+  Instagram as InstagramIcon
 } from '@mui/icons-material';
 
 type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact';
@@ -152,50 +159,403 @@ export function SchoolAdminPanel() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [contactData, setContactData] = useState<any>(null);
   const [achievementSectionsMeta, setAchievementSectionsMeta] = useState<Record<string, { title: string }>>({});
-  const [principalMessageExpanded, setPrincipalMessageExpanded] = useState(false);
-  const [homeErrors, setHomeErrors] = useState<{ yearEstablished?: string; successRate?: string }>({});
-  const [contactErrors, setContactErrors] = useState<{ phone?: string; email?: string }>({});
-const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', color: 'text.secondary' };
-  const updateHomeField = (key: string, value: string) => {
-    setHomeData((prev: any) => ({ ...(prev || {}), [key]: value }));
-    if (key === 'yearEstablished') {
-      const isValid = /^\d{0,4}$/.test(value) && (value === '' || Number(value) >= 1800);
-      setHomeErrors((prev) => ({
-        ...prev,
-        yearEstablished: isValid ? undefined : 'Use a four-digit year (>=1800)',
-      }));
-    }
-    if (key === 'successRate') {
-      const cleaned = value.trim().replace('%', '');
-      const numericValue = Number(cleaned);
-      const isValid =
-        cleaned === '' ||
-        (!Number.isNaN(numericValue) && numericValue >= 0 && numericValue <= 100 && /^\d{1,3}(\.\d{1,2})?$/.test(cleaned));
-      setHomeErrors((prev) => ({
-        ...prev,
-        successRate: isValid ? undefined : 'Enter 0-100 (up to two decimals)',
-      }));
-    }
-    setDirtyPage((prev) => (prev === 'contact' || prev === 'both' ? 'both' : 'home'));
+  const [editingField, setEditingField] = useState<{ section: 'home' | 'contact'; key: string } | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
+  const [inlineError, setInlineError] = useState<string | null>(null);
+  const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', color: 'text.secondary' };
+
+  const contactFieldMap: Record<string, string> = {
+    address: 'address',
+    phone: 'phone',
+    email: 'email',
+    hours: 'officeHours',
+    whatsapp: 'whatsApp',
+    facebook: 'facebook',
+    instagram: 'instagram',
   };
-  const updateContactField = (key: string, value: string) => {
-    setContactData((prev: any) => ({ ...(prev || {}), [key]: value }));
-    if (key === 'phone') {
-      const phoneRegex = /^[\d+\-()\s]+$/;
-      setContactErrors((prev) => ({
-        ...prev,
-        phone: value && !phoneRegex.test(value) ? 'Only digits, punctuation, + allowed' : undefined,
-      }));
-    }
-    if (key === 'email') {
-      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-      setContactErrors((prev) => ({
-        ...prev,
-        email: value && !emailRegex.test(value) ? 'Enter a valid email address' : undefined,
-      }));
-    }
-    setDirtyPage((prev) => (prev === 'home' || prev === 'both' ? 'both' : 'contact'));
+
+  const homeFieldMap: Record<string, string> = {
+    title: 'welcomeTitle',
+    subtitle: 'welcomeSubTitle',
+    principalName: 'principalName',
+    principalMessage: 'principalMessage',
+    yearEstablished: 'yearEstablished',
+    students: 'students',
+    successRate: 'successRate',
   };
+
+  const inlinePlaceholders: Record<'contact' | 'home', Record<string, string>> = {
+    contact: {
+      address: 'No address provided',
+      phone: 'No phone numbers listed',
+      email: 'No email address listed',
+      hours: 'No office hours provided',
+      whatsapp: 'No WhatsApp number',
+      facebook: 'No Facebook page linked',
+      instagram: 'No Instagram profile linked',
+    },
+    home: {
+      title: 'Add a welcome title',
+      subtitle: 'Add a welcome subtitle',
+      principalName: "Add the principal's name",
+      principalMessage: "Add a principal message",
+      yearEstablished: 'Add the founding year',
+      students: 'Add total enrolled students',
+      successRate: 'Add success rate percentage',
+    },
+  };
+
+  const inlineHelperText: Record<'contact' | 'home', Record<string, string>> = {
+    contact: {
+      address: "Enter the school's mailing address.",
+      phone: 'Include country or area code. Separate numbers with commas.',
+      email: 'Provide a valid contact email address.',
+      hours: 'Enter one schedule per line.',
+      whatsapp: 'Include country or area code. Separate numbers with commas.',
+      facebook: 'Paste the full Facebook page URL.',
+      instagram: 'Paste the full Instagram profile URL.',
+    },
+    home: {
+      title: 'Shown as the main heading on the home page.',
+      subtitle: 'Displayed beneath the welcome title.',
+      principalName: 'Shown in the principal highlight section.',
+      principalMessage: 'Share a short greeting from the principal (max 500 characters).',
+      yearEstablished: 'Use a four-digit year (e.g., 1998).',
+      students: 'Example: 1500 or 2500+.',
+      successRate: 'Enter a percentage between 0 and 100.',
+    },
+  };
+
+  const multilineFieldMap: Record<'contact' | 'home', Set<string>> = {
+    contact: new Set(['address', 'hours']),
+    home: new Set(['principalMessage']),
+  };
+
+  const getFieldValue = (section: 'home' | 'contact', key: string): string => {
+    if (section === 'contact') {
+      const field = contactFieldMap[key];
+      if (!field || !contactData) return '';
+      return (contactData as Record<string, string>)[field] || '';
+    }
+    const field = homeFieldMap[key];
+    if (!field || !homeData) return '';
+    return (homeData as Record<string, string>)[field] || '';
+  };
+
+  const getContactDisplayLines = (key: string): string[] => {
+    const value = getFieldValue('contact', key);
+    if (!value) return [];
+    if (key === 'address' || key === 'hours') {
+      return value
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+    }
+    if (key === 'phone' || key === 'email' || key === 'whatsapp') {
+      return value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+    }
+    return [value];
+  };
+
+  const getHomeDisplayLines = (key: string): string[] => {
+    const value = getFieldValue('home', key);
+    if (!value) return [];
+    if (key === 'principalMessage') {
+      const truncated = value.length > 240 ? `${value.slice(0, 240)}…` : value;
+      return truncated
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+    }
+    if (key === 'successRate' && value && !value.includes('%')) {
+      return [`${value}%`];
+    }
+    return [value];
+  };
+
+  const isMultilineField = (section: 'home' | 'contact', key: string) =>
+    multilineFieldMap[section].has(key);
+
+  const openInlineEditor = (section: 'home' | 'contact', key: string) => {
+    setInlineError(null);
+    setEditingField({ section, key });
+    setEditingValue(getFieldValue(section, key));
+  };
+
+  const cancelInlineEdit = () => {
+    setInlineError(null);
+    setEditingField(null);
+    setEditingValue('');
+  };
+
+  const validateInlineValue = (
+    section: 'home' | 'contact',
+    key: string,
+    value: string
+  ): string | null => {
+    if (section === 'contact') {
+      if (!value) return null;
+      if (key === 'phone' || key === 'whatsapp') {
+        const phoneRegex = /^[\d+\-()\s]+$/;
+        const invalid = value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+          .some((entry) => !phoneRegex.test(entry));
+        return invalid ? 'Only digits, punctuation, + allowed.' : null;
+      }
+      if (key === 'email') {
+        const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+        const invalid = value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+          .some((entry) => !emailRegex.test(entry));
+        return invalid ? 'Enter a valid email address.' : null;
+      }
+      if (key === 'facebook' || key === 'instagram') {
+        if (!value) return null;
+        const urlRegex = /^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-./?%&=]*)?$/i;
+        return urlRegex.test(value) ? null : 'Enter a valid URL (include https:// if possible).';
+      }
+      return null;
+    }
+
+    // Home section validation
+    switch (key) {
+      case 'title':
+        return value ? null : 'Welcome title is required.';
+      case 'principalName':
+        return value ? null : 'Principal name is required.';
+      case 'principalMessage':
+        return value.length > 500 ? 'Maximum 500 characters allowed.' : null;
+      case 'yearEstablished':
+        if (!value) return null;
+        if (!/^\d{4}$/.test(value)) return 'Use a four-digit year (>= 1800).';
+        const year = Number(value);
+        const currentYear = new Date().getFullYear();
+        if (year < 1800 || year > currentYear) return 'Enter a valid year.';
+        return null;
+      case 'students':
+        if (!value) return null;
+        return /^[\d+\s,]+$/.test(value) ? null : 'Use digits or "+" only.';
+      case 'successRate': {
+        if (!value) return null;
+        const cleaned = value.replace('%', '').trim();
+        const numeric = Number(cleaned);
+        if (Number.isNaN(numeric) || numeric < 0 || numeric > 100) {
+          return 'Enter a value between 0 and 100.';
+        }
+        return null;
+      }
+      case 'subtitle':
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const normalizeInlineValue = (
+    section: 'home' | 'contact',
+    key: string,
+    value: string
+  ): string => {
+    if (section === 'home') {
+      if (key === 'successRate') {
+        if (!value) return '';
+        const cleaned = value.replace('%', '').trim();
+        return cleaned ? `${cleaned}${value.includes('%') ? '' : '%'}` : '';
+      }
+      if (key === 'principalMessage') {
+        return value.length > 500 ? value.slice(0, 500) : value;
+      }
+    }
+    return value;
+  };
+
+  const saveInlineEdit = async () => {
+    if (!editingField) return;
+    const { section, key } = editingField;
+    const targetSchoolId = schoolId || 'educonnect';
+    const baseValue = isMultilineField(section, key)
+      ? editingValue.replace(/\s+$/, '')
+      : editingValue.trim();
+
+    const validationMessage = validateInlineValue(section, key, baseValue);
+    if (validationMessage) {
+      setInlineError(validationMessage);
+      return;
+    }
+
+    const normalizedValue = normalizeInlineValue(section, key, baseValue);
+
+    try {
+      setIsSaving(true);
+      if (section === 'contact') {
+        const fieldName = contactFieldMap[key];
+        if (!fieldName) return;
+        const updated = { ...(contactData || {}), [fieldName]: normalizedValue };
+        setContactData(updated);
+        await updateContactPageContent(targetSchoolId, updated);
+        await refreshSchoolData();
+        showSuccess('Contact information updated successfully!');
+        setDirtyPage((prev) => (prev === 'both' ? 'home' : null));
+      } else {
+        if (!homeData) {
+          showError('Home data is unavailable.');
+          return;
+        }
+        const fieldName = homeFieldMap[key];
+        if (!fieldName) return;
+        const updated = { ...homeData, [fieldName]: normalizedValue };
+        setHomeData(updated);
+        await updateHomePageContent(targetSchoolId, {
+          welcomeTitle: updated.welcomeTitle || '',
+          welcomeSubTitle: updated.welcomeSubTitle || '',
+          principalName: updated.principalName || '',
+          principalMessage: updated.principalMessage || '',
+          yearEstablished: updated.yearEstablished || '',
+          students: updated.students || '',
+          successRate: updated.successRate || '',
+        });
+        await refreshSchoolData();
+        showSuccess('Home information updated successfully!');
+        setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+      }
+      setInlineError(null);
+      setEditingField(null);
+      setEditingValue('');
+    } catch (error) {
+      console.error('Failed to save inline changes:', error);
+      showError('Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const renderSummaryGrid = (
+    section: 'home' | 'contact',
+    items: Array<{ key: string; title: string; icon: ReactElement; lines: string[] }>
+  ) => (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: {
+          xs: '1fr',
+          sm: 'repeat(2, minmax(0, 1fr))',
+          lg: 'repeat(3, minmax(0, 1fr))',
+        },
+        gap: { xs: 2, sm: 2.5 },
+      }}
+    >
+      {items.map(({ key, title, icon, lines }) => {
+        const isEditing = editingField?.section === section && editingField.key === key;
+        const isMultiline = isMultilineField(section, key);
+        const displayLines =
+          lines.length > 0 ? lines : [inlinePlaceholders[section][key] || 'Not provided'];
+        const helperBase = inlineHelperText[section][key] || '';
+        const helperText =
+          isEditing && inlineError
+            ? inlineError
+            : section === 'home' && key === 'principalMessage' && isEditing
+            ? `${editingValue.length}/500 characters`
+            : helperBase;
+
+        return (
+          <Paper
+            key={`${section}-${key}`}
+            variant="outlined"
+            sx={{
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1,
+              borderColor: 'rgba(255,255,255,0.2)',
+              backgroundColor: 'rgba(255,255,255,0.03)',
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {icon}
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  {title}
+                </Typography>
+              </Box>
+              <Tooltip title={isEditing ? 'Editing in progress' : `Edit ${title}`}>
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => openInlineEditor(section, key)}
+                    disabled={isSaving}
+                  >
+                    <Edit fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+            {isEditing ? (
+              <Stack spacing={1}>
+                <TextField
+                  fullWidth
+                  multiline={isMultiline}
+                  minRows={isMultiline ? 3 : undefined}
+                  value={editingValue}
+                  onChange={(e) => {
+                    const nextValue =
+                      section === 'home' && key === 'principalMessage'
+                        ? e.target.value.slice(0, 500)
+                        : e.target.value;
+                    setEditingValue(nextValue);
+                    if (inlineError) setInlineError(null);
+                  }}
+                  placeholder={inlinePlaceholders[section][key] || ''}
+                  helperText={helperText}
+                />
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={cancelInlineEdit}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={saveInlineEdit}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </Button>
+                </Box>
+              </Stack>
+            ) : (
+              <Typography
+                variant="body2"
+                sx={{
+                  opacity: lines.length > 0 ? 0.9 : 0.6,
+                  whiteSpace: 'pre-line',
+                }}
+              >
+                {displayLines.join('\n')}
+              </Typography>
+            )}
+          </Paper>
+        );
+      })}
+    </Box>
+  );
 
   const applySchoolData = useCallback((schoolData: any | null) => {
     if (!schoolData) {
@@ -368,17 +728,39 @@ const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '
       }))
     );
 
-    const contactSource = pages.contactPage || schoolData.contactInfo || {};
+    const rawContactPage = (pages.contactPage?.content ?? pages.contactPage ?? {}) as Record<string, any>;
+    const rawContactInfo = (schoolData.contactInfo ?? {}) as Record<string, any>;
+    const contactSource = { ...rawContactInfo, ...rawContactPage };
     const normalizeArrayField = (value: any, joinWith: string) =>
       Array.isArray(value) ? value.join(joinWith) : value || '';
+    const socialMediaFrom = (value: any) =>
+      value && typeof value === 'object' ? (value as Record<string, any>) : {};
+    const mergedSocialMedia = {
+      ...socialMediaFrom(rawContactInfo.socialMedia),
+      ...socialMediaFrom(rawContactPage.socialMedia),
+    };
+    const firstStringValue = (...values: any[]) => {
+      for (const item of values) {
+        if (typeof item === 'string' && item.trim()) {
+          return item.trim();
+        }
+      }
+      return '';
+    };
 
     setContactData({
       address: contactSource.address || '',
       phone: normalizeArrayField(contactSource.phone, ', '),
+      whatsApp: normalizeArrayField(
+        contactSource.whatsApp ?? mergedSocialMedia.whatsApp,
+        ', '
+      ),
       email: normalizeArrayField(contactSource.email, ', '),
       officeHours: normalizeArrayField(contactSource.officeHours, '\n'),
+      facebook: firstStringValue(contactSource.facebook, mergedSocialMedia.facebook),
+      instagram: firstStringValue(contactSource.instagram, mergedSocialMedia.instagram),
     });
-        setDirtyPage((prev) => (prev === 'both' ? 'home' : null));
+    setDirtyPage((prev) => (prev === 'both' ? 'home' : null));
   }, []);
 
   const fetchAllData = useCallback(async () => {
@@ -1020,158 +1402,44 @@ const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '
         <Box component="main" sx={{ flexGrow: 1, overflow: 'auto' }}>
           <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, md: 3 } }}>
             {/* Home Page */}
-            {activePage === 'home' && homeData && (
-              <Card>
-                <CardHeader 
-                  title={<Typography variant="h5">Home</Typography>}
-                />
-                <CardContent>
-                    <Stack spacing={3}>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          gap: 2,
-                          flexDirection: { xs: 'column', md: 'row' },
-                          alignItems: 'flex-start',
-                        }}
-                      >
-                        <Box sx={{ flex: 1, width: '100%' }}>
-                          <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>School Title</FormLabel>
-                          <TextField
-                            fullWidth
-                            value={homeData?.welcomeTitle || ''}
-                            onChange={(e) => updateHomeField('welcomeTitle', e.target.value)}
-                            placeholder="Enter school title"
-                            margin="dense"
-                          />
-                        </Box>
-                        <Box sx={{ flex: 1, width: '100%' }}>
-                          <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>School Subtitle</FormLabel>
-                          <TextField
-                            fullWidth
-                            value={homeData?.welcomeSubTitle || ''}
-                            onChange={(e) => updateHomeField('welcomeSubTitle', e.target.value)}
-                            placeholder="Enter school subtitle"
-                            margin="dense"
-                          />
-                        </Box>
-                      </Box>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          gap: 2,
-                          flexDirection: { xs: 'column', md: 'row' },
-                          alignItems: 'flex-start',
-                        }}
-                      >
-                        <Box sx={{ flex: 1, width: '100%' }}>
-                          <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>Principal Name</FormLabel>
-                          <TextField
-                            fullWidth
-                            value={homeData?.principalName || ''}
-                            onChange={(e) => updateHomeField('principalName', e.target.value)}
-                            placeholder="Principal's name"
-                            margin="dense"
-                          />
-                        </Box>
-                        <Box sx={{ flex: 1, width: '100%' }}>
-                          <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>Principal's Message</FormLabel>
-                          <TextField
-                            fullWidth
-                            multiline
-                            rows={principalMessageExpanded ? 6 : 3}
-                            value={homeData?.principalMessage || ''}
-                            onChange={(e) => {
-                              const nextValue = e.target.value.slice(0, 500);
-                              updateHomeField('principalMessage', nextValue);
-                            }}
-                            inputProps={{ maxLength: 500 }}
-                            helperText={`${(homeData?.principalMessage || '').length}/500 characters`}
-                            placeholder="Principal's message to students and parents"
-                            margin="dense"
-                          />
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button
-                              size="small"
-                              onClick={() => setPrincipalMessageExpanded((prev) => !prev)}
-                              sx={{ textTransform: 'none' }}
-                            >
-                              {principalMessageExpanded ? 'Show Less' : 'Show More'}
-                            </Button>
-                          </Box>
-                        </Box>
-                      </Box>
-                      <Paper
-                        variant="outlined"
-                        sx={{
-                          p: { xs: 2, md: 3 },
-                          borderRadius: 2,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 2,
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            gap: 2,
-                            flexDirection: { xs: 'column', md: 'row' },
-                            alignItems: 'flex-start',
-                          }}
-                        >
-                          <Box sx={{ flex: 1, width: '100%' }}>
-                            <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>Year Established</FormLabel>
-                          <TextField
-                            fullWidth
-                            value={homeData?.yearEstablished || ''}
-                            onChange={(e) => updateHomeField('yearEstablished', e.target.value)}
-                            placeholder="e.g., 1995"
-                            margin="dense"
-                            error={Boolean(homeErrors.yearEstablished)}
-                            helperText={homeErrors.yearEstablished}
-                          />
-                          </Box>
-                          <Box sx={{ flex: 1, width: '100%' }}>
-                            <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>Total Students</FormLabel>
-                          <TextField
-                            fullWidth
-                            value={homeData?.students || ''}
-                            onChange={(e) => updateHomeField('students', e.target.value)}
-                            placeholder="e.g., 2500+"
-                            margin="dense"
-                          />
-                          </Box>
-                          <Box sx={{ flex: 1, width: '100%' }}>
-                            <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>Success Rate</FormLabel>
-                          <TextField
-                            fullWidth
-                            value={homeData?.successRate || ''}
-                            onChange={(e) => updateHomeField('successRate', e.target.value)}
-                            placeholder="e.g., 98%"
-                            margin="dense"
-                            error={Boolean(homeErrors.successRate)}
-                            helperText={homeErrors.successRate}
-                          />
-                          </Box>
-                        </Box>
-                      </Paper>
+            {activePage === 'home' && homeData && (() => {
+              const homeOverviewItems = [
+                { key: 'title', title: 'Welcome Title', icon: <Home fontSize='small' />, lines: getHomeDisplayLines('title') },
+                { key: 'subtitle', title: 'Welcome Subtitle', icon: <Megaphone fontSize='small' />, lines: getHomeDisplayLines('subtitle') },
+                { key: 'principalName', title: 'Principal Name', icon: <School fontSize='small' />, lines: getHomeDisplayLines('principalName') },
+                { key: 'principalMessage', title: "Principal's Message", icon: <Mail fontSize='small' />, lines: getHomeDisplayLines('principalMessage') },
+              ];
 
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 2 }}>
-                      <Button 
-                        variant="contained" 
-                        onClick={handleSave} 
-                        disabled={isSaving}
-                        startIcon={
-                          isSaving ? <CircularProgress size={16} color="inherit" /> : <Save />
-                        }
-                      >
-                        {isSaving ? 'Saving...' : 'Save Changes'}
-                      </Button>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            )}
+              const homeMetricsItems = [
+                { key: 'yearEstablished', title: 'Year Established', icon: <AccessTime fontSize='small' />, lines: getHomeDisplayLines('yearEstablished') },
+                { key: 'students', title: 'Students', icon: <Users fontSize='small' />, lines: getHomeDisplayLines('students') },
+                { key: 'successRate', title: 'Success Rate', icon: <Trophy fontSize='small' />, lines: getHomeDisplayLines('successRate') },
+              ];
+
+              return (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <Card>
+                    <CardHeader
+                      title={<Typography variant="h5">Home Overview</Typography>}
+                      subheader="Update the hero welcome content and principal message."
+                    />
+                    <CardContent>
+                      {renderSummaryGrid('home', homeOverviewItems)}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader
+                      title={<Typography variant="h6">Key Metrics</Typography>}
+                      subheader="These stats display on the home page banner."
+                    />
+                    <CardContent>
+                      {renderSummaryGrid('home', homeMetricsItems)}
+                    </CardContent>
+                  </Card>
+                </Box>
+              );
+            })()}
 
             {/* Achievements Page */}
             {activePage === 'achievements' && (
@@ -1593,80 +1861,29 @@ const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '
             )}
 
             {/* Contact Page */}
-            {activePage === 'contact' && contactData && (
-              <Card>
-                <CardHeader 
-                  title={<Typography variant="h5">Contact Information</Typography>}
-                />
-                <CardContent>
-                  <Stack spacing={3}>
-                    <Box>
-                      <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>School Address</FormLabel>
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={3}
-                        value={contactData?.address || ''}
-                        onChange={(e) => updateContactField('address', e.target.value)}
-                        placeholder="Enter school address"
-                        margin="dense"
-                      />
-                    </Box>
+            {activePage === 'contact' && contactData && (() => {
+              const contactSummaryItems = [
+                { key: 'address', title: 'Address', icon: <LocationOn fontSize='small' />, lines: getContactDisplayLines('address') },
+                { key: 'phone', title: 'Phone', icon: <PhoneIcon fontSize='small' />, lines: getContactDisplayLines('phone') },
+                { key: 'email', title: 'Email', icon: <EmailIcon fontSize='small' />, lines: getContactDisplayLines('email') },
+                { key: 'hours', title: 'Office Hours', icon: <AccessTime fontSize='small' />, lines: getContactDisplayLines('hours') },
+                { key: 'whatsapp', title: 'WhatsApp', icon: <WhatsAppIcon fontSize='small' />, lines: getContactDisplayLines('whatsapp') },
+                { key: 'facebook', title: 'Facebook', icon: <FacebookIcon fontSize='small' />, lines: getContactDisplayLines('facebook') },
+                { key: 'instagram', title: 'Instagram', icon: <InstagramIcon fontSize='small' />, lines: getContactDisplayLines('instagram') },
+              ];
 
-                    <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
-                      <Box sx={{ flex: 1 }}>
-                        <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>Phone Number</FormLabel>
-                        <TextField
-                          fullWidth
-                          value={contactData?.phone || ''}
-                          onChange={(e) => updateContactField('phone', e.target.value)}
-                          placeholder="Enter phone number"
-                          margin="dense"
-                          error={Boolean(contactErrors.phone)}
-                          helperText={contactErrors.phone}
-                        />
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>Email Address</FormLabel>
-                        <TextField
-                          fullWidth
-                          value={contactData?.email || ''}
-                          onChange={(e) => updateContactField('email', e.target.value)}
-                          placeholder="Enter email address"
-                          margin="dense"
-                          error={Boolean(contactErrors.email)}
-                          helperText={contactErrors.email}
-                        />
-                      </Box>
-                    </Box>
-
-                    <Box>
-                      <FormLabel sx={{ mb: 1, fontWeight: 600, display: 'block' }}>Office Hours</FormLabel>
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={3}
-                        value={contactData?.officeHours || ''}
-                        onChange={(e) => updateContactField('officeHours', e.target.value)}
-                        placeholder="Enter office hours"
-                        margin="dense"
-                      />
-                    </Box>
-
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 2 }}>
-                      <Button 
-                        variant="contained" 
-                        onClick={handleSave} 
-                        disabled={isSaving}
-                        startIcon={<Save />}
-                      >
-                        {isSaving ? 'Saving...' : 'Save Changes'}
-                      </Button>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            )}
+              return (
+                <Card>
+                  <CardHeader
+                    title={<Typography variant="h5">Contact Information</Typography>}
+                    subheader="Tap the pencil to edit each contact channel. Changes save instantly."
+                  />
+                  <CardContent>
+                    {renderSummaryGrid('contact', contactSummaryItems)}
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </Box>
         </Box>
       </Box>

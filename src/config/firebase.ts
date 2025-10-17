@@ -29,8 +29,10 @@ export interface ContactUsInfo {
   officeHours: string | string[]; // Can be string or array
   latitude: number;
   longitude: number;
-  socialMedia: string;
-  whatsApp?: string; // Make whatsApp optional
+  socialMedia?: Record<string, string> | string;
+  whatsApp?: string | string[]; // Make WhatsApp optional
+  facebook?: string;
+  instagram?: string;
 }
 
 // Interface for staff member
@@ -354,7 +356,15 @@ export async function fetchContactPageData(schoolId: string): Promise<ContactUsI
         officeHours: contactData.officeHours || [],
         latitude: contactData.latitude,
         longitude: contactData.longitude,
-        socialMedia: contactData.socialMedia
+        socialMedia: contactData.socialMedia,
+        facebook:
+          contactData.facebook ||
+          (contactData.socialMedia && contactData.socialMedia.facebook) ||
+          '',
+        instagram:
+          contactData.instagram ||
+          (contactData.socialMedia && contactData.socialMedia.instagram) ||
+          ''
       };
     }
 
@@ -371,7 +381,15 @@ export async function fetchContactPageData(schoolId: string): Promise<ContactUsI
         officeHours: contactData.officeHours || [],
         latitude: contactData.latitude,
         longitude: contactData.longitude,
-        socialMedia: contactData.socialMedia
+        socialMedia: contactData.socialMedia,
+        facebook:
+          contactData.facebook ||
+          (contactData.socialMedia && contactData.socialMedia.facebook) ||
+          '',
+        instagram:
+          contactData.instagram ||
+          (contactData.socialMedia && contactData.socialMedia.instagram) ||
+          ''
       };
     }
 
@@ -398,6 +416,9 @@ export interface AdminContactPagePayload {
   phone: string;
   email: string;
   officeHours: string;
+  whatsApp?: string;
+  facebook?: string;
+  instagram?: string;
 }
 
 export async function updateHomePageContent(identifier: string, payload: AdminHomePagePayload): Promise<void> {
@@ -451,16 +472,29 @@ export async function updateContactPageContent(identifier: string, payload: Admi
     const phoneArray = parseList(payload.phone, ',');
     const emailArray = parseList(payload.email, ',');
     const officeHoursArray = parseList(payload.officeHours, /\r?\n/);
+    const whatsAppArray = parseList(payload.whatsApp ?? '', ',');
+    const facebookValue = (payload.facebook ?? '').trim();
+    const instagramValue = (payload.instagram ?? '').trim();
 
     const updates: Record<string, any> = {
       'pages.contactPage.address': payload.address,
       'pages.contactPage.phone': phoneArray,
       'pages.contactPage.email': emailArray,
       'pages.contactPage.officeHours': officeHoursArray,
+      'pages.contactPage.whatsApp': whatsAppArray,
+      'pages.contactPage.facebook': facebookValue,
+      'pages.contactPage.instagram': instagramValue,
+      'pages.contactPage.socialMedia.facebook': facebookValue,
+      'pages.contactPage.socialMedia.instagram': instagramValue,
       'contactInfo.address': payload.address,
       'contactInfo.phone': phoneArray,
       'contactInfo.email': emailArray,
       'contactInfo.officeHours': officeHoursArray,
+      'contactInfo.whatsApp': whatsAppArray,
+      'contactInfo.facebook': facebookValue,
+      'contactInfo.instagram': instagramValue,
+      'contactInfo.socialMedia.facebook': facebookValue,
+      'contactInfo.socialMedia.instagram': instagramValue,
     };
 
     await updateDoc(schoolDoc.docRef, updates);
