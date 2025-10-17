@@ -38,7 +38,6 @@ import {
   Box,
   Snackbar,
   Alert,
-  FormLabel,
   Stack,
   FormControl,
   InputLabel,
@@ -47,7 +46,6 @@ import {
   CircularProgress
 } from '@mui/material';
 import {
-  Save,
   School,
   Home,
   EmojiEvents as Trophy,
@@ -318,7 +316,7 @@ export function SchoolAdminPanel() {
       }
       if (key === 'facebook' || key === 'instagram') {
         if (!value) return null;
-        const urlRegex = /^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-./?%&=]*)?$/i;
+        const urlRegex = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/i;
         return urlRegex.test(value) ? null : 'Enter a valid URL (include https:// if possible).';
       }
       return null;
@@ -860,34 +858,6 @@ export function SchoolAdminPanel() {
     }
   }, [applySchoolData, fetchAllData]);
 
-  const handleSave = async () => {
-    const targetSchoolId = schoolId || 'educonnect';
-
-    try {
-      setIsSaving(true);
-
-      if (activePage === 'home' && homeData) {
-        await updateHomePageContent(targetSchoolId, homeData);
-        await refreshSchoolData();
-        setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
-        showSuccess('Home page saved successfully!');
-      } else if (activePage === 'contact' && contactData) {
-        await updateContactPageContent(targetSchoolId, contactData);
-        await refreshSchoolData();
-        setDirtyPage((prev) => (prev === 'both' ? 'home' : null));
-        showSuccess('Contact information saved successfully!');
-      } else {
-        showError('Save is only available on the Home and Contact sections.');
-        setIsSaving(false);
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to save changes:', error);
-      showError('Failed to save changes. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const showSuccess = (message: string) => {
     setSnackbarSeverity('success');
