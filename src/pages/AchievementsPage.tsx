@@ -101,8 +101,12 @@ export function AchievementsPage() {
 
   // Generate categories dynamically from achievements data
   const getCategories = () => {
-    // Extract unique categories from achievements
-    const uniqueCategories = Array.from(new Set(achievements.map(achievement => achievement.category)));
+    // Extract unique categories from achievements, filtering out null/undefined values
+    const uniqueCategories = Array.from(new Set(
+      achievements
+        .map(achievement => achievement.category)
+        .filter(category => category && typeof category === 'string')
+    ));
     
     const dynamicCategories = uniqueCategories.map(category => ({
       id: category,
