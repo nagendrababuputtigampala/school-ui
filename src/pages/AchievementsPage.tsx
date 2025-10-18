@@ -145,6 +145,15 @@ export function AchievementsPage() {
     stat.value > 0
   );
 
+  // Dynamic grid sizing based on number of visible stats
+  const getGridSize = () => {
+    const count = stats.length;
+    if (count === 1) return { xs: 12, sm: 12, md: 6, lg: 4 }; // Single stat - centered
+    if (count === 2) return { xs: 6, sm: 6, md: 6, lg: 6 }; // Two stats - half width each
+    if (count === 3) return { xs: 6, sm: 4, md: 4, lg: 4 }; // Three stats - third width each
+    return { xs: 6, sm: 6, md: 3, lg: 3 }; // Four or more stats - quarter width each
+  };
+
   const getLevelChip = (level: string) => {
     const levelData = levels.find(l => l.id === level);
     return levelData ? (
@@ -211,10 +220,15 @@ export function AchievementsPage() {
         <Grid 
           container 
           spacing={{ xs: 2, sm: 3, md: 4 }} 
-          sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+          sx={{ 
+            mb: { xs: 5, md: 6 }, 
+            mx: 0, 
+            width: '100%',
+            justifyContent: stats.length < 4 ? 'center' : 'flex-start'
+          }}
         >
           {stats.map((stat, index) => (
-            <Grid size={{ xs: 6, sm: 6, md: 3, lg: 3 }} key={stat.label}>
+            <Grid size={getGridSize()} key={stat.label}>
               <Card 
                 sx={{ 
                   textAlign: 'center', 

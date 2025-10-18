@@ -188,6 +188,14 @@ export function StaffDirectoryPage() {
     stat.value > 0
   );
 
+  // Calculate grid size based on number of visible stats
+  const getGridSize = () => {
+    if (stats.length === 1) return { xs: 6, sm: 6, md: 6 }; // Centered half-width
+    if (stats.length === 2) return { xs: 6, sm: 6, md: 6 }; // Half width each
+    if (stats.length === 3) return { xs: 6, sm: 4, md: 4 }; // Third width each
+    return { xs: 6, sm: 6, md: 3 }; // Quarter width for 4+
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -255,10 +263,15 @@ export function StaffDirectoryPage() {
         <Grid 
           container 
           spacing={{ xs: 2, sm: 3, md: 4 }} 
-          sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+          sx={{ 
+            mb: { xs: 5, md: 6 }, 
+            mx: 0, 
+            width: '100%',
+            justifyContent: stats.length < 4 ? 'center' : 'flex-start'
+          }}
         >
           {stats.map((stat, index) => (
-            <Grid size={{ xs: 6, sm: 6, md: 3 }} key={stat.label}>
+            <Grid size={getGridSize()} key={stat.label}>
               <Card 
                 sx={{ 
                   textAlign: 'center', 

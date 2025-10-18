@@ -44,7 +44,6 @@ interface GalleryItem {
 export function GalleryPage() {
   const { schoolData } = useSchool();
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedMediaType, setSelectedMediaType] = useState('all');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [currentMediaType, setCurrentMediaType] = useState<'image' | 'video'>('image');
@@ -170,13 +169,6 @@ export function GalleryPage() {
     ? galleryItems 
     : galleryItems.filter(item => item.category === selectedCategory);
 
-  const finalFilteredItems = selectedMediaType === 'all'
-    ? filteredItems
-    : filteredItems.filter(item => item.type === selectedMediaType);
-
-  const photoItems = filteredItems.filter(item => item.type === 'photo');
-  const videoItems = filteredItems.filter(item => item.type === 'video');
-
   // Helper functions for media management
   const getTotalMediaCount = (item: GalleryItem): number => {
     const imageCount = item.images?.length || 0;
@@ -276,27 +268,14 @@ export function GalleryPage() {
           </Tabs>
         </Paper>
 
-        {/* Media Type Filter */}
-        <Box sx={{ mb: { xs: 3, md: 4 }, display: 'flex', justifyContent: 'center', px: { xs: 1, md: 0 } }}>
-          <Tabs
-            value={selectedMediaType}
-            onChange={(_, newValue) => setSelectedMediaType(newValue)}
-            sx={{ maxWidth: 400 }}
-          >
-            <Tab value="all" label={`All (${filteredItems.length})`} />
-            <Tab value="photo" label={`Photos (${photoItems.length})`} />
-            <Tab value="video" label={`Videos (${videoItems.length})`} />
-          </Tabs>
-        </Box>
-
         {/* Gallery Grid */}
-        {finalFilteredItems.length > 0 ? (
+        {filteredItems.length > 0 ? (
           <Grid 
             container 
             spacing={{ xs: 2, sm: 3, md: 4 }} 
             sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
           >
-            {finalFilteredItems.map((item, index) => (
+            {filteredItems.map((item, index) => (
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
                 <Card
                   sx={{

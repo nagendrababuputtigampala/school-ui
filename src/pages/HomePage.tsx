@@ -268,22 +268,22 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   width: '100%',
                 }}
               >
-                <Grid container sx={{ minHeight: { xs: 250, md: 300 } }}>
+                <Grid container sx={{ minHeight: { xs: 200, md: 240 } }}>
                   {/* Left Side - Principal Info */}
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <Box
                       sx={{
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         color: 'white',
-                        p: { xs: 3, md: 4 },
+                        p: { xs: 2.5, md: 3 },
                         height: '100%',
-                        minHeight: { xs: 250, md: 300 },
+                        minHeight: { xs: 200, md: 240 },
                         display: 'flex',
                         flexDirection: { xs: 'row', md: 'column' },
                         justifyContent: 'center',
                         alignItems: 'center',
                         textAlign: { xs: 'left', md: 'center' },
-                        gap: { xs: 3, md: 2 },
+                        gap: { xs: 2, md: 1.5 },
                         position: 'relative',
                         '&::before': {
                           content: '""',
@@ -300,10 +300,10 @@ export function HomePage({ onNavigate }: HomePageProps) {
                         src={schoolData.pages.homePage.principalSection.image}
                         alt={schoolData.pages.homePage.principalSection.name}
                         sx={{
-                          width: { xs: 80, md: 120 },
-                          height: { xs: 80, md: 120 },
-                          border: '3px solid rgba(255,255,255,0.3)',
-                          boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+                          width: { xs: 60, md: 80 },
+                          height: { xs: 60, md: 80 },
+                          border: '2px solid rgba(255,255,255,0.3)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
                           position: 'relative',
                           zIndex: 1,
                           flexShrink: 0,
@@ -311,33 +311,33 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       />
                       <Box sx={{ position: 'relative', zIndex: 1 }}>
                         <Typography
-                          variant="h5"
+                          variant="h6"
                           component="h2"
                           sx={{
-                            fontWeight: 700,
-                            mb: 0.5,
-                            fontSize: { xs: '1.2rem', md: '1.4rem' },
+                            fontWeight: 600,
+                            mb: 0.25,
+                            fontSize: { xs: '1rem', md: '1.1rem' },
                           }}
                         >
                           {schoolData.pages.homePage.principalSection.name}
                         </Typography>
                         <Typography
-                          variant="body1"
+                          variant="body2"
                           sx={{
                             opacity: 0.9,
                             fontWeight: 400,
-                            letterSpacing: 0.5,
-                            fontSize: { xs: '0.9rem', md: '1rem' },
+                            letterSpacing: 0.3,
+                            fontSize: { xs: '0.8rem', md: '0.85rem' },
                           }}
                         >
                           Principal
                         </Typography>
                         <Box
                           sx={{
-                            width: 40,
-                            height: 2,
+                            width: 30,
+                            height: 1.5,
                             backgroundColor: 'rgba(255,255,255,0.6)',
-                            mt: 1,
+                            mt: 0.75,
                             borderRadius: 1,
                             mx: { xs: 0, md: 'auto' },
                           }}
@@ -347,10 +347,10 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   </Grid>
 
                   {/* Right Side - Message */}
-                  <Grid size={{ xs: 12, md: 8 }}>
+                  <Grid size={{ xs: 12, md: 9 }}>
                     <CardContent
                       sx={{
-                        p: { xs: 3, md: 4 },
+                        p: { xs: 2.5, md: 3 },
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
@@ -360,28 +360,28 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       }}
                     >
                       <Typography
-                        variant="h4"
+                        variant="h5"
                         component="h2"
                         sx={{
-                          fontSize: { xs: '1.4rem', md: '1.6rem' },
-                          fontWeight: 700,
+                          fontSize: { xs: '1.2rem', md: '1.4rem' },
+                          fontWeight: 600,
                           color: '#2c3e50',
-                          mb: 2,
+                          mb: 1.5,
                           lineHeight: 1.2,
                         }}
                       >
                         Welcome Message
                       </Typography>
                       
-                      <Box sx={{ position: 'relative', mb: 1 }}>
+                      <Box sx={{ position: 'relative', mb: 0.5 }}>
                         <Typography
                           sx={{
-                            fontSize: { xs: '2.5rem', md: '3rem' },
+                            fontSize: { xs: '2rem', md: '2.5rem' },
                             color: 'primary.main',
                             opacity: 0.2,
                             position: 'absolute',
-                            top: -10,
-                            left: -5,
+                            top: -8,
+                            left: -3,
                             fontFamily: 'Georgia, serif',
                             lineHeight: 1,
                           }}
@@ -393,12 +393,12 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       <Typography
                         variant="body1"
                         sx={{
-                          fontSize: { xs: '1rem', md: '1.1rem' },
-                          lineHeight: 1.6,
+                          fontSize: { xs: '0.9rem', md: '1rem' },
+                          lineHeight: 1.5,
                           color: '#34495e',
                           fontStyle: 'italic',
-                          mb: 2,
-                          pl: 2,
+                          mb: 1.5,
+                          pl: 1.5,
                         }}
                       >
                         {schoolData.pages.homePage.principalSection.message}
@@ -406,16 +406,16 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       
                       <Box
                         sx={{
-                          borderLeft: '3px solid',
+                          borderLeft: '2px solid',
                           borderColor: 'primary.main',
-                          pl: 2,
+                          pl: 1.5,
                         }}
                       >
                         <Typography
                           variant="body2"
                           sx={{
                             color: 'text.secondary',
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                             fontWeight: 500,
                           }}
                         >
