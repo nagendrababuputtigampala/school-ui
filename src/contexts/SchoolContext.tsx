@@ -16,7 +16,7 @@ interface SchoolProviderProps {
 }
 
 export function SchoolProvider({ children }: SchoolProviderProps) {
-  const { schoolId = 'educonnect' } = useParams<{ schoolId: string }>(); // Default school slug
+  const { schoolId = 'riverside-academy' } = useParams<{ schoolId: string }>(); // Default school slug
   const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

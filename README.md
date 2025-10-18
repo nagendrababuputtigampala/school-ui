@@ -97,7 +97,8 @@ Create collection `schools` with documents for each school:
   "studentsCount": "2,500+",
   "teachersCount": "150+",
   "awardsCount": "50+",
-  "yearsCount": "35+",
+  "yearEstablished": "1989",
+  "successRate": "96%",
   "heroImages": [
     "https://images.unsplash.com/photo-1523050854058-8df90110c9d1?w=1080",
     "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=1080"

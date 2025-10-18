@@ -20,10 +20,11 @@ export const sampleSchoolData = {
         ]
       },
       "statisticsSection": {
+        "yearEstablished": "2004",
         "studentsCount": "1500",
         "teachersCount": "95",
         "awardsCount": "50",
-        "yearsCount": "20"
+        "successRate": "96%"
       },
       "whyChooseSection": {
         "whyChooseTitle": "Why Choose EduConnect Academy?",
@@ -122,10 +123,11 @@ export const sampleSchoolData = {
         ]
       },
       "statisticsSection": {
+        "yearEstablished": "1999",
         "studentsCount": "1200",
         "teachersCount": "85",
         "awardsCount": "45",
-        "yearsCount": "25"
+        "successRate": "97%"
       },
       "whyChooseSection": {
         "whyChooseTitle": "Why Choose Greenwood High?",

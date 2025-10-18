@@ -4,6 +4,7 @@ import { Box, CircularProgress, Alert, Container } from '@mui/material';
 import { useSchool } from '../contexts/SchoolContext';
 import { SimpleNav } from './SimpleNav';
 import { Footer } from './Footer';
+import { ScrollToTop } from './ScrollToTop';
 import { HomePage } from '../pages/HomePage';
 import { AchievementsPage } from '../pages/AchievementsPage';
 import { StaffDirectoryPage } from '../pages/StaffDirectoryPage';
@@ -12,6 +13,7 @@ import { GalleryPage } from '../pages/GalleryPage';
 import { AnnouncementsPage } from '../pages/AnnouncementsPage';
 import ContactPage from '../pages/ContactPage';
 import { AboutPage } from '../pages/AboutPage';
+import { AdminPage } from '../pages/AdminPage';
 
 export function SchoolLayout() {
   const { schoolData, loading, error } = useSchool();
@@ -62,10 +64,12 @@ export function SchoolLayout() {
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </Box>
       
       <Footer />
+      <ScrollToTop />
     </>
   );
 }
