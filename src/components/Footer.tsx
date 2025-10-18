@@ -5,18 +5,13 @@ import {
   Typography,
   Link,
   IconButton,
-  Divider,
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
 import {
   Facebook,
   Twitter,
   Instagram,
   LinkedIn,
   WhatsApp,
-  Phone,
-  Email,
-  LocationOn,
 } from '@mui/icons-material';
 import { useSchool } from '../contexts/SchoolContext';
 
@@ -57,30 +52,12 @@ export function Footer() {
     return [];
   };
 
-  const withFallback = (value: unknown, fallback: string[]): string[] => {
-    const lines = normalizeToArray(value);
-    return lines.length ? lines : fallback;
-  };
+
 
   const contactObject = contactSource as Record<string, unknown>;
   const getValue = (key: string) => contactObject?.[key];
 
-  const addressLines = withFallback(
-    getValue('address'),
-    ['123 Education Street', 'Learning City, LC 12345']
-  );
-  const phoneLines = withFallback(
-    getValue('phone') ??
-      getValue('phones') ??
-      getValue('phoneNumbers'),
-    ['(555) 123-4567']
-  );
-  const emailLines = withFallback(
-    getValue('email') ??
-      getValue('emails') ??
-      getValue('emailAddresses'),
-    ['info@educonnect.edu']
-  );
+
   const whatsappLines = normalizeToArray(
     getValue('whatsApp') ??
       getValue('whatsapp') ??
@@ -146,7 +123,7 @@ export function Footer() {
       sx={{
         backgroundColor: 'primary.main',
         color: 'primary.contrastText',
-        py: { xs: 4, md: 5 },
+        py: { xs: 1, md: 1.2 },
         mt: 'auto',
       }}
     >
@@ -157,71 +134,23 @@ export function Footer() {
           px: { xs: 2, sm: 3 },
         }}
       >
-        <Grid container spacing={{ xs: 2, md: 3 }} alignItems="flex-start">
-          {/* School Snapshot */}
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 700 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: { xs: 1.5, md: 2 } }}>
+          {/* School Info */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="body1" sx={{ fontWeight: 600, fontSize: '0.95rem', mb: 0, lineHeight: 1.2 }}>
               {schoolName}
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.85 }}>
-              {schoolData?.welcomeSubtitle || 'Empowering minds, shaping futures. Excellence in education since 1985.'}
+            <Typography variant="body2" sx={{ opacity: 0.8, fontSize: '0.75rem', lineHeight: 1.3, mt: 0.2 }}>
+              {schoolData?.welcomeSubtitle || 'Excellence in education'}
             </Typography>
-            <Typography variant="body2" sx={{ mt: 1.5, opacity: 0.7 }}>
-              Excellence in academics, character, and community partnership.
-            </Typography>
-          </Grid>
+          </Box>
 
-          {/* Contact Details */}
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-              Contact
+          {/* Follow Us - Right side */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+            <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
+              Follow:
             </Typography>
-            <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-              <Box component="li" sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
-                <LocationOn sx={{ fontSize: 20, opacity: 0.9, mt: 0.3 }} />
-                <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                  {addressLines.map((line, index) => (
-                    <React.Fragment key={`${line}-${index}`}>
-                      {line}
-                      {index < addressLines.length - 1 && <br />}
-                    </React.Fragment>
-                  ))}
-                </Typography>
-              </Box>
-              <Box component="li" sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
-                <Phone sx={{ fontSize: 20, opacity: 0.9, mt: 0.3 }} />
-                <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                  {phoneLines.map((line, index) => (
-                    <React.Fragment key={`${line}-${index}`}>
-                      {line}
-                      {index < phoneLines.length - 1 && <br />}
-                    </React.Fragment>
-                  ))}
-                </Typography>
-              </Box>
-              <Box component="li" sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
-                <Email sx={{ fontSize: 20, opacity: 0.9, mt: 0.3 }} />
-                <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                  {emailLines.map((line, index) => (
-                    <React.Fragment key={`${line}-${index}`}>
-                      {line}
-                      {index < emailLines.length - 1 && <br />}
-                    </React.Fragment>
-                  ))}
-                </Typography>
-              </Box>
-            </Box>
-          </Grid>
-
-          {/* Stay Connected */}
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-              Stay Connected
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.8, mb: 1.5 }}>
-              Follow our journey and connect with the school community.
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 0.3 }}>
               {socialIcons.length > 0 ? (
                 socialIcons.map(({ href, icon, label }) => (
                   <IconButton
@@ -234,70 +163,45 @@ export function Footer() {
                     aria-label={label}
                     sx={{
                       color: 'primary.contrastText',
-                      border: '1px solid rgba(255,255,255,0.35)',
-                      '&:hover': { opacity: 0.9, backgroundColor: 'rgba(255,255,255,0.06)' },
-                      width: 36,
-                      height: 36,
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      '&:hover': { opacity: 0.9, backgroundColor: 'rgba(255,255,255,0.05)' },
+                      width: 24,
+                      height: 24,
+                      '& svg': { fontSize: '0.9rem' }
                     }}
                   >
                     {icon}
                   </IconButton>
                 ))
               ) : (
-                <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                  Social media links coming soon.
+                <Typography variant="caption" sx={{ opacity: 0.6, fontSize: '0.65rem' }}>
+                  Soon
                 </Typography>
               )}
             </Box>
-          </Grid>
-        </Grid>
+          </Box>
 
-        <Divider sx={{ my: { xs: 3, md: 3.5 }, backgroundColor: 'rgba(255,255,255,0.18)' }} />
-
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          flexWrap: 'wrap', 
-          gap: { xs: 1.5, md: 2 },
-          flexDirection: { xs: 'column', md: 'row' }
-        }}>
-          <Typography variant="caption" sx={{ opacity: 0.75 }}>
-            {`Copyright ${currentYear} ${schoolName}. All rights reserved.`}
-          </Typography>
+          {/* Copyright and Links - Same line */}
           <Box sx={{ 
             display: 'flex', 
-            gap: { xs: 1.5, md: 2.5 },
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: { xs: 'center', sm: 'flex-start' }
+            alignItems: 'center',
+            gap: { xs: 1, md: 1.5 },
+            flexShrink: 0,
+            order: { xs: 3, md: 0 },
+            width: { xs: '100%', md: 'auto' },
+            justifyContent: { xs: 'space-between', md: 'flex-end' }
           }}>
-            <Link 
-              href="#" 
-              color="inherit" 
-              underline="hover"
-              variant="caption"
-              sx={{ opacity: 0.75, '&:hover': { opacity: 1 } }}
-            >
-              Privacy Policy
-            </Link>
-            <Link 
-              href="#" 
-              color="inherit" 
-              underline="hover"
-              variant="caption"
-              sx={{ opacity: 0.75, '&:hover': { opacity: 1 } }}
-            >
-              Terms of Service
-            </Link>
-            <Link 
-              href="#" 
-              color="inherit" 
-              underline="hover"
-              variant="caption"
-              sx={{ opacity: 0.75, '&:hover': { opacity: 1 } }}
-            >
-              Cookie Policy
-            </Link>
+            <Typography variant="caption" sx={{ opacity: 0.7, fontSize: '0.65rem' }}>
+              © {currentYear} {schoolName}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Link href="#" color="inherit" underline="hover" variant="caption" sx={{ opacity: 0.7, fontSize: '0.65rem', '&:hover': { opacity: 1 } }}>
+                Privacy
+              </Link>
+              <Link href="#" color="inherit" underline="hover" variant="caption" sx={{ opacity: 0.7, fontSize: '0.65rem', '&:hover': { opacity: 1 } }}>
+                Terms
+              </Link>
+            </Box>
           </Box>
         </Box>
       </Container>

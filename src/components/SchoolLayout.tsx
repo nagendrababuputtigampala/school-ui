@@ -4,6 +4,7 @@ import { Box, CircularProgress, Alert, Container } from '@mui/material';
 import { useSchool } from '../contexts/SchoolContext';
 import { SimpleNav } from './SimpleNav';
 import { Footer } from './Footer';
+import { ScrollToTop } from './ScrollToTop';
 import { HomePage } from '../pages/HomePage';
 import { AchievementsPage } from '../pages/AchievementsPage';
 import { StaffDirectoryPage } from '../pages/StaffDirectoryPage';
@@ -68,6 +69,7 @@ export function SchoolLayout() {
       </Box>
       
       <Footer />
+      <ScrollToTop />
     </>
   );
 }

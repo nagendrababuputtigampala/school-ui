@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState } from 'react';
 import {
   Box,
   Container,
@@ -29,49 +28,33 @@ import {
   MenuBook,
   Category,
 } from '@mui/icons-material';
-import { fetchStaffData, fetchDepartments, StaffMember, Department } from '../config/firebase';
+import { useSchool } from '../contexts/SchoolContext';
+
+interface StaffMember {
+  id?: string;
+  name: string;
+  position: string;
+  department: string;
+  email: string;
+  phone: string;
+  education: string;
+  experience: string;
+  specializations: string[];
+  image: string;
+}
+
+interface Department {
+  id: string;
+  label: string;
+}
 
 export function StaffDirectoryPage() {
-  const { schoolId } = useParams<{ schoolId: string }>();
+  const { schoolData, loading } = useSchool();
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch staff and department data from Firebase
-  useEffect(() => {
-    const loadData = async () => {
-      if (!schoolId) {
-        setError('School ID not found');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const [staffData, departmentData] = await Promise.all([
-          fetchStaffData(schoolId),
-          fetchDepartments(schoolId)
-        ]);
-        
-        setStaffMembers(staffData);
-        setDepartments(departmentData);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading staff data:', err);
-        setError('Failed to load staff data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [schoolId]);
 
   // Ensure no horizontal scroll on any screen size
-  useEffect(() => {
+  React.useEffect(() => {
     document.body.style.overflowX = 'hidden';
     const viewport = document.querySelector('meta[name=viewport]');
     if (viewport) {
@@ -81,6 +64,75 @@ export function StaffDirectoryPage() {
       document.body.style.overflowX = 'auto';
     };
   }, []);
+
+  // Get staff data from school context
+  const getStaffMembers = (): StaffMember[] => {
+    if (schoolData?.pages?.staffPage) {
+      const staffData = schoolData.pages.staffPage;
+      
+      // Convert Firestore object format to array
+      const staffArray = Object.values(staffData);
+      
+      return staffArray.map((staff: any, index: number): StaffMember => ({
+        id: staff.id || `staff-${index}`,
+        name: staff.name,
+        position: staff.position,
+        department: staff.department,
+        email: staff.email,
+        phone: staff.phone,
+        education: staff.education,
+        experience: staff.experience,
+        specializations: staff.specializations,
+        image: staff.image
+      }));
+    }
+    
+    return [];
+  };
+
+  const staffMembers = getStaffMembers();
+
+  // Don't load component if no staff data
+  if (!schoolData?.pages?.staffPage || staffMembers.length === 0) {
+    return null;
+  }
+
+  // Generate departments dynamically from staff data
+  const getDepartments = (): Department[] => {
+    const staffMembers = getStaffMembers();
+    const uniqueDepartments = Array.from(new Set(staffMembers.map(staff => staff.department)));
+    
+    return uniqueDepartments.map(dept => ({
+      id: dept,
+      label: formatDepartmentLabel(dept)
+    }));
+  };
+
+  // Helper function to format department labels
+  const formatDepartmentLabel = (departmentId: string): string => {
+    const labelMap: { [key: string]: string } = {
+      'administration': 'Administration',
+      'mathematics': 'Mathematics',
+      'science': 'Science',
+      'english': 'English',
+      'social_studies': 'Social Studies',
+      'arts': 'Arts',
+      'athletics': 'Athletics',
+      'counseling': 'Counseling',
+      'health': 'Health Services',
+      'music': 'Music',
+      'technology': 'Technology',
+      'library': 'Library',
+      'languages': 'World Languages',
+      'other': 'Other'
+    };
+    
+    return labelMap[departmentId.toLowerCase()] || departmentId.charAt(0).toUpperCase() + departmentId.slice(1);
+  };
+
+  const departments = getDepartments();
+
+
 
   // Icon mapping for common departments
   const getDepartmentIcon = (departmentId: string) => {
@@ -122,12 +174,19 @@ export function StaffDirectoryPage() {
     return matchesDepartment && matchesSearch;
   });
 
-  const stats = [
+  const allStats = [
     { label: 'Total Faculty', value: staffMembers.length },
-    { label: 'Ph.D. Holders', value: staffMembers.filter(s => s.education.includes('Ph.D.')).length },
+    { label: 'Ph.D. Holders', value: staffMembers.filter(s => s.education.toLowerCase().includes('ph.d')).length },
     { label: 'Departments', value: departments.length },
-    { label: 'Avg. Experience', value: '11 years' },
+    { label: 'Masters+', value: staffMembers.filter(s => s.education.toLowerCase().includes('m.') || s.education.toLowerCase().includes('master')).length },
   ];
+
+  // Filter out stats with 0, null, or undefined values
+  const stats = allStats.filter(stat => 
+    stat.value !== null && 
+    stat.value !== undefined && 
+    stat.value > 0
+  );
 
   // Loading state
   if (loading) {
@@ -140,17 +199,6 @@ export function StaffDirectoryPage() {
       }}>
         <CircularProgress />
       </Box>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Typography variant="h6" color="error" textAlign="center">
-          {error}
-        </Typography>
-      </Container>
     );
   }
 
@@ -203,13 +251,14 @@ export function StaffDirectoryPage() {
         </Box>
 
         {/* Statistics */}
+        {stats.length > 0 && (
         <Grid 
           container 
           spacing={{ xs: 2, sm: 3, md: 4 }} 
           sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
         >
           {stats.map((stat, index) => (
-            <Grid size={{ xs: 6, sm: 6, md: 3 }} key={index}>
+            <Grid size={{ xs: 6, sm: 6, md: 3 }} key={stat.label}>
               <Card 
                 sx={{ 
                   textAlign: 'center', 
@@ -248,6 +297,7 @@ export function StaffDirectoryPage() {
             </Grid>
           ))}
         </Grid>
+        )}
 
         {/* Search and Filters */}
         <Box sx={{ mb: { xs: 3, md: 4 } }}>
@@ -372,7 +422,7 @@ export function StaffDirectoryPage() {
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: { xs: 1.5, md: 2 } }}>
                         {member.specializations.map((spec, index) => (
                           <Chip 
-                            key={index} 
+                            key={`${member.id}-spec-${index}`} 
                             label={spec} 
                             size="small" 
                             variant="outlined" 

@@ -1,397 +1,10 @@
 {
-  "Greenwood High School": {
-    "schoolInfo": {
-      "id": "greenwood-high",
-      "name": "Greenwood High School",
-      "slug": "greenwood-high",
-      "domain": "greenwood.edu",
-      "logo": "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9",
-      "primaryColor": "#2E7D32",
-      "secondaryColor": "#81C784"
-    },
-    "alumniPage": {
-      "alumniMembers": [
-        {
-          "id": "alumni-1",
-          "name": "Dr. Amanda Foster",
-          "graduationYear": "2010",
-          "currentPosition": "Chief Technology Officer",
-          "company": "TechInnovate Solutions",
-          "location": "San Francisco, CA",
-          "industry": "technology",
-          "achievements": [
-            "Forbes 30 Under 30",
-            "Tech Innovation Award 2023",
-            "Startup Founder"
-          ],
-          "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956",
-          "bio": "Leading digital transformation initiatives and pioneering AI solutions in healthcare technology.",
-          "linkedIn": "linkedin.com/in/amandafoster",
-          "schoolId": "greenwood-high"
-        },
-        {
-          "id": "alumni-2",
-          "name": "Marcus Johnson",
-          "graduationYear": "2008",
-          "currentPosition": "Senior Investment Banker",
-          "company": "Goldman Sachs",
-          "location": "New York, NY",
-          "industry": "finance",
-          "achievements": [
-            "Top Performer 2022",
-            "MBA from Wharton",
-            "Financial Excellence Award"
-          ],
-          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-          "bio": "Specializes in corporate finance and mergers & acquisitions, helping companies achieve strategic growth.",
-          "linkedIn": "linkedin.com/in/marcusjohnson",
-          "schoolId": "greenwood-high"
-        },
-        {
-          "id": "alumni-3",
-          "name": "Dr. Sarah Kim",
-          "graduationYear": "2012",
-          "currentPosition": "Pediatric Surgeon",
-          "company": "Children's Hospital Boston",
-          "location": "Boston, MA",
-          "industry": "healthcare",
-          "achievements": [
-            "Medical Excellence Award",
-            "Research Publication Leader",
-            "Community Service Recognition"
-          ],
-          "image": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2",
-          "bio": "Dedicated to improving children's health through innovative surgical techniques and compassionate care.",
-          "linkedIn": "linkedin.com/in/sarahkim",
-          "schoolId": "greenwood-high"
-        },
-        {
-          "id": "alumni-4",
-          "name": "Alex Rodriguez",
-          "graduationYear": "2014",
-          "currentPosition": "Environmental Engineer",
-          "company": "Green Solutions Inc.",
-          "location": "Seattle, WA",
-          "industry": "engineering",
-          "achievements": [
-            "Sustainability Innovation Prize",
-            "Green Building Certification",
-            "Environmental Leadership Award"
-          ],
-          "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
-          "bio": "Focused on developing sustainable engineering solutions to combat climate change and protect our environment.",
-          "linkedIn": "linkedin.com/in/alexrodriguez",
-          "schoolId": "greenwood-high"
-        },
-        {
-          "id": "alumni-5",
-          "name": "Jennifer Wu",
-          "graduationYear": "2009",
-          "currentPosition": "Creative Director",
-          "company": "Global Advertising Agency",
-          "location": "Los Angeles, CA",
-          "industry": "creative",
-          "achievements": [
-            "Cannes Lions Gold Winner",
-            "Creative Excellence Award",
-            "Industry Trendsetter"
-          ],
-          "image": "https://images.unsplash.com/photo-1494790108755-2616c67f20a0",
-          "bio": "Leading creative campaigns for major brands and mentoring the next generation of creative professionals.",
-          "linkedIn": "linkedin.com/in/jenniferwu",
-          "schoolId": "greenwood-high"
-        }
-      ]
-    },
-    "homePage": {
-      "heroSection": {
-        "welcomeTitle": "Welcome to Greenwood High School",
-        "welcomeSubtitle": "Nurturing Excellence, Building Tomorrow's Leaders",
-        "heroImages": [
-          "https://images.unsplash.com/photo-1523050854058-8df90110c9f1",
-          "https://images.unsplash.com/photo-1580582932707-520aed937b7b",
-          "https://images.unsplash.com/photo-1509062522246-3755977927d7"
-        ]
-      },
-      "principalSection": {
-        "name": "Dr. Sarah Johnson",
-        "message": "Welcome to Greenwood High School, where we believe every student has the potential to achieve greatness. Our dedicated faculty and staff provide a nurturing environment that challenges students academically while supporting their personal growth.",
-        "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"
-      },
-      "statisticsSection": {
-        "yearEstablished": "1999",
-        "studentsCount": "1200",
-        "teachersCount": "85",
-        "awardsCount": "45",
-        "successRate": "97%"
-      },
-      "timelineSection": {
-        "milestones": [
-          {
-            "year": "1999",
-            "title": "School Founded",
-            "description": "Greenwood High School was established with a vision to provide quality education"
-          },
-          {
-            "year": "2005",
-            "title": "New Campus",
-            "description": "Moved to our current state-of-the-art campus with modern facilities"
-          },
-          {
-            "year": "2010",
-            "title": "STEM Excellence",
-            "description": "Launched advanced STEM programs and robotics lab"
-          },
-          {
-            "year": "2015",
-            "title": "International Recognition",
-            "description": "Received accreditation from International Baccalaureate Organization"
-          },
-          {
-            "year": "2020",
-            "title": "Digital Transformation",
-            "description": "Successfully implemented hybrid learning model during pandemic"
-          },
-          {
-            "year": "2024",
-            "title": "Silver Jubilee",
-            "description": "Celebrating 25 years of educational excellence and community service"
-          }
-        ]
-      }
-    },
-    "achievementsPage": {
-      "academicSection": {
-        "title": "Academic Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "National Merit Scholarships",
-            "description": "15 students received National Merit Scholarship recognition"
-          },
-          {
-            "year": "2023",
-            "title": "Science Olympiad State Champions",
-            "description": "Our Science Olympiad team won the state championship for the third consecutive year"
-          },
-          {
-            "year": "2023",
-            "title": "Debate Team National Qualifiers",
-            "description": "Debate team qualified for national tournament with outstanding performance"
-          }
-        ]
-      },
-      "sportsSection": {
-        "title": "Sports Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "Basketball State Champions",
-            "description": "Boys' basketball team won the state championship"
-          },
-          {
-            "year": "2023",
-            "title": "Soccer Regional Champions",
-            "description": "Girls' soccer team dominated the regional championship"
-          }
-        ]
-      },
-      "artsSection": {
-        "title": "Arts Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "Drama Competition Winners",
-            "description": "School drama club won first place in state competition"
-          },
-          {
-            "year": "2023",
-            "title": "Art Exhibition Featured",
-            "description": "Student artwork featured in city-wide exhibition"
-          }
-        ]
-      }
-    },
-    "announcementsPage": {
-      "announcements": [
-        {
-          "id": "1",
-          "title": "Annual Day Celebration - March 20",
-          "description": "Join us for our spectacular Annual Day celebration featuring student performances, cultural programs, and award ceremonies. All families are invited!",
-          "type": "event",
-          "date": "2024-03-20",
-          "priority": "high",
-          "category": "Event"
-        },
-        {
-          "id": "2",
-          "title": "Green Initiative Update",
-          "description": "Our solar panel installation is complete! We're now generating 100% renewable energy for our campus operations.",
-          "type": "announcement",
-          "date": "2024-03-18",
-          "priority": "medium",
-          "category": "Environment"
-        },
-        {
-          "id": "3",
-          "title": "New Library Resources Available",
-          "description": "Check out our new digital library collection with over 10,000 e-books and interactive learning materials.",
-          "type": "announcement",
-          "date": "2024-03-12",
-          "priority": "low",
-          "category": "Academic"
-        },
-        {
-          "id": "4",
-          "title": "Parent-Teacher Conference Schedule",
-          "description": "Parent-teacher conferences are scheduled for March 25-27. Please check the online portal for your appointment timings.",
-          "type": "announcement",
-          "date": "2024-03-25",
-          "priority": "high",
-          "category": "Academic"
-        }
-      ]
-    },
-    "staffPage": {
-      "staff": [
-        {
-          "id": "staff-1",
-          "name": "Dr. Sarah Johnson",
-          "position": "Principal",
-          "department": "administration",
-          "email": "s.johnson@greenwood.edu",
-          "phone": "+1 (555) 123-4501",
-          "education": "Ed.D. Educational Leadership, Ph.D. Mathematics Education",
-          "experience": "15 years in education",
-          "specializations": [
-            "Educational Leadership",
-            "Mathematics Education",
-            "School Administration"
-          ],
-          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-          "schoolId": "greenwood-high"
-        },
-        {
-          "id": "staff-2",
-          "name": "Mr. Michael Chen",
-          "position": "Vice Principal",
-          "department": "administration",
-          "email": "m.chen@greenwood.edu",
-          "phone": "+1 (555) 123-4502",
-          "education": "M.Ed. Educational Administration",
-          "experience": "12 years in education",
-          "specializations": [
-            "Student Affairs",
-            "Curriculum Development",
-            "Staff Management"
-          ],
-          "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
-          "schoolId": "greenwood-high"
-        },
-        {
-          "id": "staff-3",
-          "name": "Ms. Emily Rodriguez",
-          "position": "Head of Mathematics Department",
-          "department": "mathematics",
-          "email": "e.rodriguez@greenwood.edu",
-          "phone": "+1 (555) 123-4503",
-          "education": "M.S. Mathematics, B.S. Mathematics Education",
-          "experience": "10 years teaching experience",
-          "specializations": [
-            "Calculus",
-            "Statistics",
-            "AP Mathematics"
-          ],
-          "image": "https://images.unsplash.com/photo-1494790108755-2616b612b047",
-          "schoolId": "greenwood-high"
-        },
-        {
-          "id": "staff-4",
-          "name": "Dr. James Wilson",
-          "position": "Science Department Chair",
-          "department": "science",
-          "email": "j.wilson@greenwood.edu",
-          "phone": "+1 (555) 123-4504",
-          "education": "Ph.D. Chemistry, M.S. Chemical Engineering",
-          "experience": "8 years teaching experience",
-          "specializations": [
-            "Chemistry",
-            "AP Chemistry",
-            "Environmental Science"
-          ],
-          "image": "https://images.unsplash.com/photo-1560250097-0b93528c311a",
-          "schoolId": "greenwood-high"
-        },
-        {
-          "id": "staff-5",
-          "name": "Ms. Lisa Thompson",
-          "position": "English Literature Teacher",
-          "department": "english",
-          "email": "l.thompson@greenwood.edu",
-          "phone": "+1 (555) 123-4505",
-          "education": "M.A. English Literature, B.A. Creative Writing",
-          "experience": "7 years teaching experience",
-          "specializations": [
-            "AP Literature",
-            "Creative Writing",
-            "Drama"
-          ],
-          "image": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
-          "schoolId": "greenwood-high"
-        }
-      ]
-    },
-    "galleryPage": {
-      "campusSection": {
-        "title": "Campus Life",
-        "images": [
-          "https://images.unsplash.com/photo-1523050854058-8df90110c9f1",
-          "https://images.unsplash.com/photo-1580582932707-520aed937b7b",
-          "https://images.unsplash.com/photo-1509062522246-3755977927d7"
-        ]
-      },
-      "eventsSection": {
-        "title": "School Events",
-        "images": [
-          "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b",
-          "https://images.unsplash.com/photo-1497486751825-1233686d5d80"
-        ]
-      }
-    },
-    "contactPage": {
-      "address": "123 Education Lane, Greenwood City, GC 12345",
-      "phone": [
-        "+1 (555) 123-4567",
-        "+1 (555) 123-4568"
-      ],
-      "email": [
-        "info@greenwood.edu",
-        "admissions@greenwood.edu"
-      ],
-      "officeHours": [
-        "Mon-Fri: 8:00 AM - 5:00 PM",
-        "Sat: 9:00 AM - 2:00 PM"
-      ],
-      "whatsApp": "+1 (555) 987-6543",
-      "latitude": 37.7749,
-      "longitude": -122.4194,
-      "socialMedia": {
-        "facebook": "https://facebook.com/greenwoodhigh",
-        "twitter": "https://twitter.com/greenwoodhigh",
-        "instagram": "https://instagram.com/greenwoodhigh",
-        "linkedin": "https://linkedin.com/school/greenwood-high"
-      }
-    }
-  },
   "Riverside Academy": {
     "schoolInfo": {
       "id": "riverside-academy",
       "name": "Riverside Academy",
       "slug": "riverside-academy",
-      "domain": "riverside-academy.org",
-      "logo": "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b",
-      "primaryColor": "#1565C0",
-      "secondaryColor": "#64B5F6"
+      "logo": "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b"
     },
     "homePage": {
       "heroSection": {
@@ -412,279 +25,120 @@
         "yearEstablished": "2009",
         "studentsCount": "850",
         "teachersCount": "62",
-        "awardsCount": "38",
         "successRate": "95%"
       },
-      "timelineSection": {
-        "milestones": [
-          {
-            "year": "2009",
-            "title": "Academy Established",
-            "description": "Riverside Academy opened with innovative teaching methodologies"
-          },
-          {
-            "year": "2012",
-            "title": "Arts Center",
-            "description": "Inaugurated the performing arts center and music studios"
-          },
-          {
-            "year": "2016",
-            "title": "Sports Excellence",
-            "description": "Built new sports complex and achieved state championship in multiple sports"
-          },
-          {
-            "year": "2019",
-            "title": "Technology Integration",
-            "description": "Launched 1:1 laptop program and smart classroom initiative"
-          },
-          {
-            "year": "2022",
-            "title": "Green Campus",
-            "description": "Achieved carbon neutral status with solar panels and sustainability programs"
-          }
-        ]
-      }
-    },
-    "achievementsPage": {
-      "academicSection": {
-        "title": "Academic Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "STEM Innovation Challenge Winners",
-            "description": "Our robotics club earned first place in the state-level STEM Innovation Challenge."
-          },
-          {
-            "year": "2023",
-            "title": "Environmental Research Grant",
-            "description": "Science department received a national grant for their coastal conservation study."
-          }
-        ]
-      },
-      "sportsSection": {
-        "title": "Sports Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "Regional Swimming Champions",
-            "description": "Riverside swim team captured the regional championship with record-breaking times."
-          },
-          {
-            "year": "2023",
-            "title": "State Track & Field Finalists",
-            "description": "Ten athletes qualified for the state finals across multiple events."
-          }
-        ]
-      },
-      "artsSection": {
-        "title": "Arts Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "Citywide Arts Showcase",
-            "description": "Student art portfolio was featured as the headline exhibit in the citywide arts showcase."
-          },
-          {
-            "year": "2022",
-            "title": "National Choir Invitations",
-            "description": "The Riverside choir was invited to perform at the National Youth Music Festival."
-          }
-        ]
-      }
-    },
-    "announcementsPage": {
-      "announcements": [
+      "timelineSection": [
         {
-          "id": "1",
-          "title": "Arts Festival 2024 - April 15",
-          "description": "Showcase your talents at our annual arts festival featuring music, dance, theater, and visual arts. Registration is now open!",
-          "type": "event",
-          "date": "2024-04-15",
-          "priority": "high",
-          "category": "Event"
+          "year": "2009",
+          "title": "Academy Established",
+          "description": "Riverside Academy opened with innovative teaching methodologies"
         },
         {
-          "id": "2",
-          "title": "Green Initiative Update",
-          "description": "Our solar panel installation is complete! We're now generating 100% renewable energy for our campus operations.",
-          "type": "announcement",
-          "date": "2024-03-18",
-          "priority": "medium",
-          "category": "Environment"
+          "year": "2012",
+          "title": "Arts Center",
+          "description": "Inaugurated the performing arts center and music studios"
         },
         {
-          "id": "3",
-          "title": "New Library Resources Available",
-          "description": "Check out our new digital library collection with over 10,000 e-books and interactive learning materials.",
-          "type": "announcement",
-          "date": "2024-03-12",
-          "priority": "low",
-          "category": "Academic"
+          "year": "2016",
+          "title": "Sports Excellence",
+          "description": "Built new sports complex and achieved state championship in multiple sports"
+        },
+        {
+          "year": "2019",
+          "title": "Technology Integration",
+          "description": "Launched 1:1 laptop program and smart classroom initiative"
+        },
+        {
+          "year": "2022",
+          "title": "Green Campus",
+          "description": "Achieved carbon neutral status with solar panels and sustainability programs"
         }
       ]
     },
-    "staffPage": {
-      "staff": [
-        {
-          "id": "staff-6",
-          "name": "Ms. Amanda Foster",
-          "position": "Principal",
-          "department": "administration",
-          "email": "a.foster@riverside-academy.org",
-          "phone": "+1 (555) 987-6543",
-          "education": "M.Ed. Educational Leadership",
-          "experience": "12 years in education",
-          "specializations": [
-            "Innovative Teaching",
-            "Environmental Education",
-            "Arts Integration"
-          ],
-          "image": "https://images.unsplash.com/photo-1551836022-deb4988cc6c0",
-          "schoolId": "riverside-academy"
-        },
-        {
-          "id": "staff-7",
-          "name": "Mr. David Park",
-          "position": "Arts Director",
-          "department": "arts",
-          "email": "d.park@riverside-academy.org",
-          "phone": "+1 (555) 987-6544",
-          "education": "M.F.A. Fine Arts, B.A. Art Education",
-          "experience": "9 years teaching experience",
-          "specializations": [
-            "Visual Arts",
-            "Digital Media",
-            "Art History"
-          ],
-          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-          "schoolId": "riverside-academy"
-        },
-        {
-          "id": "staff-8",
-          "name": "Dr. Maria Santos",
-          "position": "Environmental Science Coordinator",
-          "department": "science",
-          "email": "m.santos@riverside-academy.org",
-          "phone": "+1 (555) 987-6545",
-          "education": "Ph.D. Environmental Science, M.S. Biology",
-          "experience": "11 years teaching experience",
-          "specializations": [
-            "Sustainability",
-            "Marine Biology",
-            "Climate Science"
-          ],
-          "image": "https://images.unsplash.com/photo-1494790108755-2616b612b047",
-          "schoolId": "riverside-academy"
-        }
-      ]
-    },
-    "alumniPage": {
-      "stats": [
-        {
-          "label": "Alumni Network",
-          "value": "2,800+",
-          "color": "#1976d2"
-        },
-        {
-          "label": "Countries Worldwide",
-          "value": "18+",
-          "color": "#388e3c"
-        },
-        {
-          "label": "Environmental Leaders",
-          "value": "45",
-          "color": "#f57c00"
-        },
-        {
-          "label": "Advanced Degrees",
-          "value": "82%",
-          "color": "#7b1fa2"
-        }
-      ],
-      "alumniMembers": [
-        {
-          "id": "alumni-6",
-          "name": "Maya Patel",
-          "graduationYear": "2015",
-          "currentPosition": "Environmental Policy Director",
-          "company": "Green Future Initiative",
-          "location": "Portland, OR",
-          "industry": "environmental",
-          "achievements": [
-            "UN Climate Action Award",
-            "Environmental Policy Innovation",
-            "Sustainability Leader 2023"
-          ],
-          "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956",
-          "bio": "Driving environmental policy change and sustainable development initiatives globally.",
-          "linkedIn": "linkedin.com/in/mayapatel",
-          "schoolId": "riverside-academy"
-        },
-        {
-          "id": "alumni-7",
-          "name": "David Chen",
-          "graduationYear": "2018",
-          "currentPosition": "Digital Artist & Filmmaker",
-          "company": "Creative Media Studios",
-          "location": "Los Angeles, CA",
-          "industry": "arts",
-          "achievements": [
-            "Emmy Award Winner",
-            "Sundance Film Festival",
-            "Digital Arts Pioneer"
-          ],
-          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-          "bio": "Creating innovative digital art and documentary films that inspire environmental awareness.",
-          "linkedIn": "linkedin.com/in/davidchen",
-          "schoolId": "riverside-academy"
-        },
-        {
-          "id": "alumni-8",
-          "name": "Sofia Martinez",
-          "graduationYear": "2016",
-          "currentPosition": "Green Technology Startup Founder",
-          "company": "EcoTech Solutions",
-          "location": "Austin, TX",
-          "industry": "entrepreneurship",
-          "achievements": [
-            "Clean Energy Innovation Award",
-            "Young Entrepreneur of the Year",
-            "Patent Holder"
-          ],
-          "image": "https://images.unsplash.com/photo-1494790108755-2616c67f20a0",
-          "bio": "Developing breakthrough renewable energy technologies for sustainable future.",
-          "linkedIn": "linkedin.com/in/sofiamartinez",
-          "schoolId": "riverside-academy"
-        }
-      ]
-    },
-    "galleryPage": {
-      "campusSection": {
-        "title": "Campus Life",
+    "achievementsPage": [
+      {
+        "title": "STEM Innovation Challenge Winners",
+        "description": "Our robotics club earned first place in the state-level STEM Innovation Challenge.",
+        "year": "2024",
+        "level": "state",
+        "category": "academic",
+        "award": "First Place",
         "images": [
-          "https://images.unsplash.com/photo-1503676260728-1c00da094a0b",
-          "https://images.unsplash.com/photo-1464802686167-b939a6910659",
-          "https://images.unsplash.com/photo-1496307042754-b4aa456c4a2d"
-        ]
-      },
-      "eventsSection": {
-        "title": "School Events",
-        "images": [
-          "https://images.unsplash.com/photo-1555521614-1965c2fe9f5f",
-          "https://images.unsplash.com/photo-1523580846011-d3a5bc25702b"
+          "https://images.unsplash.com/photo-1581093588401-7b4d2f16f0f5",
+          "https://images.unsplash.com/photo-1519389950473-47ba0277781c"
         ]
       }
-    },
+    ],
+    "announcementsPage": [
+      {
+        "title": "Mid-Term Examination Schedule Released",
+        "content": "The mid-term examination schedule for all grades has been published. Exams will commence from March 25th and conclude on April 5th. Students are advised to collect their hall tickets from their respective class teachers.",
+        "category": "exam",
+        "audience": "students",
+        "date": "2024-03-10",
+        "endDate": "2024-04-05",
+        "isPinned": true,
+        "isUrgent": true,
+        "author": "Academic Office",
+        "tags": ["examination", "schedule", "hall ticket", "study"]
+      }
+    ],
+    "staffPage": [
+      {
+        "name": "Ms. Amanda Foster",
+        "position": "Principal",
+        "department": "administration",
+        "email": "a.foster@riverside-academy.org",
+        "phone": "+1 (555) 987-6543",
+        "education": "M.Ed. Educational Leadership",
+        "experience": "12 years in education",
+        "specializations": [
+          "Innovative Teaching",
+          "Environmental Education",
+          "Arts Integration"
+        ],
+        "image": "https://images.unsplash.com/photo-1551836022-deb4988cc6c0"
+      }
+    ],
+    "alumniPage": [
+      {
+        "name": "Maya Patel",
+        "graduationYear": "2015",
+        "currentPosition": "Environmental Policy Director",
+        "company": "Green Future Initiative",
+        "location": "Portland, OR",
+        "industry": "environmental",
+        "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956",
+        "linkedIn": "linkedin.com/in/mayapatel"
+      },
+      {
+        "name": "David Chen",
+        "graduationYear": "2018",
+        "currentPosition": "Digital Artist & Filmmaker",
+        "company": "Creative Media Studios",
+        "location": "Los Angeles, CA",
+        "industry": "arts",
+        "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+        "linkedIn": "linkedin.com/in/davidchen"
+      }
+    ],
+    "galleryPage": [
+      {
+        "title": "Graduation Ceremony Highlights",
+        "description": "A video montage of our memorable graduation ceremony with speeches, awards, and celebrations.",
+        "type": "video",
+        "category": "events",
+        "date": "2023-06-15",
+        "images": [
+          "https://images.unsplash.com/photo-1686213011624-8578b598ef0f"
+        ],
+        "videoUrl": ["https://www.youtube.com/watch?v=examplevideo"]
+      }
+    ],
     "contactPage": {
       "address": "456 River Road, Riverside, RS 67890",
-      "phone": [
-        "+1 (555) 987-6543",
-        "+1 (555) 987-6544"
-      ],
-      "email": [
-        "admissions@riverside-academy.org",
-        "info@riverside-academy.org"
-      ],
+      "phone": ["+1 (555) 987-6543", "+1 (555) 987-6544"],
+      "email": ["admissions@riverside-academy.org", "info@riverside-academy.org"],
       "officeHours": [
         "Mon-Fri: 7:30 AM - 4:30 PM",
         "Sat: 8:00 AM - 1:00 PM"
@@ -699,524 +153,6 @@
         "linkedin": "https://linkedin.com/school/riverside-academy"
       }
     }
-  },
-  "Summit Preparatory School": {
-    "schoolInfo": {
-      "id": "summit-prep",
-      "name": "Summit Preparatory School",
-      "slug": "summit-prep",
-      "domain": "summitprep.edu",
-      "logo": "https://images.unsplash.com/photo-1509062522246-3755977927d7",
-      "primaryColor": "#7B1FA2",
-      "secondaryColor": "#CE93D8"
-    },
-    "homePage": {
-      "heroSection": {
-        "welcomeTitle": "Welcome to Summit Preparatory School",
-        "welcomeSubtitle": "Preparing Students for Success in Higher Education",
-        "heroImages": [
-          "https://images.unsplash.com/photo-1580582932707-520aed937b7b",
-          "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45",
-          "https://images.unsplash.com/photo-1523050854058-8df90110c9f1"
-        ]
-      },
-      "principalSection": {
-        "name": "Dr. Robert Martinez",
-        "message": "Summit Prep is more than a school; it's a launching pad for your future. Our intensive college preparatory program, paired with individualized mentoring, ensures graduates thrive in top universities and beyond.",
-        "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
-      },
-      "statisticsSection": {
-        "yearEstablished": "2016",
-        "studentsCount": "650",
-        "teachersCount": "48",
-        "awardsCount": "52",
-        "successRate": "99%"
-      },
-      "timelineSection": {
-        "milestones": [
-          {
-            "year": "2016",
-            "title": "School Opens",
-            "description": "Summit Prep opened with focus on college preparation"
-          },
-          {
-            "year": "2018",
-            "title": "AP Excellence",
-            "description": "Introduced 15 Advanced Placement courses"
-          },
-          {
-            "year": "2020",
-            "title": "100% College Acceptance",
-            "description": "Achieved 100% college acceptance rate for graduating class"
-          },
-          {
-            "year": "2022",
-            "title": "Innovation Lab",
-            "description": "Opened state-of-the-art innovation and entrepreneurship lab"
-          }
-        ]
-      }
-    },
-    "achievementsPage": {
-      "academicSection": {
-        "title": "Academic Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "National AP Scholars",
-            "description": "Thirty students recognized as National AP Scholars for exemplary exam scores."
-          },
-          {
-            "year": "2023",
-            "title": "Science Olympiad Finalists",
-            "description": "Summit science teams reached the national finals in robotics and biotechnology."
-          }
-        ]
-      },
-      "sportsSection": {
-        "title": "Sports Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "State Cross Country Champions",
-            "description": "Boys' and girls' teams both claimed the state cross country titles."
-          },
-          {
-            "year": "2022",
-            "title": "Basketball Elite Eight",
-            "description": "Varsity basketball advanced to the Elite Eight with a record-setting season."
-          }
-        ]
-      },
-      "artsSection": {
-        "title": "Arts Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "National Youth Orchestra",
-            "description": "Two Summit musicians were selected for the National Youth Orchestra."
-          },
-          {
-            "year": "2023",
-            "title": "Scholastic Art Gold Key Awards",
-            "description": "Five visual arts students received Scholastic Gold Key honors."
-          }
-        ]
-      }
-    },
-    "announcementsPage": {
-      "announcements": [
-        {
-          "id": "1",
-          "title": "College Fair - March 30",
-          "description": "Representatives from 50+ top universities will be visiting our campus. Schedule your meetings through the student portal.",
-          "type": "event",
-          "date": "2024-03-30",
-          "priority": "high",
-          "category": "Academic"
-        },
-        {
-          "id": "2",
-          "title": "Scholarship Opportunities",
-          "description": "New merit-based scholarships available for outstanding students. Applications due April 1st. See counseling office for details.",
-          "type": "announcement",
-          "date": "2024-04-01",
-          "priority": "high",
-          "category": "Financial"
-        },
-        {
-          "id": "3",
-          "title": "Innovation Lab Workshop Series",
-          "description": "Weekly workshops on entrepreneurship, robotics, and AI programming. Open to all students starting March 25.",
-          "type": "announcement",
-          "date": "2024-03-25",
-          "priority": "medium",
-          "category": "Technology"
-        }
-      ]
-    },
-    "staffPage": {
-      "staff": [
-        {
-          "id": "staff-9",
-          "name": "Dr. Robert Martinez",
-          "position": "Principal",
-          "department": "administration",
-          "email": "r.martinez@summitprep.edu",
-          "phone": "+1 (555) 246-8135",
-          "education": "Ed.D. Educational Leadership, M.A. Mathematics",
-          "experience": "18 years in education",
-          "specializations": [
-            "College Preparation",
-            "Advanced Academics",
-            "Leadership Development"
-          ],
-          "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
-          "schoolId": "summit-prep"
-        },
-        {
-          "id": "staff-10",
-          "name": "Ms. Jennifer Lee",
-          "position": "College Counselor",
-          "department": "counseling",
-          "email": "j.lee@summitprep.edu",
-          "phone": "+1 (555) 246-8136",
-          "education": "M.S. School Counseling, B.A. Psychology",
-          "experience": "8 years counseling experience",
-          "specializations": [
-            "College Applications",
-            "Career Guidance",
-            "Academic Planning"
-          ],
-          "image": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
-          "schoolId": "summit-prep"
-        },
-        {
-          "id": "staff-11",
-          "name": "Dr. Alex Thompson",
-          "position": "AP Coordinator",
-          "department": "mathematics",
-          "email": "a.thompson@summitprep.edu",
-          "phone": "+1 (555) 246-8137",
-          "education": "Ph.D. Mathematics, M.S. Statistics",
-          "experience": "15 years teaching experience",
-          "specializations": [
-            "AP Calculus",
-            "AP Statistics",
-            "Data Science"
-          ],
-          "image": "https://images.unsplash.com/photo-1560250097-0b93528c311a",
-          "schoolId": "summit-prep"
-        }
-      ]
-    },
-    "alumniPage": {
-      "stats": [
-        {
-          "label": "Alumni Network",
-          "value": "1,200+",
-          "color": "#1976d2"
-        },
-        {
-          "label": "Ivy League Admits",
-          "value": "95%",
-          "color": "#388e3c"
-        },
-        {
-          "label": "Fortune 500 Leaders",
-          "value": "28",
-          "color": "#f57c00"
-        },
-        {
-          "label": "Advanced Degrees",
-          "value": "92%",
-          "color": "#7b1fa2"
-        }
-      ],
-      "alumniMembers": [
-        {
-          "id": "alumni-9",
-          "name": "Jonathan Lee",
-          "graduationYear": "2019",
-          "currentPosition": "Investment Banking Analyst",
-          "company": "Morgan Stanley",
-          "location": "New York, NY",
-          "industry": "finance",
-          "achievements": [
-            "Valedictorian",
-            "Harvard Business School",
-            "Top Analyst 2023"
-          ],
-          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-          "bio": "Excelling in investment banking while preparing for leadership roles in global finance.",
-          "linkedIn": "linkedin.com/in/jonathanlee",
-          "schoolId": "summit-prep"
-        },
-        {
-          "id": "alumni-10",
-          "name": "Priya Sharma",
-          "graduationYear": "2020",
-          "currentPosition": "Software Engineer",
-          "company": "Google",
-          "location": "Mountain View, CA",
-          "industry": "technology",
-          "achievements": [
-            "MIT Graduate",
-            "Google Code Jam Winner",
-            "AI Research Publication"
-          ],
-          "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956",
-          "bio": "Developing cutting-edge AI technologies and contributing to open-source projects.",
-          "linkedIn": "linkedin.com/in/priyasharma",
-          "schoolId": "summit-prep"
-        },
-        {
-          "id": "alumni-11",
-          "name": "Michael Torres",
-          "graduationYear": "2018",
-          "currentPosition": "Management Consultant",
-          "company": "McKinsey & Company",
-          "location": "Chicago, IL",
-          "industry": "consulting",
-          "achievements": [
-            "Rhodes Scholar",
-            "Oxford MBA",
-            "Strategy Innovation Award"
-          ],
-          "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
-          "bio": "Helping Fortune 500 companies solve complex business challenges and drive growth.",
-          "linkedIn": "linkedin.com/in/michaeltorres",
-          "schoolId": "summit-prep"
-        }
-      ]
-    },
-    "galleryPage": {
-      "campusSection": {
-        "title": "Campus Life",
-        "images": [
-          "https://images.unsplash.com/photo-1588072432836-e10032774350",
-          "https://images.unsplash.com/photo-1523580846011-d3a5bc25702b",
-          "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee"
-        ]
-      },
-      "eventsSection": {
-        "title": "School Events",
-        "images": [
-          "https://images.unsplash.com/photo-1545239351-1141bd82e8a6",
-          "https://images.unsplash.com/photo-1515169067865-5387ec356754"
-        ]
-      }
-    },
-    "contactPage": {
-      "address": "789 Summit Drive, Mountain View, MV 11223",
-      "phone": [
-        "+1 (555) 246-8135",
-        "+1 (555) 246-8136"
-      ],
-      "email": [
-        "info@summitprep.edu",
-        "admissions@summitprep.edu"
-      ],
-      "officeHours": [
-        "Mon-Fri: 8:30 AM - 5:30 PM",
-        "Sat: 9:00 AM - 3:00 PM"
-      ],
-      "whatsApp": "+1 (555) 246-8100",
-      "latitude": 37.3861,
-      "longitude": -122.0839,
-      "socialMedia": {
-        "facebook": "https://facebook.com/summitprep",
-        "twitter": "https://twitter.com/summitprep",
-        "instagram": "https://instagram.com/summitprep"
-      }
-    }
-  },
-  "St Joseph High School": {
-    "schoolInfo": {
-      "id": "st-joseph",
-      "name": "St Joseph High School",
-      "slug": "st-joseph",
-      "domain": "stjoseph.edu",
-      "logo": "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9",
-      "primaryColor": "#2E7D32",
-      "secondaryColor": "#81C784"
-    },
-    "alumniPage": {
-      "alumniMembers": [
-        {
-          "id": "alumni-1",
-          "name": "Amanda Foster",
-          "graduationYear": "2005",
-          "currentPosition": "Team Lead",
-          "company": "TechInnovate Solutions",
-          "location": "Hyderabad, India",
-          "industry": "Technology",
-          "achievements": [
-            "Forbes 30 Under 30",
-            "Tech Innovation Award 2023",
-            "Startup Founder"
-          ],
-          "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956",
-          "bio": "Leading digital transformation initiatives and pioneering AI solutions in healthcare technology.",
-          "linkedIn": "linkedin.com/in/amandafoster",
-          "schoolId": "st-joseph"
-        }
-      ]
-    },
-    "homePage": {
-      "heroSection": {
-        "welcomeTitle": "Welcome to St Joseph High School",
-        "welcomeSubtitle": "Nurturing Excellence, Building Tomorrow's Leaders",
-        "heroImages": [
-          "https://freeimage.host/i/KjLLe4V"
-        ]
-      },
-      "principalSection": {
-        "name": "Dr. Joy V Joseph",
-        "message": "At St Joseph High School we believe in shaping character along with academic excellence. Our dedicated faculty works closely with families to guide every student toward a bright future.",
-        "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"
-      },
-      "statisticsSection": {
-        "yearEstablished": "1993",
-        "studentsCount": "2500+",
-        "teachersCount": "85",
-        "awardsCount": "15",
-        "successRate": "96%"
-      },
-      "timelineSection": {
-        "milestones": [
-          {
-            "year": "1993",
-            "title": "School Founded",
-            "description": "St Joseph High School became the first English medium school in Singarayakonda."
-          },
-          {
-            "year": "2000",
-            "title": "Expanded to Two Campuses",
-            "description": "We launched a new state-of-the-art campus with modern facilities."
-          },
-          {
-            "year": "2010",
-            "title": "STEM Excellence",
-            "description": "Introduced basic computer training and laboratory setup for students."
-          },
-          {
-            "year": "2018",
-            "title": "Silver Jubilee",
-            "description": "Celebrated 25 years of educational excellence and community service."
-          }
-        ]
-      }
-    },
-    "announcementsPage": {
-      "announcements": [
-        {
-          "id": "1",
-          "title": "Annual Day Celebration - November 20",
-          "description": "Join us for our spectacular Annual Day celebration featuring student performances, cultural programs, and award ceremonies. All families are invited!",
-          "type": "event",
-          "date": "2025-11-20",
-          "priority": "high",
-          "category": "Event"
-        },
-        {
-          "id": "2",
-          "title": "New Science Lab Inauguration",
-          "description": "We are excited to announce the opening of our new state-of-the-art science laboratory equipped with the latest technology and equipment.",
-          "type": "announcement",
-          "date": "2024-03-15",
-          "priority": "medium",
-          "category": "Facility"
-        },
-        {
-          "id": "3",
-          "title": "Volleyball Team Wins Championship",
-          "description": "Congratulations to our volleyball team for winning the inter-school championship! Their dedication and hard work have paid off.",
-          "type": "news",
-          "date": "2025-01-15",
-          "priority": "medium",
-          "category": "Sports"
-        }
-      ]
-    },
-    "achievementsPage": {
-      "academicSection": {
-        "title": "Academic Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "District Science Competition Champions",
-            "description": "Two of our students won top three positions in the District Science Competition."
-          },
-          {
-            "year": "2021",
-            "title": "Debate Team State Qualifiers",
-            "description": "Our debate team qualified for the state tournament with outstanding performances."
-          }
-        ]
-      },
-      "sportsSection": {
-        "title": "Sports Achievements",
-        "achievements": [
-          {
-            "year": "2023",
-            "title": "Volleyball Team Wins Championship",
-            "description": "The boys' volleyball team brought home the inter-school championship trophy."
-          }
-        ]
-      },
-      "artsSection": {
-        "title": "Arts Achievements",
-        "achievements": [
-          {
-            "year": "2024",
-            "title": "Drama Competition Winners",
-            "description": "Our drama club won first place in the district competition."
-          }
-        ]
-      }
-    },
-    "staffPage": {
-      "staff": [
-        {
-          "id": "staff-1",
-          "name": "Dr. Joy V Joseph",
-          "position": "Principal",
-          "department": "administration",
-          "email": "principal@stjoseph.edu",
-          "phone": "+91 90013 12123",
-          "education": "Ed.D. Educational Leadership, Ph.D. Mathematics Education",
-          "experience": "15 years in education",
-          "specializations": [
-            "Educational Leadership",
-            "Mathematics Education",
-            "School Administration"
-          ],
-          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-          "schoolId": "st-joseph"
-        }
-      ]
-    },
-    "galleryPage": {
-      "campusSection": {
-        "title": "Campus Life",
-        "images": [
-          "https://images.unsplash.com/photo-1523050854058-8df90110c9f1",
-          "https://images.unsplash.com/photo-1580582932707-520aed937b7b",
-          "https://images.unsplash.com/photo-1509062522246-3755977927d7"
-        ]
-      },
-      "eventsSection": {
-        "title": "School Events",
-        "images": [
-          "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b",
-          "https://images.unsplash.com/photo-1497486751825-1233686d5d80"
-        ]
-      }
-    },
-    "contactPage": {
-      "address": "Mulagunta Padu, Near ITI College, Singarayakonda-523108, Andhra Pradesh, India",
-      "phone": [
-        "+91 90013 12123",
-        "+91 90013 12124"
-      ],
-      "email": [
-        "info@stjoseph.edu",
-        "admissions@stjoseph.edu"
-      ],
-      "officeHours": [
-        "Mon-Fri: 8:00 AM - 5:00 PM",
-        "Sat: 9:00 AM - 2:00 PM"
-      ],
-      "whatsApp": "+91 90013 12123",
-      "latitude": 15.2169,
-      "longitude": 80.041,
-      "socialMedia": {
-        "facebook": "https://facebook.com/stjosephhs",
-        "twitter": "https://twitter.com/stjosephhs",
-        "instagram": "https://instagram.com/stjosephhs",
-        "linkedin": "https://linkedin.com/school/st-joseph-high-school"
-      }
-    }
   }
+
 }

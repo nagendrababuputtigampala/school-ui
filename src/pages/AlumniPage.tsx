@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState } from 'react';
 import {
   Box,
   Container,
@@ -8,14 +7,12 @@ import {
   CardContent,
   CardMedia,
   Grid,
-  Chip,
   TextField,
   Paper,
   InputAdornment,
   Button,
   Tabs,
   Tab,
-  CircularProgress,
 } from '@mui/material';
 import {
   Search,
@@ -27,37 +24,24 @@ import {
   People,
   Business,
 } from '@mui/icons-material';
-import { 
-  fetchAlumniData,
-  AlumniPageData
-} from '../config/firebase';
+import { useSchool } from '../contexts/SchoolContext';
+
+interface AlumniMember {
+  name: string;
+  graduationYear: string;
+  currentPosition: string;
+  company: string;
+  location: string;
+  industry: string;
+  image: string;
+  linkedIn?: string;
+}
 
 export function AlumniPage() {
-  const { schoolId } = useParams<{ schoolId: string }>();
+  const { schoolData, loading } = useSchool();
   const [selectedDecade, setSelectedDecade] = useState('all');
   const [selectedIndustry, setSelectedIndustry] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [alumniData, setAlumniData] = useState<AlumniPageData | null>(null);
-
-  // Fetch alumni data when component mounts or schoolId changes
-  useEffect(() => {
-    const loadAlumniData = async () => {
-      if (!schoolId) return;
-      
-      setLoading(true);
-      try {
-        const data = await fetchAlumniData(schoolId);
-        setAlumniData(data);
-      } catch (error) {
-        console.error('Error loading alumni data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadAlumniData();
-  }, [schoolId]);
 
   // Ensure no horizontal scroll on any screen size
   React.useEffect(() => {
@@ -71,10 +55,72 @@ export function AlumniPage() {
     };
   }, []);
 
-  // Get data from state or provide defaults
-  const alumniMembers = alumniData?.alumniMembers || [];
-  const decades = alumniData?.decades || [{ id: 'all', label: 'All Years' }];
-  const industries = alumniData?.industries || [{ id: 'all', label: 'All Industries', icon: 'Business' }];
+  // Get alumni data from school context
+  const getAlumniMembers = (): AlumniMember[] => {
+    if (schoolData?.pages?.alumniPage) {
+      const alumniData = schoolData.pages.alumniPage;
+      
+      // Convert Firestore object format to array
+      const alumniArray = Object.values(alumniData);
+      
+      return alumniArray.map((alumni: any, index: number): AlumniMember => ({
+        name: alumni.name,
+        graduationYear: alumni.graduationYear,
+        currentPosition: alumni.currentPosition,
+        company: alumni.company,
+        location: alumni.location,
+        industry: alumni.industry,
+        image: alumni.image,
+        linkedIn: alumni.linkedIn
+      }));
+    }
+    
+    return [];
+  };
+
+  const alumniMembers = getAlumniMembers();
+
+  // Don't load component if no alumni data
+  if (!schoolData?.pages?.alumniPage || alumniMembers.length === 0) {
+    return null;
+  }
+
+  // Generate decades dynamically from alumni data
+  const getDecades = () => {
+    const uniqueDecades = Array.from(new Set(alumniMembers.map(alumni => {
+      const decade = Math.floor(parseInt(alumni.graduationYear) / 10) * 10;
+      return `${decade}s`;
+    })));
+    
+    const dynamicDecades = uniqueDecades.map(decade => ({
+      id: decade,
+      label: decade
+    }));
+
+    return [
+      { id: 'all', label: 'All Years' },
+      ...dynamicDecades
+    ];
+  };
+
+  // Generate industries dynamically from alumni data
+  const getIndustries = () => {
+    const uniqueIndustries = Array.from(new Set(alumniMembers.map(alumni => alumni.industry)));
+    
+    const dynamicIndustries = uniqueIndustries.map(industry => ({
+      id: industry,
+      label: industry.charAt(0).toUpperCase() + industry.slice(1),
+      icon: 'Business'
+    }));
+
+    return [
+      { id: 'all', label: 'All Industries', icon: 'Business' },
+      ...dynamicIndustries
+    ];
+  };
+
+  const decades = getDecades();
+  const industries = getIndustries();
 
   // Add icon mapping for industries
   const iconMap: { [key: string]: any } = {
@@ -92,24 +138,21 @@ export function AlumniPage() {
     const matchesSearch = searchQuery === '' || 
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.currentPosition.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.achievements.some(achievement => achievement.toLowerCase().includes(searchQuery.toLowerCase()));
+      member.company.toLowerCase().includes(searchQuery.toLowerCase());
     
     return matchesDecade && matchesIndustry && matchesSearch;
   });
 
-  // Show loading spinner while data is being fetched
+  // Show loading state while fetching data
   if (loading) {
     return (
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          minHeight: '50vh' 
-        }}
-      >
-        <CircularProgress />
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <Typography variant="h6">Loading...</Typography>
       </Box>
     );
   }
@@ -166,7 +209,7 @@ export function AlumniPage() {
           <Box sx={{ maxWidth: 500, mx: 'auto', mb: { xs: 2, md: 3 }, px: { xs: 1, md: 0 } }}>
             <TextField
               fullWidth
-              placeholder="Search alumni by name, position, company, or achievements..."
+              placeholder="Search alumni by name, position, or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{
@@ -224,8 +267,8 @@ export function AlumniPage() {
             spacing={{ xs: 2, sm: 3, md: 4 }} 
             sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
           >
-            {filteredAlumni.map((member) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={member.id}>
+            {filteredAlumni.map((member, index) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
                 <Card
                   sx={{
                     height: '100%',
@@ -284,45 +327,7 @@ export function AlumniPage() {
                       </Box>
                     </Box>
 
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
-                      paragraph 
-                      sx={{ flexGrow: 1, fontSize: { xs: '0.75rem', md: '0.85rem' } }}
-                    >
-                      {member.bio}
-                    </Typography>
 
-                    <Box sx={{ mb: 2 }}>
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary" 
-                        gutterBottom
-                        sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' } }}
-                      >
-                        <strong>Key Achievements:</strong>
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {member.achievements.slice(0, 2).map((achievement, index) => (
-                          <Chip 
-                            key={index} 
-                            label={achievement} 
-                            size="small" 
-                            variant="outlined" 
-                            sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' } }}
-                          />
-                        ))}
-                        {member.achievements.length > 2 && (
-                          <Chip 
-                            label={`+${member.achievements.length - 2} more`} 
-                            size="small" 
-                            variant="outlined" 
-                            color="primary"
-                            sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' } }}
-                          />
-                        )}
-                      </Box>
-                    </Box>
 
                     {member.linkedIn && (
                       <Button
