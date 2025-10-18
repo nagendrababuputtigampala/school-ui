@@ -1,6 +1,15 @@
 // Firebase initialization and helper functions
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, updateDoc } from 'firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { sampleSchoolData } from '../data/schoolData';
 
 // Interface for timeline milestone
@@ -162,50 +171,55 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-async function findSchoolDocument(identifier: string) {
-  const schoolsRef = collection(db, 'Schools');
-  const schoolsSnapshot = await getDocs(schoolsRef);
+const normalizeIdentifier = (identifier: string): string =>
+  identifier.trim().toLowerCase();
 
-  for (const docSnap of schoolsSnapshot.docs) {
-    const data = docSnap.data();
-    if (data.slug === identifier || data.id === identifier) {
-      return { docRef: docSnap.ref, data };
+const collectionCandidates = (identifier: string): string[] => {
+  const base = normalizeIdentifier(identifier);
+  const underscore = base.replace(/-/g, '_');
+  const hyphen = base.replace(/_/g, '-');
+  const set = new Set([base, underscore, hyphen]);
+  return Array.from(set);
+};
+
+async function resolveSchoolCollection(
+  identifier: string
+): Promise<{ collectionId: string; schoolInfo: any } | null> {
+  for (const candidate of collectionCandidates(identifier)) {
+    const snap = await getDoc(doc(db, candidate, 'schoolInfo'));
+    if (snap.exists()) {
+      return { collectionId: candidate, schoolInfo: snap.data() };
     }
   }
-
   return null;
 }
 
-// Fetch school data by slug or ID from Schools collection with fallback to local data
+async function getSchoolDocData(
+  collectionId: string,
+  documentId: string
+): Promise<any | null> {
+  const snap = await getDoc(doc(db, collectionId, documentId));
+  return snap.exists() ? snap.data() : null;
+}
+
+async function ensureSchoolCollectionId(identifier: string): Promise<string> {
+  const resolved = await resolveSchoolCollection(identifier);
+  if (resolved) return resolved.collectionId;
+  return collectionCandidates(identifier)[0];
+}
+
+// Fetch school data from Firestore (new per-school collection structure) with fallback to local sample data
 export async function fetchSchoolData(identifier: string): Promise<SchoolData | null> {
   try {
-    // First try to find by slug in Schools collection
-    const schoolsRef = collection(db, 'Schools');
-    const schoolsSnapshot = await getDocs(schoolsRef);
-    
-    let schoolDoc = null;
-    
-    // Search through all school documents
-    for (const doc of schoolsSnapshot.docs) {
-      const data = doc.data();
-      if (data.slug === identifier || data.id === identifier ) {
-        schoolDoc = doc;
-        break;
-      }
-    }
-    
-    // If not found in Firebase, try local data
-    if (!schoolDoc) {
-      console.log('No school found in Firebase, trying local data for identifier:', identifier);
-      
-      // Check local sample data
+    const resolved = await resolveSchoolCollection(identifier);
+
+    if (!resolved) {
+      console.log('No school found in Firestore, trying local data for identifier:', identifier);
       const localSchoolData = (sampleSchoolData as any)[identifier];
       if (localSchoolData) {
         console.log('Using local data for school:', identifier);
-        
         const schoolInfo = localSchoolData.schoolInfo;
         const homePage = localSchoolData.homePage;
-        
         return {
           id: schoolInfo.id,
           name: schoolInfo.name,
@@ -225,40 +239,76 @@ export async function fetchSchoolData(identifier: string): Promise<SchoolData | 
           logo: schoolInfo.logo,
           primaryColor: schoolInfo.primaryColor,
           secondaryColor: schoolInfo.secondaryColor,
-          pages: localSchoolData // Include full local data for page access
+          contactInfo: localSchoolData.contactPage || schoolInfo.contactInfo,
+          socialMedia: schoolInfo.socialMedia,
+          pages: localSchoolData,
         };
       }
-      
-      console.log('No school found in Firebase or local data with identifier:', identifier);
+
+      console.warn('No school found in Firestore or local data with identifier:', identifier);
       return null;
     }
-    
-    const data = schoolDoc.data();
-    if (!data) return null;
-    
+
+    const { collectionId, schoolInfo } = resolved;
+    const [
+      homePage,
+      contactPage,
+      achievementsPage,
+      staffPage,
+      alumniPage,
+      galleryPage,
+      announcementsPage,
+    ] = await Promise.all([
+      getSchoolDocData(collectionId, 'homePage'),
+      getSchoolDocData(collectionId, 'contactPage'),
+      getSchoolDocData(collectionId, 'achievementsPage'),
+      getSchoolDocData(collectionId, 'staffPage'),
+      getSchoolDocData(collectionId, 'alumniPage'),
+      getSchoolDocData(collectionId, 'galleryPage'),
+      getSchoolDocData(collectionId, 'announcementsPage'),
+    ]);
+
+    const heroSection = homePage?.heroSection ?? {};
+    const statsSection = homePage?.statisticsSection ?? {};
+    const timelineSection = homePage?.timelineSection ?? {};
+
     return {
-      id: data.id || '',
-      name: data.name || '',
-      slug: data.slug || '',
-      domain: data.domain,
-      welcomeTitle: data.welcomeTitle || '',
-      welcomeSubtitle: data.welcomeSubtitle || '',
-      studentsCount: data.studentsCount || '0',
-      teachersCount: data.teachersCount || '0',
-      awardsCount: data.awardsCount || '0',
-      yearEstablished: data.yearEstablished || data.pages?.homePage?.statisticsSection?.yearEstablished || '',
-      successRate: data.successRate || data.pages?.homePage?.statisticsSection?.successRate || '',
-      whyChooseTitle: data.whyChooseTitle,
-      whyChooseSubtitle: data.whyChooseSubtitle,
-      heroImages: data.heroImages || [],
-      timeline: data.timeline || [],
-      logo: data.logo,
-      primaryColor: data.primaryColor,
-      secondaryColor: data.secondaryColor,
-      contactInfo: data.contactInfo,
-      socialMedia: data.socialMedia,
-      // Include full page data for advanced usage
-      pages: data.pages || {}
+      id: schoolInfo.id || collectionId,
+      name: schoolInfo.name || schoolInfo.displayName || identifier,
+      slug: schoolInfo.slug || identifier,
+      domain: schoolInfo.domain,
+      welcomeTitle: heroSection.welcomeTitle || '',
+      welcomeSubtitle: heroSection.welcomeSubtitle || '',
+      studentsCount: statsSection.studentsCount || '',
+      teachersCount: statsSection.teachersCount || '',
+      awardsCount: statsSection.awardsCount || '',
+      yearEstablished: statsSection.yearEstablished || '',
+      successRate: statsSection.successRate || '',
+      whyChooseTitle:
+        homePage?.whyChooseSection?.title ||
+        homePage?.whyChooseSection?.whyChooseTitle ||
+        schoolInfo.whyChooseTitle,
+      whyChooseSubtitle:
+        homePage?.whyChooseSection?.subtitle ||
+        homePage?.whyChooseSection?.whyChooseSubtitle ||
+        schoolInfo.whyChooseSubtitle,
+      heroImages: heroSection.heroImages || [],
+      timeline: timelineSection.milestones || timelineSection.items || [],
+      logo: schoolInfo.logo,
+      primaryColor: schoolInfo.primaryColor || schoolInfo.brandPrimaryColor,
+      secondaryColor: schoolInfo.secondaryColor || schoolInfo.brandSecondaryColor,
+      contactInfo: contactPage || schoolInfo.contactInfo,
+      socialMedia: schoolInfo.socialMedia || contactPage?.socialMedia,
+      pages: {
+        schoolInfo,
+        homePage,
+        achievementsPage,
+        staffPage,
+        alumniPage,
+        galleryPage,
+        announcementsPage,
+        contactPage,
+      },
     };
   } catch (err) {
     console.error('Failed to fetch school data from Firestore', err);
@@ -269,42 +319,50 @@ export async function fetchSchoolData(identifier: string): Promise<SchoolData | 
 // Fetch page content for a specific school and page from Schools collection
 export async function fetchPageContent(schoolId: string, pageType: string): Promise<PageContent | null> {
   try {
-    // Get school document from Schools collection
-    const schoolsRef = collection(db, 'Schools');
-    const schoolsSnapshot = await getDocs(schoolsRef);
-    
-    let schoolData = null;
-    
-    // Find the school document
-    for (const doc of schoolsSnapshot.docs) {
-      const data = doc.data();
-      if (data.id === schoolId || data.slug === schoolId) {
-        schoolData = data;
-        break;
-      }
-    }
-    
-    if (!schoolData || !schoolData.pages) {
-      console.log(`No school found or no pages data for schoolId: ${schoolId}`);
+    const pageDocMap: Record<string, string> = {
+      about: 'schoolInfo',
+      achievements: 'achievementsPage',
+      staff: 'staffPage',
+      alumni: 'alumniPage',
+      gallery: 'galleryPage',
+      announcements: 'announcementsPage',
+      contact: 'contactPage',
+      home: 'homePage',
+    };
+
+    const docName = pageDocMap[pageType] || `${pageType}Page`;
+
+    const resolved = await resolveSchoolCollection(schoolId);
+    if (!resolved) {
+      console.warn(`No school collection found for ${schoolId}`);
       return null;
     }
-    
-    // Get the specific page data
-    const pageKey = `${pageType}Page`;
-    const pageData = schoolData.pages[pageKey];
-    
+
+    const { collectionId, schoolInfo } = resolved;
+    const pageData = await getSchoolDocData(collectionId, docName);
+
     if (!pageData) {
-      console.log(`No ${pageType} page found for school ${schoolId}`);
+      console.warn(`No ${docName} document found for school ${schoolId}`);
       return null;
     }
-    
+
+    const lastUpdatedRaw = pageData.lastUpdated;
+    const lastUpdated =
+      lastUpdatedRaw && typeof lastUpdatedRaw.toDate === 'function'
+        ? lastUpdatedRaw.toDate()
+        : lastUpdatedRaw instanceof Date
+        ? lastUpdatedRaw
+        : new Date();
+
+    const titlePage = pageType.charAt(0).toUpperCase() + pageType.slice(1);
+
     return {
       id: `${schoolId}-${pageType}`,
-      schoolId: schoolData.id,
+      schoolId: schoolInfo.id || collectionId,
       pageType: pageType as any,
-      title: `${schoolData.name} - ${pageType.charAt(0).toUpperCase() + pageType.slice(1)}`,
+      title: `${schoolInfo.name || schoolId} - ${titlePage}`,
       content: pageData,
-      lastUpdated: schoolData.lastUpdated?.toDate() || new Date(),
+      lastUpdated,
     };
   } catch (err) {
     console.error(`Failed to fetch page content for ${pageType}:`, err);
@@ -423,29 +481,38 @@ export interface AdminContactPagePayload {
 
 export async function updateHomePageContent(identifier: string, payload: AdminHomePagePayload): Promise<void> {
   try {
-    const schoolDoc = await findSchoolDocument(identifier);
-    if (!schoolDoc) {
-      throw new Error(`School not found: ${identifier}`);
-    }
+    const collectionId = await ensureSchoolCollectionId(identifier);
+    const homeDocRef = doc(db, collectionId, 'homePage');
 
-    const updates: Record<string, any> = {
+    // Ensure document exists before update
+    await setDoc(homeDocRef, {}, { merge: true });
+
+    await updateDoc(homeDocRef, {
+      'heroSection.welcomeTitle': payload.welcomeTitle,
+      'heroSection.welcomeSubtitle': payload.welcomeSubTitle,
+      'principalSection.name': payload.principalName,
+      'principalSection.message': payload.principalMessage,
+      'statisticsSection.yearEstablished': payload.yearEstablished,
+      'statisticsSection.studentsCount': payload.students,
+      'statisticsSection.successRate': payload.successRate,
+      lastUpdated: serverTimestamp(),
+    });
+
+    const schoolInfoRef = doc(db, collectionId, 'schoolInfo');
+    await setDoc(
+      schoolInfoRef,
+      {},
+      { merge: true }
+    );
+    await updateDoc(schoolInfoRef, {
+      slug: identifier,
       welcomeTitle: payload.welcomeTitle,
       welcomeSubtitle: payload.welcomeSubTitle,
       yearEstablished: payload.yearEstablished,
       studentsCount: payload.students,
       successRate: payload.successRate,
-      'pages.homePage.welcomeTitle': payload.welcomeTitle,
-      'pages.homePage.welcomeSubtitle': payload.welcomeSubTitle,
-      'pages.homePage.principalName': payload.principalName,
-      'pages.homePage.principalMessage': payload.principalMessage,
-      'pages.homePage.principalSection.name': payload.principalName,
-      'pages.homePage.principalSection.message': payload.principalMessage,
-      'pages.homePage.statisticsSection.yearEstablished': payload.yearEstablished,
-      'pages.homePage.statisticsSection.studentsCount': payload.students,
-      'pages.homePage.statisticsSection.successRate': payload.successRate,
-    };
-
-    await updateDoc(schoolDoc.docRef, updates);
+      updatedAt: serverTimestamp(),
+    });
   } catch (err) {
     console.error(`Failed to update home page for school ${identifier}:`, err);
     throw err;
@@ -454,11 +521,6 @@ export async function updateHomePageContent(identifier: string, payload: AdminHo
 
 export async function updateContactPageContent(identifier: string, payload: AdminContactPagePayload): Promise<void> {
   try {
-    const schoolDoc = await findSchoolDocument(identifier);
-    if (!schoolDoc) {
-      throw new Error(`School not found: ${identifier}`);
-    }
-
     const parseList = (value: string, separator: RegExp | string) => {
       if (!value || !value.trim()) {
         return [];
@@ -469,6 +531,9 @@ export async function updateContactPageContent(identifier: string, payload: Admi
         .filter((item) => item.length > 0);
     };
 
+    const collectionId = await ensureSchoolCollectionId(identifier);
+    const contactDocRef = doc(db, collectionId, 'contactPage');
+
     const phoneArray = parseList(payload.phone, ',');
     const emailArray = parseList(payload.email, ',');
     const officeHoursArray = parseList(payload.officeHours, /\r?\n/);
@@ -476,28 +541,41 @@ export async function updateContactPageContent(identifier: string, payload: Admi
     const facebookValue = (payload.facebook ?? '').trim();
     const instagramValue = (payload.instagram ?? '').trim();
 
-    const updates: Record<string, any> = {
-      'pages.contactPage.address': payload.address,
-      'pages.contactPage.phone': phoneArray,
-      'pages.contactPage.email': emailArray,
-      'pages.contactPage.officeHours': officeHoursArray,
-      'pages.contactPage.whatsApp': whatsAppArray,
-      'pages.contactPage.facebook': facebookValue,
-      'pages.contactPage.instagram': instagramValue,
-      'pages.contactPage.socialMedia.facebook': facebookValue,
-      'pages.contactPage.socialMedia.instagram': instagramValue,
+    await setDoc(
+      contactDocRef,
+      {
+        address: payload.address,
+        phone: phoneArray,
+        email: emailArray,
+        officeHours: officeHoursArray,
+        whatsApp: whatsAppArray,
+        facebook: facebookValue,
+        instagram: instagramValue,
+        socialMedia: {
+          facebook: facebookValue,
+          instagram: instagramValue,
+        },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    const schoolInfoRef = doc(db, collectionId, 'schoolInfo');
+    await setDoc(
+      schoolInfoRef,
+      {},
+      { merge: true }
+    );
+    await updateDoc(schoolInfoRef, {
       'contactInfo.address': payload.address,
       'contactInfo.phone': phoneArray,
       'contactInfo.email': emailArray,
       'contactInfo.officeHours': officeHoursArray,
       'contactInfo.whatsApp': whatsAppArray,
-      'contactInfo.facebook': facebookValue,
-      'contactInfo.instagram': instagramValue,
-      'contactInfo.socialMedia.facebook': facebookValue,
-      'contactInfo.socialMedia.instagram': instagramValue,
-    };
-
-    await updateDoc(schoolDoc.docRef, updates);
+      'socialMedia.facebook': facebookValue,
+      'socialMedia.instagram': instagramValue,
+      updatedAt: serverTimestamp(),
+    });
   } catch (err) {
     console.error(`Failed to update contact page for school ${identifier}:`, err);
     throw err;
@@ -509,10 +587,7 @@ export async function updateAchievementsPageContent(
   sections: Record<string, { title: string; achievements: any[] }>
 ): Promise<void> {
   try {
-    const schoolDoc = await findSchoolDocument(identifier);
-    if (!schoolDoc) {
-      throw new Error(`School not found: ${identifier}`);
-    }
+    const collectionId = await ensureSchoolCollectionId(identifier);
 
     const normalizedSections: Record<string, any> = {};
 
@@ -530,11 +605,14 @@ export async function updateAchievementsPageContent(
       };
     });
 
-    const updates: Record<string, any> = {
-      'pages.achievementsPage': normalizedSections,
-    };
-
-    await updateDoc(schoolDoc.docRef, updates);
+    await setDoc(
+      doc(db, collectionId, 'achievementsPage'),
+      {
+        ...normalizedSections,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: false }
+    );
   } catch (err) {
     console.error(`Failed to update achievements page for school ${identifier}:`, err);
     throw err;
@@ -543,10 +621,7 @@ export async function updateAchievementsPageContent(
 
 export async function updateStaffPageContent(identifier: string, staffMembers: any[]): Promise<void> {
   try {
-    const schoolDoc = await findSchoolDocument(identifier);
-    if (!schoolDoc) {
-      throw new Error(`School not found: ${identifier}`);
-    }
+    const collectionId = await ensureSchoolCollectionId(identifier);
 
     const parseCSV = (value: string) =>
       value
@@ -561,10 +636,10 @@ export async function updateStaffPageContent(identifier: string, staffMembers: a
       name: staff.name || '',
       department: staff.department || 'other',
       position: staff.position || '',
-      experience: staff.experience || '',
       email: staff.email || '',
       phone: staff.phone || '',
       education: staff.education || '',
+      experience: staff.experience || '',
       specializations: Array.isArray(staff.specializations)
         ? staff.specializations
         : parseCSV(staff.specializations || ''),
@@ -572,11 +647,14 @@ export async function updateStaffPageContent(identifier: string, staffMembers: a
       schoolId: staff.schoolId || identifier,
     }));
 
-    const updates: Record<string, any> = {
-      'pages.staffPage.staff': normalizedStaff,
-    };
-
-    await updateDoc(schoolDoc.docRef, updates);
+    await setDoc(
+      doc(db, collectionId, 'staffPage'),
+      {
+        staff: normalizedStaff,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: false }
+    );
   } catch (err) {
     console.error(`Failed to update staff page for school ${identifier}:`, err);
     throw err;
@@ -585,10 +663,7 @@ export async function updateStaffPageContent(identifier: string, staffMembers: a
 
 export async function updateAlumniPageContent(identifier: string, alumniMembers: any[]): Promise<void> {
   try {
-    const schoolDoc = await findSchoolDocument(identifier);
-    if (!schoolDoc) {
-      throw new Error(`School not found: ${identifier}`);
-    }
+    const collectionId = await ensureSchoolCollectionId(identifier);
 
     const parseCSV = (value: string) =>
       value
@@ -612,13 +687,17 @@ export async function updateAlumniPageContent(identifier: string, alumniMembers:
       achievements: Array.isArray(alumni.achievements)
         ? alumni.achievements
         : parseCSV(alumni.achievements || ''),
+      schoolId: identifier,
     }));
 
-    const updates: Record<string, any> = {
-      'pages.alumniPage.alumniMembers': normalizedAlumni,
-    };
-
-    await updateDoc(schoolDoc.docRef, updates);
+    await setDoc(
+      doc(db, collectionId, 'alumniPage'),
+      {
+        alumniMembers: normalizedAlumni,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: false }
+    );
   } catch (err) {
     console.error(`Failed to update alumni page for school ${identifier}:`, err);
     throw err;
@@ -627,11 +706,7 @@ export async function updateAlumniPageContent(identifier: string, alumniMembers:
 
 export async function updateGalleryPageContent(identifier: string, galleryItems: any[]): Promise<void> {
   try {
-    const schoolDoc = await findSchoolDocument(identifier);
-    if (!schoolDoc) {
-      throw new Error(`School not found: ${identifier}`);
-    }
-
+    const collectionId = await ensureSchoolCollectionId(identifier);
     const normalizedGallery = (galleryItems || []).map((item: any, index: number) => ({
       id: item.id || `gallery-${index + 1}`,
       title: item.title || '',
@@ -641,11 +716,14 @@ export async function updateGalleryPageContent(identifier: string, galleryItems:
       imageUrl: item.imageUrl || item.image || '',
     }));
 
-    const updates: Record<string, any> = {
-      'pages.galleryPage.galleryImages': normalizedGallery,
-    };
-
-    await updateDoc(schoolDoc.docRef, updates);
+    await setDoc(
+      doc(db, collectionId, 'galleryPage'),
+      {
+        galleryImages: normalizedGallery,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: false }
+    );
   } catch (err) {
     console.error(`Failed to update gallery page for school ${identifier}:`, err);
     throw err;
@@ -654,10 +732,7 @@ export async function updateGalleryPageContent(identifier: string, galleryItems:
 
 export async function updateAnnouncementsPageContent(identifier: string, announcements: any[]): Promise<void> {
   try {
-    const schoolDoc = await findSchoolDocument(identifier);
-    if (!schoolDoc) {
-      throw new Error(`School not found: ${identifier}`);
-    }
+    const collectionId = await ensureSchoolCollectionId(identifier);
 
     const normalizedAnnouncements = (announcements || []).map((announcement: any, index: number) => {
       const priority = (announcement.priority || 'medium').toLowerCase();
@@ -674,12 +749,25 @@ export async function updateAnnouncementsPageContent(identifier: string, announc
       };
     });
 
-    const updates: Record<string, any> = {
-      'pages.announcementsPage.announcements': normalizedAnnouncements,
-      'pages.homePage.announcementsSection.recentUpdates': normalizedAnnouncements.slice(0, 3),
-    };
+    await setDoc(
+      doc(db, collectionId, 'announcementsPage'),
+      {
+        announcements: normalizedAnnouncements,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: false }
+    );
 
-    await updateDoc(schoolDoc.docRef, updates);
+    await setDoc(
+      doc(db, collectionId, 'homePage'),
+      {
+        announcementsSection: {
+          recentUpdates: normalizedAnnouncements.slice(0, 3),
+        },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
   } catch (err) {
     console.error(`Failed to update announcements for school ${identifier}:`, err);
     throw err;
@@ -689,26 +777,14 @@ export async function updateAnnouncementsPageContent(identifier: string, announc
 // Fetch staff members for a specific school from Schools collection staffPage
 export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
   try {
-    const schoolsRef = collection(db, 'Schools');
-    const schoolsSnapshot = await getDocs(schoolsRef);
-    
-    let schoolData: any = null;
-    
-    // Find the school document
-    for (const doc of schoolsSnapshot.docs) {
-      const data = doc.data();
-      if (data.id === schoolId || data.slug === schoolId) {
-        schoolData = data;
-        break;
-      }
-    }
-    
-    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage || !schoolData.pages.staffPage.staff) {
+    const resolved = await resolveSchoolCollection(schoolId);
+    if (!resolved) {
       console.log(`No staff data found for school: ${schoolId}`);
       return [];
     }
-    
-    const staffArray = schoolData.pages.staffPage.staff;
+
+    const staffDoc = await getSchoolDocData(resolved.collectionId, 'staffPage');
+    const staffArray = staffDoc?.staff || [];
     const staffMembers: StaffMember[] = [];
     
     // Process each staff member from the simple array
@@ -724,7 +800,7 @@ export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
         experience: staff.experience || '',
         specializations: staff.specializations || staff.specialties || [],
         image: staff.image || '',
-        schoolId: staff.schoolId || schoolData.id
+        schoolId: staff.schoolId || resolved.collectionId
       });
     });
     
