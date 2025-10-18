@@ -16,7 +16,6 @@ import {
 import {
   TrendingUp,
   People,
-  EmojiEvents,
   ArrowForward,
   History,
 } from '@mui/icons-material'
@@ -138,9 +137,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
   const stats = [
     { label: 'Students', value: getData('studentsCount', '2,500+'), icon: People, color: '#1976d2' },
-    // Temporarily hide teachers count until we replace it with a teachers-per-student metric.
-    // { label: 'Teachers', value: getData('teachersCount', '150+'), icon: School, color: '#388e3c' },
-    { label: 'Awards', value: getData('awardsCount', '50+'), icon: EmojiEvents, color: '#f57c00' },
+    { label: 'Teachers', value: getData('teachersCount', '150+'), icon: People, color: '#388e3c' },
     { label: 'Established', value: getData('yearEstablished', '1995'), icon: History, color: '#7b1fa2' },
     { label: 'Success Rate', value: getData('successRate', '98%'), icon: TrendingUp, color: '#ff9800' },
   ];
@@ -256,33 +253,219 @@ export function HomePage({ onNavigate }: HomePageProps) {
           })}
         </Grid>
 
+        {/* Principal Section */}
+        {schoolData?.pages?.homePage?.principalSection && (
+          <Box sx={{ mb: { xs: 3, md: 4 } }}>
+            
+            {/* Second Design - Full Width Compact Version */}
+            <Box sx={{ px: 0 }}>
+              <Card
+                sx={{
+                  overflow: 'hidden',
+                  borderRadius: 0,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                  width: '100%',
+                }}
+              >
+                <Grid container sx={{ minHeight: { xs: 250, md: 300 } }}>
+                  {/* Left Side - Principal Info */}
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Box
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        p: { xs: 3, md: 4 },
+                        height: '100%',
+                        minHeight: { xs: 250, md: 300 },
+                        display: 'flex',
+                        flexDirection: { xs: 'row', md: 'column' },
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        textAlign: { xs: 'left', md: 'center' },
+                        gap: { xs: 3, md: 2 },
+                        position: 'relative',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
+                        },
+                      }}
+                    >
+                      <Avatar
+                        src={schoolData.pages.homePage.principalSection.image}
+                        alt={schoolData.pages.homePage.principalSection.name}
+                        sx={{
+                          width: { xs: 80, md: 120 },
+                          height: { xs: 80, md: 120 },
+                          border: '3px solid rgba(255,255,255,0.3)',
+                          boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+                          position: 'relative',
+                          zIndex: 1,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Box sx={{ position: 'relative', zIndex: 1 }}>
+                        <Typography
+                          variant="h5"
+                          component="h2"
+                          sx={{
+                            fontWeight: 700,
+                            mb: 0.5,
+                            fontSize: { xs: '1.2rem', md: '1.4rem' },
+                          }}
+                        >
+                          {schoolData.pages.homePage.principalSection.name}
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            opacity: 0.9,
+                            fontWeight: 400,
+                            letterSpacing: 0.5,
+                            fontSize: { xs: '0.9rem', md: '1rem' },
+                          }}
+                        >
+                          Principal
+                        </Typography>
+                        <Box
+                          sx={{
+                            width: 40,
+                            height: 2,
+                            backgroundColor: 'rgba(255,255,255,0.6)',
+                            mt: 1,
+                            borderRadius: 1,
+                            mx: { xs: 0, md: 'auto' },
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  {/* Right Side - Message */}
+                  <Grid size={{ xs: 12, md: 8 }}>
+                    <CardContent
+                      sx={{
+                        p: { xs: 3, md: 4 },
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        background: 'rgba(255,255,255,0.9)',
+                        backdropFilter: 'blur(10px)',
+                      }}
+                    >
+                      <Typography
+                        variant="h4"
+                        component="h2"
+                        sx={{
+                          fontSize: { xs: '1.4rem', md: '1.6rem' },
+                          fontWeight: 700,
+                          color: '#2c3e50',
+                          mb: 2,
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        Welcome Message
+                      </Typography>
+                      
+                      <Box sx={{ position: 'relative', mb: 1 }}>
+                        <Typography
+                          sx={{
+                            fontSize: { xs: '2.5rem', md: '3rem' },
+                            color: 'primary.main',
+                            opacity: 0.2,
+                            position: 'absolute',
+                            top: -10,
+                            left: -5,
+                            fontFamily: 'Georgia, serif',
+                            lineHeight: 1,
+                          }}
+                        >
+                          "
+                        </Typography>
+                      </Box>
+                      
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontSize: { xs: '1rem', md: '1.1rem' },
+                          lineHeight: 1.6,
+                          color: '#34495e',
+                          fontStyle: 'italic',
+                          mb: 2,
+                          pl: 2,
+                        }}
+                      >
+                        {schoolData.pages.homePage.principalSection.message}
+                      </Typography>
+                      
+                      <Box
+                        sx={{
+                          borderLeft: '3px solid',
+                          borderColor: 'primary.main',
+                          pl: 2,
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: 'text.secondary',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {schoolData?.name || 'School Name'}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Grid>
+                </Grid>
+              </Card>
+            </Box>
+          </Box>
+        )}
+
      {/* History Timeline */}
         {milestones.length > 0 && (
         <Box sx={{ mb: { xs: 6, md: 8 } }}>
-          <Typography 
-            variant="h3" 
-            component="h2" 
-            textAlign="center" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.75rem', md: '2.5rem' } }}
-          >
-            Our Journey
-          </Typography>
-          <Typography
-            variant="h6"
-            textAlign="center"
-            color="text.secondary"
-            paragraph
-            sx={{ 
-              mb: { xs: 4, md: 6 }, 
-              maxWidth: '600px', 
-              mx: 'auto',
-              fontSize: { xs: '1rem', md: '1.25rem' },
-              px: { xs: 2, md: 0 }
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              justifyContent: { md: 'space-between' },
+              alignItems: { xs: 'center', md: 'flex-end' },
+              textAlign: { xs: 'center', md: 'left' },
+              mb: { xs: 4, md: 6 },
+              px: { xs: 2, md: 0 },
+              gap: { xs: 1, md: 2 }
             }}
           >
-            Key milestones in our educational journey
-          </Typography>
+            <Typography 
+              variant="h3" 
+              component="h2" 
+              sx={{ 
+                fontSize: { xs: '1.75rem', md: '2.5rem' },
+                mb: { xs: 1, md: 0 }
+              }}
+            >
+              Our Journey
+            </Typography>
+            <Typography
+              variant="h6"
+              color="text.secondary"
+              sx={{ 
+                fontSize: { xs: '1rem', md: '1.25rem' },
+                maxWidth: { md: '400px' }
+              }}
+            >
+              Key milestones in our educational journey
+            </Typography>
+          </Box>
           <Grid 
             container 
             spacing={{ xs: 2, md: 3 }}

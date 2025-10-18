@@ -38,6 +38,7 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
   const { schoolId } = useParams<{ schoolId: string }>();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [schoolName, setSchoolName] = useState('EduConnect');
+  const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -50,14 +51,25 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
     setMobileOpen(false);
   };
 
-  // Load site name from Firestore on mount
+  // Load site name and logo from Firestore on mount
   useEffect(() => {
     if (!schoolId) return;
     
     let isActive = true;
     fetchSchoolData(schoolId).then((schoolData: any) => {
-      if (isActive && schoolData?.name) setSchoolName(schoolData.name);
-    }).catch(() => {
+      if (isActive) {
+        console.log('School data:', schoolData); // Debug log
+        if (schoolData?.name) setSchoolName(schoolData.name);
+        
+        // Check multiple possible locations for logo
+        const logo = schoolData?.schoolInfo?.logo || schoolData?.logo;
+        console.log('Logo found:', logo); // Debug log
+        if (logo) {
+          setSchoolLogo(logo);
+        }
+      }
+    }).catch((error) => {
+      console.error('Error fetching school data:', error);
       // Keep default name if fetch fails
     });
     return () => { isActive = false; };
@@ -122,9 +134,43 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
       <MuiAppBar position="sticky" elevation={2}>
         <Toolbar>
           {/* Logo */}
-          <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', color: 'white' }}>
-            {schoolName}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {schoolLogo ? (
+              <>
+                <Box
+                  component="img"
+                  src={schoolLogo}
+                  alt={`${schoolName} Logo`}
+                  onError={(e) => {
+                    console.log('Logo failed to load:', schoolLogo);
+                    setSchoolLogo(null); // Fallback to text if image fails
+                  }}
+                  sx={{
+                    height: { xs: 32, md: 40 },
+                    width: 'auto',
+                    maxWidth: { xs: 120, md: 150 },
+                    objectFit: 'contain',
+                  }}
+                />
+                <Typography 
+                  variant="h6" 
+                  component="div" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    color: 'white',
+                    fontSize: { xs: '1rem', md: '1.25rem' },
+                    display: { xs: 'none', sm: 'block' }
+                  }}
+                >
+                  {schoolName}
+                </Typography>
+              </>
+            ) : (
+              <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', color: 'white' }}>
+                {schoolName}
+              </Typography>
+            )}
+          </Box>
 
           <Box sx={{ flexGrow: 1 }} />
 

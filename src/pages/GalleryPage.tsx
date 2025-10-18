@@ -26,24 +26,28 @@ import {
   LocationCity,
   Close,
   PlayArrow,
+  ArrowBackIos,
+  ArrowForwardIos,
 } from '@mui/icons-material';
+import { useSchool } from '../contexts/SchoolContext';
 
 interface GalleryItem {
-  id: string;
   title: string;
   description: string;
   type: 'photo' | 'video';
   category: string;
   date: string;
-  imageUrl: string;
-  videoUrl?: string;
-  tags: string[];
+  images: string[];
+  videoUrl?: string[];
 }
 
 export function GalleryPage() {
+  const { schoolData } = useSchool();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedMediaType, setSelectedMediaType] = useState('all');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [currentMediaType, setCurrentMediaType] = useState<'image' | 'video'>('image');
 
   // Ensure no horizontal scroll on any screen size
   React.useEffect(() => {
@@ -57,100 +61,110 @@ export function GalleryPage() {
     };
   }, []);
 
-  const galleryItems: GalleryItem[] = [
-    {
-      id: '1',
-      title: 'Annual Day Celebration 2024',
-      description: 'Our spectacular annual day celebration featuring student performances, awards ceremony, and cultural programs.',
-      type: 'photo',
-      category: 'events',
-      date: '2024-03-15',
-      imageUrl: 'https://images.unsplash.com/photo-1758316727379-4c995d3ae455?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBldmVudCUyMGNlbGVicmF0aW9ufGVufDF8fHx8MTc1OTM3ODM5Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      tags: ['celebration', 'performance', 'awards']
-    },
-    {
-      id: '2',
-      title: 'Basketball Championship Victory',
-      description: 'Our varsity basketball team winning the regional championship for the third consecutive year.',
-      type: 'photo',
-      category: 'sports',
-      date: '2024-02-20',
-      imageUrl: 'https://images.unsplash.com/photo-1585915751878-f51978a77710?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBzcG9ydHMlMjBjb21wZXRpdGlvbnxlbnwxfHx8fDE3NTkzNzgzOTV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      tags: ['basketball', 'championship', 'victory']
-    },
-    {
-      id: '3',
-      title: 'Science Fair Presentations',
-      description: 'Students showcasing their innovative science projects and research at the annual science fair.',
-      type: 'photo',
-      category: 'academic',
-      date: '2024-01-10',
-      imageUrl: 'https://images.unsplash.com/photo-1758610840977-8ee55513281c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2llbmNlJTIwZmFpciUyMHN0dWRlbnRzfGVufDF8fHx8MTc1OTM3ODM5OHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      tags: ['science', 'research', 'innovation']
-    },
-    {
-      id: '4',
-      title: 'Art Exhibition Opening',
-      description: 'Student artwork displayed in our annual art exhibition showcasing creativity and artistic talent.',
-      type: 'photo',
-      category: 'arts',
-      date: '2023-12-05',
-      imageUrl: 'https://images.unsplash.com/photo-1621327822018-51bedefc19af?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBhcnQlMjBleGhpYml0aW9ufGVufDF8fHx8MTc1OTM3ODQwMXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      tags: ['art', 'exhibition', 'creativity']
-    },
-    {
-      id: '5',
-      title: 'Interactive Learning Session',
-      description: 'Students engaged in collaborative learning activities in our modern classrooms.',
-      type: 'photo',
-      category: 'academic',
-      date: '2023-11-18',
-      imageUrl: 'https://images.unsplash.com/photo-1558443957-d056622df610?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBjbGFzc3Jvb20lMjBsZWFybmluZ3xlbnwxfHx8fDE3NTkzNzg0MDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      tags: ['learning', 'collaboration', 'classroom']
-    },
-    {
-      id: '6',
-      title: 'Graduation Ceremony Highlights',
-      description: 'A video montage of our memorable graduation ceremony with speeches, awards, and celebrations.',
-      type: 'video',
-      category: 'events',
-      date: '2023-06-15',
-      imageUrl: 'https://images.unsplash.com/photo-1686213011624-8578b598ef0f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50cyUyMGdyYWR1YXRpb24lMjBjZXJlbW9ueXxlbnwxfHx8fDE3NTkzMTUwNTh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      videoUrl: '#',
-      tags: ['graduation', 'ceremony', 'celebration']
-    },
-    {
-      id: '7',
-      title: 'Campus Tour Video',
-      description: 'Take a virtual tour of our beautiful campus facilities including classrooms, labs, library, and sports complex.',
-      type: 'video',
-      category: 'campus',
-      date: '2023-09-01',
-      imageUrl: 'https://images.unsplash.com/photo-1699347914988-c61ec13c99c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBidWlsZGluZyUyMGVkdWNhdGlvbnxlbnwxfHx8fDE3NTkyOTk2NzJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      videoUrl: '#',
-      tags: ['campus', 'facilities', 'tour']
-    },
-    {
-      id: '8',
-      title: 'Music Concert Performance',
-      description: 'Students performing at our annual music concert showcasing various musical talents and instruments.',
-      type: 'video',
-      category: 'arts',
-      date: '2023-10-20',
-      imageUrl: 'https://images.unsplash.com/photo-1621327822018-51bedefc19af?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2hvb2wlMjBhcnQlMjBleGhpYml0aW9ufGVufDF8fHx8MTc1OTM3ODQwMXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      videoUrl: '#',
-      tags: ['music', 'performance', 'concert']
-    }
-  ];
+  // Get gallery items from database
+  const getGalleryItems = (): GalleryItem[] => {
+    if (!schoolData?.pages?.galleryPage) return [];
+    return Object.values(schoolData.pages.galleryPage);
+  };
 
-  const categories = [
-    { id: 'all', label: 'All Media', icon: PhotoCamera },
-    { id: 'events', label: 'Events', icon: Event },
-    { id: 'academic', label: 'Academic', icon: School },
-    { id: 'sports', label: 'Sports', icon: EmojiEvents },
-    { id: 'arts', label: 'Arts & Culture', icon: Palette },
-    { id: 'campus', label: 'Campus Life', icon: LocationCity }
-  ];
+  // Get unique categories from the data
+  const getCategories = (): Array<{ id: string; label: string; icon: any }> => {
+    const galleryItems = getGalleryItems();
+    const uniqueCategories = Array.from(new Set(galleryItems.map(item => item.category)));
+    
+    const categoryIcons: { [key: string]: any } = {
+      events: Event,
+      academic: School,
+      sports: EmojiEvents,
+      arts: Palette,
+      campus: LocationCity
+    };
+
+    const dynamicCategories = uniqueCategories.map(category => ({
+      id: category,
+      label: category.charAt(0).toUpperCase() + category.slice(1),
+      icon: categoryIcons[category] || PhotoCamera
+    }));
+
+    return [
+      { id: 'all', label: 'All Media', icon: PhotoCamera },
+      ...dynamicCategories
+    ];
+  };
+
+  const galleryItems = getGalleryItems();
+  const categories = getCategories();
+
+
+
+  const handleNextMedia = React.useCallback(() => {
+    if (!selectedItem) return;
+    
+    const imageCount = selectedItem.images?.length || 0;
+    const videoCount = selectedItem.videoUrl?.length || 0;
+    
+    if (currentMediaType === 'image' && selectedItem.images) {
+      if (currentMediaIndex < imageCount - 1) {
+        setCurrentMediaIndex(currentMediaIndex + 1);
+      } else if (videoCount > 0) {
+        // Switch to videos
+        setCurrentMediaType('video');
+        setCurrentMediaIndex(0);
+      }
+    } else if (currentMediaType === 'video' && selectedItem.videoUrl) {
+      if (currentMediaIndex < videoCount - 1) {
+        setCurrentMediaIndex(currentMediaIndex + 1);
+      }
+    }
+  }, [selectedItem, currentMediaIndex, currentMediaType]);
+
+  const handlePreviousMedia = React.useCallback(() => {
+    if (!selectedItem) return;
+    
+    const imageCount = selectedItem.images?.length || 0;
+    
+    if (currentMediaType === 'video') {
+      if (currentMediaIndex > 0) {
+        setCurrentMediaIndex(currentMediaIndex - 1);
+      } else if (imageCount > 0) {
+        // Switch to images
+        setCurrentMediaType('image');
+        setCurrentMediaIndex(imageCount - 1);
+      }
+    } else if (currentMediaType === 'image') {
+      if (currentMediaIndex > 0) {
+        setCurrentMediaIndex(currentMediaIndex - 1);
+      }
+    }
+  }, [selectedItem, currentMediaIndex, currentMediaType]);
+
+  // Handle keyboard navigation in dialog
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!selectedItem) return;
+      
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        handlePreviousMedia();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        handleNextMedia();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        handleCloseDialog();
+      }
+    };
+
+    if (selectedItem) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [selectedItem, handleNextMedia, handlePreviousMedia]);
+
+  // If no gallery data, don't render the component
+  if (!schoolData?.pages?.galleryPage || galleryItems.length === 0) {
+    return null;
+  }
 
   const filteredItems = selectedCategory === 'all' 
     ? galleryItems 
@@ -163,12 +177,32 @@ export function GalleryPage() {
   const photoItems = filteredItems.filter(item => item.type === 'photo');
   const videoItems = filteredItems.filter(item => item.type === 'video');
 
+  // Helper functions for media management
+  const getTotalMediaCount = (item: GalleryItem): number => {
+    const imageCount = item.images?.length || 0;
+    const videoCount = item.videoUrl?.length || 0;
+    return imageCount + videoCount;
+  };
+
+  const getImageCount = (item: GalleryItem): number => {
+    return item.images?.length || 0;
+  };
+
+  const getVideoCount = (item: GalleryItem): number => {
+    return item.videoUrl?.length || 0;
+  };
+
   const handleItemClick = (item: GalleryItem) => {
     setSelectedItem(item);
+    setCurrentMediaIndex(0);
+    // Start with images if available, otherwise videos
+    setCurrentMediaType(item.images && item.images.length > 0 ? 'image' : 'video');
   };
 
   const handleCloseDialog = () => {
     setSelectedItem(null);
+    setCurrentMediaIndex(0);
+    setCurrentMediaType('image');
   };
 
   return (
@@ -262,8 +296,8 @@ export function GalleryPage() {
             spacing={{ xs: 2, sm: 3, md: 4 }} 
             sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
           >
-            {finalFilteredItems.map((item) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={item.id}>
+            {finalFilteredItems.map((item, index) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
                 <Card
                   sx={{
                     cursor: 'pointer',
@@ -280,7 +314,7 @@ export function GalleryPage() {
                       component="img"
                       height={200}
                       sx={{ height: { xs: 160, sm: 180, md: 200 }, objectFit: 'cover' }}
-                      image={item.imageUrl}
+                      image={item.images?.[0] || ''}
                       alt={item.title}
                     />
                     {item.type === 'video' && (
@@ -302,14 +336,6 @@ export function GalleryPage() {
                         </Avatar>
                       </Box>
                     )}
-                    <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-                      <Chip
-                        label={item.type === 'video' ? 'Video' : 'Photo'}
-                        size="small"
-                        color={item.type === 'video' ? 'secondary' : 'primary'}
-                        sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' } }}
-                      />
-                    </Box>
                   </Box>
                   <CardContent sx={{ p: { xs: 2, md: 3 } }}>
                     <Typography 
@@ -343,16 +369,32 @@ export function GalleryPage() {
                       >
                         {new Date(item.date).toLocaleDateString()}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        {item.tags.slice(0, 2).map(tag => (
-                          <Chip 
-                            key={tag} 
-                            label={tag} 
-                            size="small" 
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        <Chip 
+                          label={item.category} 
+                          size="small" 
+                          variant="outlined"
+                          color="primary"
+                          sx={{ fontSize: { xs: '0.55rem', md: '0.6rem' }, height: 'auto', py: 0 }}
+                        />
+                        {getImageCount(item) > 0 && (
+                          <Chip
+                            label={`${getImageCount(item)} image${getImageCount(item) > 1 ? 's' : ''}`}
+                            size="small"
                             variant="outlined"
+                            color="info"
                             sx={{ fontSize: { xs: '0.55rem', md: '0.6rem' }, height: 'auto', py: 0 }}
                           />
-                        ))}
+                        )}
+                        {getVideoCount(item) > 0 && (
+                          <Chip
+                            label={`${getVideoCount(item)} video${getVideoCount(item) > 1 ? 's' : ''}`}
+                            size="small"
+                            variant="outlined"
+                            color="secondary"
+                            sx={{ fontSize: { xs: '0.55rem', md: '0.6rem' }, height: 'auto', py: 0 }}
+                          />
+                        )}
                       </Box>
                     </Box>
                   </CardContent>
@@ -375,6 +417,13 @@ export function GalleryPage() {
           onClose={handleCloseDialog}
           maxWidth="md"
           fullWidth
+          fullScreen={false}
+          sx={{
+            '& .MuiDialog-paper': {
+              maxHeight: '90vh',
+              margin: { xs: 1, md: 2 },
+            },
+          }}
         >
           {selectedItem && (
             <>
@@ -386,34 +435,221 @@ export function GalleryPage() {
               </DialogTitle>
               <DialogContent>
                 <Box sx={{ mb: 3 }}>
-                  {selectedItem.type === 'video' ? (
-                    <Paper
+                  <Box sx={{ position: 'relative' }}>
+                    {/* Current Media Display */}
+                    {currentMediaType === 'video' && selectedItem.videoUrl && selectedItem.videoUrl[currentMediaIndex] ? (
+                      <Box>
+                        {selectedItem.videoUrl[currentMediaIndex].includes('youtube.com') || selectedItem.videoUrl[currentMediaIndex].includes('youtu.be') ? (
+                          <Box
+                            sx={{
+                              position: 'relative',
+                              paddingBottom: '56.25%', // 16:9 aspect ratio
+                              height: 0,
+                              borderRadius: 1,
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <iframe
+                              src={selectedItem.videoUrl[currentMediaIndex].replace('watch?v=', 'embed/')}
+                              title={selectedItem.title}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                border: 'none',
+                                borderRadius: 4,
+                              }}
+                            />
+                          </Box>
+                        ) : (
+                          <video
+                            width="100%"
+                            height="auto"
+                            controls
+                            style={{ borderRadius: 4 }}
+                          >
+                            <source src={selectedItem.videoUrl[currentMediaIndex]} type="video/mp4" />
+                            Your browser does not support the video tag.
+                          </video>
+                        )}
+                      </Box>
+                    ) : currentMediaType === 'image' && selectedItem.images && selectedItem.images[currentMediaIndex] ? (
+                      <img
+                        src={selectedItem.images[currentMediaIndex]}
+                        alt={`${selectedItem.title} - ${currentMediaIndex + 1}`}
+                        style={{ width: '100%', height: 'auto', borderRadius: 4 }}
+                      />
+                    ) : (
+                      <Paper
+                        sx={{
+                          height: 300,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'grey.100',
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Box sx={{ textAlign: 'center', color: 'text.secondary' }}>
+                          <PlayArrow sx={{ fontSize: 48, mb: 1 }} />
+                          <Typography variant="h6">Media Not Available</Typography>
+                          <Typography variant="body2">No media found</Typography>
+                        </Box>
+                      </Paper>
+                    )}
+                    
+                    {/* Navigation Controls */}
+                    {getTotalMediaCount(selectedItem) > 1 && (
+                      <>
+                        {/* Previous Button */}
+                        <IconButton
+                          onClick={handlePreviousMedia}
+                          sx={{
+                            position: 'absolute',
+                            left: 8,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                            color: 'white',
+                            '&:hover': {
+                              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            },
+                          }}
+                        >
+                          <ArrowBackIos />
+                        </IconButton>
+                        {/* Next Button */}
+                        <IconButton
+                          onClick={handleNextMedia}
+                          sx={{
+                            position: 'absolute',
+                            right: 8,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                            color: 'white',
+                            '&:hover': {
+                              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            },
+                          }}
+                        >
+                          <ArrowForwardIos />
+                        </IconButton>
+                        {/* Media Counter */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            bottom: 8,
+                            right: 8,
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 1,
+                            fontSize: '0.75rem',
+                          }}
+                        >
+                          {currentMediaType === 'image' ? 
+                            `Image ${currentMediaIndex + 1} / ${getImageCount(selectedItem)}` :
+                            `Video ${currentMediaIndex + 1} / ${getVideoCount(selectedItem)}`
+                          }
+                        </Box>
+                      </>
+                    )}
+                  </Box>
+
+                  {/* Media Thumbnails */}
+                  {getTotalMediaCount(selectedItem) > 1 && (
+                    <Box
                       sx={{
-                        height: 300,
                         display: 'flex',
-                        alignItems: 'center',
+                        gap: 0.5,
+                        mt: 2,
                         justifyContent: 'center',
-                        backgroundColor: 'grey.100',
+                        overflowX: 'auto',
+                        pb: 1,
                       }}
                     >
-                      <Box sx={{ textAlign: 'center', color: 'text.secondary' }}>
-                        <PlayArrow sx={{ fontSize: 48, mb: 1 }} />
-                        <Typography variant="h6">Video Player</Typography>
-                        <Typography variant="body2">Click to play video</Typography>
-                      </Box>
-                    </Paper>
-                  ) : (
-                    <img
-                      src={selectedItem.imageUrl}
-                      alt={selectedItem.title}
-                      style={{ width: '100%', height: 'auto', borderRadius: 4 }}
-                    />
+                      {/* Image Thumbnails */}
+                      {selectedItem.images?.map((image, index) => (
+                        <Box
+                          key={`image-${index}`}
+                          onClick={() => {
+                            setCurrentMediaType('image');
+                            setCurrentMediaIndex(index);
+                          }}
+                          sx={{
+                            cursor: 'pointer',
+                            border: currentMediaType === 'image' && currentMediaIndex === index ? '2px solid' : '2px solid transparent',
+                            borderColor: currentMediaType === 'image' && currentMediaIndex === index ? 'primary.main' : 'transparent',
+                            borderRadius: 1,
+                            overflow: 'hidden',
+                            minWidth: 60,
+                            height: 60,
+                            position: 'relative',
+                          }}
+                        >
+                          <img
+                            src={image}
+                            alt={`Thumbnail ${index + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        </Box>
+                      ))}
+                      
+                      {/* Video Thumbnails */}
+                      {selectedItem.videoUrl?.map((video, index) => (
+                        <Box
+                          key={`video-${index}`}
+                          onClick={() => {
+                            setCurrentMediaType('video');
+                            setCurrentMediaIndex(index);
+                          }}
+                          sx={{
+                            cursor: 'pointer',
+                            border: currentMediaType === 'video' && currentMediaIndex === index ? '2px solid' : '2px solid transparent',
+                            borderColor: currentMediaType === 'video' && currentMediaIndex === index ? 'secondary.main' : 'transparent',
+                            borderRadius: 1,
+                            overflow: 'hidden',
+                            minWidth: 60,
+                            height: 60,
+                            position: 'relative',
+                            backgroundColor: 'grey.200',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <PlayArrow sx={{ fontSize: 24, color: 'grey.600' }} />
+                          <Typography
+                            sx={{
+                              position: 'absolute',
+                              bottom: 2,
+                              right: 2,
+                              fontSize: '0.6rem',
+                              color: 'grey.600',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            {index + 1}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
                   )}
                 </Box>
                 <Typography variant="body1" paragraph>
                   {selectedItem.description}
                 </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography variant="body2" color="text.secondary">
                     {new Date(selectedItem.date).toLocaleDateString('en-US', { 
                       year: 'numeric', 
@@ -422,11 +658,32 @@ export function GalleryPage() {
                     })}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    {selectedItem.tags.map(tag => (
-                      <Chip key={tag} label={tag} size="small" variant="outlined" />
-                    ))}
+                    <Chip 
+                      label={selectedItem.category} 
+                      size="small" 
+                      variant="outlined" 
+                    />
+                    <Chip 
+                      label={selectedItem.type} 
+                      size="small" 
+                      variant="outlined" 
+                    />
                   </Box>
                 </Box>
+                {/* Keyboard navigation hint for media */}
+                {getTotalMediaCount(selectedItem) > 1 && (
+                  <Typography 
+                    variant="caption" 
+                    color="text.secondary" 
+                    sx={{ 
+                      display: { xs: 'none', md: 'block' },
+                      fontStyle: 'italic',
+                      textAlign: 'center' 
+                    }}
+                  >
+                    Use ← → arrow keys to navigate media | Click thumbnails to jump | Press ESC to close
+                  </Typography>
+                )}
               </DialogContent>
             </>
           )}

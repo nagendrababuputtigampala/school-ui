@@ -13,7 +13,6 @@ import {
   Paper,
   Avatar,
   InputAdornment,
-  Button,
 } from '@mui/material';
 import {
   Search,
@@ -27,6 +26,7 @@ import {
   PushPin,
   NotificationsActive
 } from '@mui/icons-material';
+import { useSchool } from '../contexts/SchoolContext';
 
 interface Announcement {
   id: string;
@@ -43,9 +43,22 @@ interface Announcement {
 }
 
 export function AnnouncementsPage() {
+  const { schoolData, loading } = useSchool();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedAudience, setSelectedAudience] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Debug logging
+  React.useEffect(() => {
+    if (schoolData) {
+      console.log('School data loaded:', {
+        schoolName: schoolData.name,
+        availablePages: Object.keys(schoolData?.pages || {}),
+        hasAnnouncementsPage: !!schoolData?.pages?.announcementsPage,
+        announcementsCount: schoolData?.pages?.announcementsPage ? Object.keys(schoolData.pages.announcementsPage).length : 0
+      });
+    }
+  }, [schoolData]);
 
   // Ensure no horizontal scroll on any screen size
   React.useEffect(() => {
@@ -59,113 +72,35 @@ export function AnnouncementsPage() {
     };
   }, []);
 
-  const announcements: Announcement[] = [
-    {
-      id: '1',
-      title: 'Annual Day Celebration - March 20, 2024',
-      content: 'Join us for our spectacular Annual Day celebration featuring student performances, cultural programs, and award ceremonies. The event will start at 5:00 PM in the main auditorium. Parents and guardians are cordially invited to attend this memorable celebration of student achievements.',
-      category: 'event',
-      audience: 'all',
-      date: '2024-03-01',
-      endDate: '2024-03-20',
-      isPinned: true,
-      isUrgent: false,
-      author: 'Principal Office',
-      tags: ['celebration', 'performance', 'awards', 'family']
-    },
-    {
-      id: '2',
-      title: 'Mid-Term Examination Schedule Released',
-      content: 'The mid-term examination schedule for all grades has been published. Exams will commence from March 25th and conclude on April 5th. Students are advised to collect their hall tickets from their respective class teachers. Study materials and revision schedules are available on the student portal.',
-      category: 'exam',
-      audience: 'students',
-      date: '2024-03-10',
-      endDate: '2024-04-05',
-      isPinned: true,
-      isUrgent: true,
-      author: 'Academic Office',
-      tags: ['examination', 'schedule', 'hall ticket', 'study']
-    },
-    {
-      id: '3',
-      title: 'Parent-Teacher Conference - March 15, 2024',
-      content: 'We invite all parents to attend the quarterly parent-teacher conference to discuss student progress and academic performance. Meetings will be held from 9:00 AM to 4:00 PM. Please schedule your appointment through the parent portal or contact the main office.',
-      category: 'event',
-      audience: 'parents',
-      date: '2024-03-05',
-      endDate: '2024-03-15',
-      isPinned: false,
-      isUrgent: false,
-      author: 'Student Affairs',
-      tags: ['parents', 'teachers', 'progress', 'meeting']
-    },
-    {
-      id: '4',
-      title: 'School Closure - Spring Break',
-      content: 'The school will remain closed from April 8th to April 16th for spring break. Regular classes will resume on April 17th. During this period, the administrative office will be open from 10:00 AM to 2:00 PM for urgent matters only.',
-      category: 'general',
-      audience: 'all',
-      date: '2024-03-20',
-      endDate: '2024-04-16',
-      isPinned: false,
-      isUrgent: false,
-      author: 'Administration',
-      tags: ['holiday', 'closure', 'spring break']
-    },
-    {
-      id: '5',
-      title: 'Basketball Team Tryouts Begin',
-      content: 'Tryouts for the varsity basketball team will begin on March 18th. All interested students from grades 9-12 are eligible to participate. Please bring your sports physical form and wear appropriate athletic attire. Tryouts will be held in the gymnasium from 3:30 PM to 5:30 PM.',
-      category: 'sports',
-      audience: 'students',
-      date: '2024-03-12',
-      endDate: '2024-03-22',
-      isPinned: false,
-      isUrgent: false,
-      author: 'Athletics Department',
-      tags: ['basketball', 'tryouts', 'sports', 'gymnasium']
-    },
-    {
-      id: '6',
-      title: 'Health and Vaccination Update',
-      content: 'Important reminder: All students must submit updated vaccination records by March 30th. The school nurse will be available for health consultations every Tuesday and Thursday from 9:00 AM to 3:00 PM. Please ensure all health forms are complete and submitted to the health office.',
-      category: 'health',
-      audience: 'parents',
-      date: '2024-03-08',
-      endDate: '2024-03-30',
-      isPinned: false,
-      isUrgent: true,
-      author: 'Health Office',
-      tags: ['vaccination', 'health', 'forms', 'nurse']
-    },
-    {
-      id: '7',
-      title: 'New Library Study Hours',
-      content: 'The library will now be open for extended hours to support student learning. New timings: Monday to Friday 7:00 AM to 7:00 PM, Saturday 9:00 AM to 5:00 PM. Group study rooms are available for reservation through the library system.',
-      category: 'academic',
-      audience: 'students',
-      date: '2024-03-02',
-      isPinned: false,
-      isUrgent: false,
-      author: 'Library Services',
-      tags: ['library', 'study', 'hours', 'reservation']
-    },
-    {
-      id: '8',
-      title: 'Emergency Contact Information Update',
-      content: 'All families are required to update their emergency contact information by March 25th. Please log into the parent portal and verify all contact numbers, addresses, and emergency contacts. This information is crucial for student safety and communication.',
-      category: 'urgent',
-      audience: 'parents',
-      date: '2024-03-14',
-      endDate: '2024-03-25',
-      isPinned: true,
-      isUrgent: true,
-      author: 'Safety Office',
-      tags: ['emergency', 'contact', 'safety', 'update']
-    },
-  ];
+  // Get announcements from SchoolContext
+  const getAnnouncements = (): Announcement[] => {
+    if (!schoolData?.pages?.announcementsPage) {
+      console.log('No announcements data found. Available pages:', Object.keys(schoolData?.pages || {}));
+      return [];
+    }
+    
+    // Check if it's an array (direct import) or object (from Firestore)
+    const announcementsData = schoolData.pages.announcementsPage;
+    let announcements: any[] = [];
+    
+    if (Array.isArray(announcementsData)) {
+      announcements = announcementsData;
+    } else {
+      announcements = Object.values(announcementsData);
+    }
+    
+    // Ensure each announcement has an id
+    return announcements.map((announcement, index) => ({
+      id: announcement.id || `announcement-${index + 1}`,
+      ...announcement
+    }));
+  };
 
-  const categories = [
+  const announcements: Announcement[] = getAnnouncements();
+
+  // Generate dynamic categories based on available data
+  const uniqueCategories = Array.from(new Set(announcements.map(a => a.category)));
+  const allCategories = [
     { id: 'all', label: 'All', icon: Notifications },
     { id: 'urgent', label: 'Urgent', icon: Warning },
     { id: 'academic', label: 'Academic', icon: School },
@@ -175,14 +110,18 @@ export function AnnouncementsPage() {
     { id: 'health', label: 'Health', icon: LocalHospital },
     { id: 'general', label: 'General', icon: Group }
   ];
+  const categories = allCategories.filter(cat => cat.id === 'all' || uniqueCategories.includes(cat.id as any));
 
-  const audiences = [
+  // Generate dynamic audiences based on available data
+  const uniqueAudiences = Array.from(new Set(announcements.map(a => a.audience)));
+  const allAudiences = [
     { id: 'all', label: 'All Audiences' },
     { id: 'students', label: 'Students' },
     { id: 'parents', label: 'Parents' },
     { id: 'staff', label: 'Staff' },
     { id: 'public', label: 'Public' }
   ];
+  const audiences = allAudiences.filter(aud => aud.id === 'all' || uniqueAudiences.includes(aud.id as any));
 
   const filteredAnnouncements = announcements.filter(announcement => {
     const matchesCategory = selectedCategory === 'all' || announcement.category === selectedCategory;
@@ -476,6 +415,24 @@ export function AnnouncementsPage() {
 
         {/* Announcements */}
         <Box sx={{ mb: 6 }}>
+          {loading ? (
+            <Paper sx={{ p: 6, textAlign: 'center' }}>
+              <Typography variant="h6" color="text.secondary">
+                Loading announcements...
+              </Typography>
+            </Paper>
+          ) : announcements.length === 0 ? (
+            <Paper sx={{ p: 6, textAlign: 'center' }}>
+              <Notifications sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No Announcements Available
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Check back later for school announcements and updates.
+              </Typography>
+            </Paper>
+          ) : (
+            <>
           {/* Pinned Announcements */}
           {pinnedAnnouncements.length > 0 && (
             <Box sx={{ mb: { xs: 4, md: 6 } }}>
@@ -535,21 +492,9 @@ export function AnnouncementsPage() {
               </Typography>
             </Paper>
           )}
+            </>
+          )}
         </Box>
-
-        {/* Notification Signup */}
-        <Paper sx={{ p: 4, textAlign: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-          <Typography variant="h4" component="h2" gutterBottom>
-            Stay Updated
-          </Typography>
-          <Typography variant="body1" sx={{ maxWidth: '600px', mx: 'auto', mb: 3, opacity: 0.9 }}>
-            Never miss important announcements! Sign up for our notification system to receive 
-            updates via email or SMS for urgent announcements and events.
-          </Typography>
-          <Button variant="contained" size="large" sx={{ bgcolor: 'white', color: 'primary.main', '&:hover': { bgcolor: 'grey.100' } }}>
-            Subscribe to Notifications
-          </Button>
-        </Paper>
         </Box>
       </Container>
     </Box>
