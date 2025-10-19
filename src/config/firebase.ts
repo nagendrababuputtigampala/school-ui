@@ -531,32 +531,34 @@ export async function updateContactPageContent(identifier: string, payload: Admi
 
 export async function updateAchievementsPageContent(
   identifier: string,
-  sections: Record<string, { title: string; achievements: any[] }>
+  achievements: any[]
 ): Promise<void> {
   try {
     // Convert identifier to collection ID format
     const collectionId = identifier.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_]/g, '');
 
-    const normalizedSections: Record<string, any> = {};
-
-    Object.entries(sections).forEach(([key, sectionValue]) => {
-      normalizedSections[key] = {
-        title: sectionValue.title,
-        achievements: (sectionValue.achievements || []).map((item: any, index: number) => ({
-          id: item.id || `${key}-${index + 1}`,
-          title: item.title || '',
-          description: item.description || '',
-          level: item.level || '',
-          year: item.year || item.date || '',
-          date: item.date || '',
-        })),
+    const achievementsPayload = (achievements || []).reduce((acc, item, index) => {
+      acc[index.toString()] = {
+        id: item.id || `achievement-${index + 1}`,
+        title: item.title || '',
+        description: item.description || '',
+        level: item.level || '',
+        year: item.year || item.date || '',
+        date: item.date || item.year || '',
+        sectionKey: item.sectionKey || 'general',
+        sectionTitle: item.sectionTitle || '',
+        category: item.category || '',
+        image: item.image || '',
+        participants: item.participants || '',
+        award: item.award || '',
       };
-    });
+      return acc;
+    }, {} as Record<string, any>);
 
     // Update achievementsPage document directly
     const achievementsPageDocRef = doc(db, collectionId, 'achievementsPage');
     
-    await setDoc(achievementsPageDocRef, normalizedSections, { merge: true });
+    await setDoc(achievementsPageDocRef, achievementsPayload);
   } catch (err) {
     console.error(`Failed to update achievements page for school ${identifier}:`, err);
     throw err;
@@ -639,7 +641,7 @@ export async function updateAlumniPageContent(identifier: string, alumniMembers:
     // Update alumniPage document directly
     const alumniPageDocRef = doc(db, collectionId, 'alumniPage');
     
-    const alumniPageUpdates = {
+     const alumniPageUpdates = {
       alumni: normalizedAlumni
     };
 

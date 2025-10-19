@@ -78,6 +78,40 @@ import {
 
 type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact';
 
+const ACHIEVEMENT_SECTION_ORDER = [
+  { key: 'general', title: 'General' },
+  { key: 'academics', title: 'Academic' },
+  { key: 'arts', title: 'Arts' },
+  { key: 'sports', title: 'Sports' },
+  { key: 'community', title: 'Community' },
+  { key: 'cultural', title: 'Cultural' },
+  { key: 'others', title: 'Other' },
+] as const;
+
+const defaultAchievementSections = ACHIEVEMENT_SECTION_ORDER.reduce<Record<string, { title: string }>>(
+  (acc, { key, title }) => {
+    acc[key] = { title };
+    return acc;
+  },
+  {}
+);
+
+const capitalize = (value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '');
+
+const normalizeAchievementSectionKey = (rawKey: string | undefined): string => {
+  const key = (rawKey || '').toLowerCase();
+  if (!key) return 'general';
+  if (['generalsection', 'general'].includes(key)) return 'general';
+  if (['academicsection', 'academics', 'academic'].includes(key)) return 'academics';
+  if (['artssection', 'art'].includes(key)) return 'arts';
+  if (['sportssection', 'sport'].includes(key)) return 'sports';
+  if (['communitysection', 'communityservice', 'service'].includes(key)) return 'community';
+  if (['culturalsection', 'culture'].includes(key)) return 'cultural';
+  if (['other', 'othersection'].includes(key)) return 'others';
+  if (defaultAchievementSections[key]) return key;
+  return key;
+};
+
 interface Achievement {
   id: string;
   title: string;
@@ -85,6 +119,7 @@ interface Achievement {
   date: string;
   level: string;
   sectionKey?: string;
+  sectionTitle?: string;
 }
 
 interface StaffMember {
@@ -201,12 +236,42 @@ export function SchoolAdminPanel() {
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [contactData, setContactData] = useState<any>(null);
-  const [achievementSectionsMeta, setAchievementSectionsMeta] = useState<Record<string, { title: string }>>({});
+  const [achievementSectionsMeta, setAchievementSectionsMeta] =
+    useState<Record<string, { title: string }>>(defaultAchievementSections);
   const [editingField, setEditingField] = useState<{ section: 'home' | 'contact'; key: string } | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [expandedHomeSection, setExpandedHomeSection] = useState<string>('overview');
   const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', color: 'text.secondary' };
+
+  const getAchievementSectionLabel = useCallback(
+    (key: string) => {
+      const normalizedKey = normalizeAchievementSectionKey(key);
+      if (achievementSectionsMeta[normalizedKey]) {
+        return achievementSectionsMeta[normalizedKey].title;
+      }
+      if (defaultAchievementSections[normalizedKey]) {
+        return defaultAchievementSections[normalizedKey].title;
+      }
+      return `${capitalize(normalizedKey)} Achievements`;
+    },
+    [achievementSectionsMeta]
+  );
+
+  const achievementSectionOptions = [
+    ...ACHIEVEMENT_SECTION_ORDER.map(({ key, title }) => ({
+      key,
+      title: achievementSectionsMeta[key]?.title || title,
+    })),
+    ...Object.entries(achievementSectionsMeta)
+      .filter(
+        ([key]) => !ACHIEVEMENT_SECTION_ORDER.some((section) => section.key === key)
+      )
+      .map(([key, value]) => ({
+        key,
+        title: value.title || `${capitalize(key)} Achievements`,
+      })),
+  ];
 
   const handleHomeSectionToggle = (sectionId: string) => (_: unknown, isExpanded: boolean) => {
     setExpandedHomeSection(isExpanded ? sectionId : '');
@@ -337,7 +402,17 @@ export function SchoolAdminPanel() {
     state: { label: 'State', color: '#388e3c', icon: TrendingUp },
     district: { label: 'District', color: '#1976d2', icon: WorkspacePremium },
     school: { label: 'School', color: '#7b1fa2', icon: School },
+    others: { label: 'Others', color: '#546e7a', icon: WorkspacePremium },
   };
+
+  const achievementLevelOptions = [
+    { value: 'international', label: 'International' },
+    { value: 'national', label: 'National' },
+    { value: 'state', label: 'State' },
+    { value: 'district', label: 'District' },
+    { value: 'school', label: 'School' },
+    { value: 'others', label: 'Others' },
+  ];
 
   const renderLevelChip = (level: string) => {
     const key = (level || '').toLowerCase();
@@ -760,6 +835,7 @@ export function SchoolAdminPanel() {
       setHomeData(null);
       setJourneyMilestones([]);
       setAchievements([]);
+      setAchievementSectionsMeta({ ...defaultAchievementSections });
       setStaffMembers([]);
       setAlumniMembers([]);
       setGalleryImages([]);
@@ -815,42 +891,69 @@ export function SchoolAdminPanel() {
     setJourneyMilestones(sortJourneyMilestones(normalizedJourney));
 
     const achievementsPage = pages.achievementsPage || {};
-    const sectionMeta: Record<string, { title: string }> = {};
-    if (achievementsPage.academicSection) {
-      sectionMeta.academicSection = {
-        title: achievementsPage.academicSection.title || 'Academic Achievements',
-      };
+    const achievementItems: Array<{ item: any; fallbackKey?: string; fallbackTitle?: string }> = [];
+
+    const pushAchievementItem = (item: any, fallbackKey?: string, fallbackTitle?: string) => {
+      if (!item || typeof item !== 'object') return;
+      achievementItems.push({ item, fallbackKey, fallbackTitle });
+    };
+
+    if (Array.isArray(achievementsPage)) {
+      achievementsPage.forEach((item: any) => pushAchievementItem(item));
+    } else {
+      Object.entries(achievementsPage)
+        .sort(([keyA], [keyB]) => Number(keyA) - Number(keyB))
+        .forEach(([key, value]) => {
+          if (!value) return;
+          if (Array.isArray(value)) {
+            value.forEach((item: any) => pushAchievementItem(item, key));
+            return;
+          }
+          const sectionObject = value as any;
+          if (Array.isArray(sectionObject?.achievements)) {
+            const fallbackKey = normalizeAchievementSectionKey(sectionObject.sectionKey || key);
+            const fallbackTitle = sectionObject.title || sectionObject.sectionTitle;
+            sectionObject.achievements.forEach((item: any) =>
+              pushAchievementItem(item, fallbackKey, fallbackTitle)
+            );
+            return;
+          }
+          pushAchievementItem(sectionObject, key, sectionObject.title || sectionObject.sectionTitle);
+        });
     }
-    if (achievementsPage.sportsSection) {
-      sectionMeta.sportsSection = {
-        title: achievementsPage.sportsSection.title || 'Sports Achievements',
-      };
-    }
-    if (achievementsPage.artsSection) {
-      sectionMeta.artsSection = {
-        title: achievementsPage.artsSection.title || 'Arts Achievements',
-      };
-    }
-    setAchievementSectionsMeta(sectionMeta);
-    const flattenAchievements = (section: any, fallbackLabel: string, sectionKey: string) => {
-      if (!section) return [];
-      const sectionLabel = section.title || fallbackLabel;
-      const items = Array.isArray(section.achievements) ? section.achievements : [];
-      return items.map((item: any, index: number) => ({
-        id: item.id || `${fallbackLabel.toLowerCase()}-${index + 1}`,
+
+    const computedAchievements = achievementItems.map(({ item, fallbackKey, fallbackTitle }, index) => {
+      const rawLevel = (item.level || item.Level || '').toString().trim();
+      const normalizedLevel = rawLevel ? rawLevel.toLowerCase() : 'others';
+      const resolvedSectionKey = item.sectionKey || item.section || fallbackKey || 'general';
+      const normalizedSectionKey = normalizeAchievementSectionKey(resolvedSectionKey);
+      const sectionTitle =
+        item.sectionTitle ||
+        fallbackTitle ||
+        defaultAchievementSections[normalizedSectionKey]?.title ||
+        `${capitalize(normalizedSectionKey)} Achievements`;
+
+      return {
+        id: item.id || `achievement-${index + 1}`,
         title: item.title || '',
         description: item.description || '',
         date: item.date || item.year || '',
-        level: item.level || sectionLabel,
-        sectionKey,
-      }));
-    };
+        level: normalizedLevel,
+        sectionKey: normalizedSectionKey,
+        sectionTitle,
+      };
+    });
 
-    setAchievements([
-      ...flattenAchievements(achievementsPage.academicSection, 'Academic', 'academicSection'),
-      ...flattenAchievements(achievementsPage.sportsSection, 'Sports', 'sportsSection'),
-      ...flattenAchievements(achievementsPage.artsSection, 'Arts', 'artsSection'),
-    ]);
+    const sectionsMeta = computedAchievements.reduce<Record<string, { title: string }>>((acc, item) => {
+      const key = item.sectionKey || 'general';
+      if (!acc[key]) {
+        acc[key] = { title: item.sectionTitle || `${capitalize(key)} Achievements` };
+      }
+      return acc;
+    }, { ...defaultAchievementSections });
+
+    setAchievementSectionsMeta(sectionsMeta);
+    setAchievements(computedAchievements);
 
     const staffEntries = extractStaffEntries(pages.staffPage);
     setStaffMembers(
@@ -1022,54 +1125,21 @@ export function SchoolAdminPanel() {
     };
   }, [applySchoolData, fetchAllData]);
 
-  const getAchievementSectionLabel = (key: string) => {
-    if (achievementSectionsMeta[key]) {
-      return achievementSectionsMeta[key].title;
-    }
-    switch (key) {
-      case 'academicSection':
-        return 'Academic Achievements';
-      case 'sportsSection':
-        return 'Sports Achievements';
-      case 'artsSection':
-        return 'Arts Achievements';
-      default:
-        return 'General Achievements';
-    }
-  };
-
-  const buildAchievementsUpdate = (achievementsList: Achievement[] = achievements) => {
-    const sections: Record<string, { title: string; achievements: any[] }> = {};
-    const meta = {
-      academicSection: { title: 'Academic Achievements' },
-      sportsSection: { title: 'Sports Achievements' },
-      artsSection: { title: 'Arts Achievements' },
-      ...achievementSectionsMeta,
-    };
-
-    Object.entries(meta).forEach(([key, value]) => {
-      sections[key] = {
-        title: value.title,
-        achievements: [],
-      };
-    });
-
-    achievementsList.forEach((item) => {
-      const key = item.sectionKey && sections[item.sectionKey] ? item.sectionKey : 'academicSection';
-      if (!sections[key]) {
-        sections[key] = { title: key, achievements: [] };
-      }
-      sections[key].achievements.push({
-        id: item.id,
+  const buildAchievementsPayload = (achievementsList: Achievement[] = achievements) => {
+    return achievementsList.map((item, index) => {
+      const normalizedSectionKey = normalizeAchievementSectionKey(item.sectionKey || 'general');
+      const normalizedLevel = (item.level || 'others').toLowerCase();
+      return {
+        id: item.id || `achievement-${index + 1}`,
         title: item.title,
         description: item.description,
         date: item.date,
         year: item.date,
-        level: item.level,
-      });
+        level: normalizedLevel,
+        sectionKey: normalizedSectionKey,
+        sectionTitle: getAchievementSectionLabel(normalizedSectionKey),
+      };
     });
-
-    return sections;
   };
 
   const refreshSchoolData = useCallback(async () => {
@@ -1203,8 +1273,9 @@ export function SchoolAdminPanel() {
       title: '',
       description: '',
       date: '',
-      level: '',
-      sectionKey: 'academicSection'
+      level: 'national',
+      sectionKey: 'general',
+      sectionTitle: getAchievementSectionLabel('general'),
     });
     setAchievementDialog(true);
   };
@@ -1216,10 +1287,15 @@ export function SchoolAdminPanel() {
 
   const saveAchievement = async () => {
     if (!editingAchievement) return;
-    const sectionKey = editingAchievement.sectionKey || 'academicSection';
+    const sectionKey = editingAchievement.sectionKey || 'general';
+    const normalizedSectionKey = normalizeAchievementSectionKey(sectionKey);
+    const normalizedLevel = (editingAchievement.level || 'others').toString().toLowerCase();
+    const sectionTitle = getAchievementSectionLabel(normalizedSectionKey);
     const achievementEntry: Achievement = {
       ...editingAchievement,
-      sectionKey,
+      sectionKey: normalizedSectionKey,
+      level: normalizedLevel,
+      sectionTitle,
     };
     const updatedList = editingAchievement.id
       ? achievements.map((a: Achievement) => (a.id === editingAchievement.id ? achievementEntry : a))
@@ -1227,7 +1303,7 @@ export function SchoolAdminPanel() {
     const targetSchoolId = schoolId || 'educonnect';
     try {
       setIsSaving(true);
-      const payload = buildAchievementsUpdate(updatedList);
+      const payload = buildAchievementsPayload(updatedList);
       await updateAchievementsPageContent(targetSchoolId, payload);
       setAchievementDialog(false);
       setEditingAchievement(null);
@@ -1250,7 +1326,7 @@ export function SchoolAdminPanel() {
     const targetSchoolId = schoolId || 'educonnect';
     try {
       setIsSaving(true);
-      const payload = buildAchievementsUpdate(updatedList);
+      const payload = buildAchievementsPayload(updatedList);
       await updateAchievementsPageContent(targetSchoolId, payload);
       await refreshSchoolData();
       showSuccess('Achievement removed successfully!');
@@ -1968,8 +2044,8 @@ export function SchoolAdminPanel() {
                     <TableHead>
                       <TableRow>
                         <TableCell sx={tableHeaderSx}>Title</TableCell>
-                        <TableCell sx={tableHeaderSx}>Level</TableCell>
                         <TableCell sx={tableHeaderSx}>Date</TableCell>
+                        <TableCell sx={tableHeaderSx}>Level</TableCell>
                         <TableCell sx={tableHeaderSx}>Description</TableCell>
                         <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>Actions</TableCell>
                       </TableRow>
@@ -1987,10 +2063,10 @@ export function SchoolAdminPanel() {
                       {achievements.map((achievement) => (
                         <TableRow key={achievement.id}>
                           <TableCell>{achievement.title}</TableCell>
+                          <TableCell>{achievement.date}</TableCell>
                           <TableCell>
                             {renderLevelChip(achievement.level)}
                           </TableCell>
-                          <TableCell>{achievement.date}</TableCell>
                         <TableCell sx={{ maxWidth: 320 }}>
                           <Box
                             sx={{
@@ -2555,30 +2631,44 @@ export function SchoolAdminPanel() {
                   onChange={(e) => setEditingAchievement({ ...editingAchievement, title: e.target.value })}
                   placeholder="Achievement title"
                 />
-                <TextField
-                  fullWidth
-                  label="Level"
-                  value={editingAchievement.level}
-                  onChange={(e) => setEditingAchievement({ ...editingAchievement, level: e.target.value })}
-                  placeholder="e.g., National, State, Regional"
-                />
+                <FormControl fullWidth>
+                  <InputLabel id="achievement-level-label">Level</InputLabel>
+                  <Select
+                    labelId="achievement-level-label"
+                    value={editingAchievement.level || 'others'}
+                    label="Level"
+                    onChange={(e) =>
+                      setEditingAchievement({
+                        ...editingAchievement,
+                       level: (e.target.value as string) || 'others',
+                      })
+                    }
+                  >
+                    {achievementLevelOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
               <FormControl fullWidth>
                 <InputLabel id="achievement-section-label">Section</InputLabel>
                 <Select
                   labelId="achievement-section-label"
-                  value={editingAchievement.sectionKey || 'academicSection'}
+                  value={editingAchievement.sectionKey || 'general'}
                   label="Section"
                   onChange={(e) =>
                     setEditingAchievement({
                       ...editingAchievement,
                       sectionKey: e.target.value as string,
+                      sectionTitle: getAchievementSectionLabel(e.target.value as string),
                     })
                   }
                 >
-                  {['academicSection', 'sportsSection', 'artsSection'].map((key) => (
-                    <MenuItem key={key} value={key}>
-                      {getAchievementSectionLabel(key)}
+                  {achievementSectionOptions.map((option) => (
+                    <MenuItem key={option.key} value={option.key}>
+                      {option.title}
                     </MenuItem>
                   ))}
                 </Select>
