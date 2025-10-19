@@ -83,6 +83,43 @@ import {
   normalizeAnnouncementCategoryList,
 } from '../config/announcementCategories';
 
+const GALLERY_CATEGORY_OPTIONS = [
+  { value: 'Academics', label: 'Academics', aliases: ['academic', 'academics'] },
+  { value: 'Sports', label: 'Sports', aliases: ['sport', 'athletics', 'games'] },
+  { value: 'Cultural', label: 'Cultural', aliases: ['culture', 'arts', 'events', 'event', 'festivals'] },
+  { value: 'Students & Campus Life', label: 'Students & Campus Life', aliases: ['students', 'student', 'campus', 'campus life', 'student life'] },
+  { value: 'Infrastructure', label: 'Infrastructure', aliases: ['facility', 'facilities', 'infrastructure', 'buildings'] },
+  { value: 'Others', label: 'Others', aliases: ['other', 'misc', 'gallery', 'general'] },
+] as const;
+
+const canonicalizeGalleryCategory = (value: string) =>
+  value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
+const galleryCategoryLookup: Record<string, string> = (() => {
+  const lookup: Record<string, string> = {};
+  GALLERY_CATEGORY_OPTIONS.forEach((option) => {
+    lookup[canonicalizeGalleryCategory(option.value)] = option.label;
+    option.aliases?.forEach((alias) => {
+      lookup[canonicalizeGalleryCategory(alias)] = option.label;
+    });
+  });
+  return lookup;
+})();
+
+const defaultGalleryCategory = 'Others';
+
+const resolveGalleryCategoryLabel = (value?: string, fallback?: string): string => {
+  const attempt = (candidate?: string) => {
+    if (!candidate) return null;
+    const normalized = canonicalizeGalleryCategory(candidate);
+    return galleryCategoryLookup[normalized] || null;
+  };
+  return attempt(value) || attempt(fallback) || defaultGalleryCategory;
+};
+
+const getGalleryCategoryLabel = (value?: string) =>
+  resolveGalleryCategoryLabel(value, defaultGalleryCategory);
+
 type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact';
 
 const ACHIEVEMENT_SECTION_ORDER = [
@@ -1015,39 +1052,84 @@ export function SchoolAdminPanel() {
     const galleryPage = pages.galleryPage || {};
     const galleryItems: GalleryImage[] = [];
 
-    if (Array.isArray(galleryPage.galleryImages)) {
-      galleryPage.galleryImages.forEach((image: any, index: number) => {
-        const imageUrl = typeof image === 'string' ? image : image?.url || image?.imageUrl || '';
-        if (!imageUrl) return;
-        galleryItems.push({
-          id: image.id || `gallery-${index + 1}`,
-          title: image.title || `Image ${index + 1}`,
-          category: image.category || 'Gallery',
-          description: image.description || '',
-          date: image.date || '',
-          imageUrl,
-        });
+    const looksLikeGalleryItem = (value: any): boolean => {
+      if (!value) return false;
+      if (typeof value === 'string') return true;
+      if (typeof value !== 'object') return false;
+      return ['imageUrl', 'url', 'image', 'src'].some((key) => Boolean(value[key]));
+    };
+
+    const normalizeImage = (image: any, fallbackPrefix = 'gallery', fallbackCategory = defaultGalleryCategory) => {
+      if (!image) return;
+      if (Array.isArray(image)) {
+        image.forEach((item) => normalizeImage(item, fallbackPrefix, fallbackCategory));
+        return;
+      }
+
+      const imageUrl =
+        typeof image === 'string'
+          ? image
+          : image?.imageUrl || image?.url || image?.image || image?.src || '';
+      if (!imageUrl) return;
+
+      const rawCategory =
+        typeof image === 'object'
+          ? image?.category || image?.section || image?.group || fallbackCategory
+          : fallbackCategory;
+      const resolvedCategory = resolveGalleryCategoryLabel(rawCategory, fallbackCategory);
+      const titlePrefix = resolvedCategory;
+
+      galleryItems.push({
+        id:
+          (typeof image === 'object' && (image.id || image.key || image.slug)) ||
+          `${fallbackPrefix}-${galleryItems.length + 1}`,
+        title:
+          (typeof image === 'object' && (image.title || image.name)) ||
+          `${titlePrefix} ${galleryItems.length + 1}`,
+        category: resolvedCategory,
+        description: (typeof image === 'object' ? image.description : '') || '',
+        date: (typeof image === 'object' ? image.date : '') || '',
+        imageUrl,
       });
-    } else {
-      Object.entries(galleryPage).forEach(([sectionKey, sectionValue]) => {
-        const section = sectionValue as any;
-        if (!Array.isArray(section?.images)) return;
-        const sectionTitle = section.title || sectionKey;
-        section.images.forEach((image: any, index: number) => {
-          const imageUrl = typeof image === 'string' ? image : image?.url || image?.imageUrl || image?.src || '';
-          if (!imageUrl) return;
-          galleryItems.push({
-            id: image.id || `${sectionKey}-${index + 1}`,
-            title: image.title || `${sectionTitle} ${index + 1}`,
-            category: sectionTitle,
-            description: image.description || '',
-            date: image.date || '',
-            imageUrl,
-          });
-        });
-      });
+    };
+
+    if (Array.isArray(galleryPage)) {
+      galleryPage.forEach((image: any) => normalizeImage(image));
     }
-    setGalleryImages(galleryItems);
+
+    if (Array.isArray(galleryPage.galleryImages)) {
+      galleryPage.galleryImages.forEach((image: any) => normalizeImage(image, 'gallery', 'Gallery'));
+    }
+
+    Object.entries(galleryPage).forEach(([sectionKey, sectionValue]) => {
+      if (sectionKey === 'galleryImages' || sectionKey === 'lastUpdated') return;
+      const section = sectionValue as any;
+
+      if (Array.isArray(section?.images)) {
+        const sectionTitle = section.title || sectionKey;
+        section.images.forEach((image: any) => normalizeImage(image, sectionKey, sectionTitle));
+        return;
+      }
+
+      if (looksLikeGalleryItem(section)) {
+        normalizeImage(section, sectionKey, sectionKey);
+        return;
+      }
+
+      if (Array.isArray(section)) {
+        section.forEach((image: any) => normalizeImage(image, sectionKey, sectionKey));
+      }
+    });
+
+    // Deduplicate by id to prevent duplicates when multiple paths contain same item
+    const dedupedGallery = galleryItems.reduce<GalleryImage[]>((acc, item) => {
+      if (!acc.some((existing) => existing.id === item.id)) {
+        acc.push(item);
+      }
+      return acc;
+    }, []);
+
+    setGalleryImages(dedupedGallery);
 
     const extractAnnouncements = (source: any): any[] => {
       if (!source) return [];
@@ -1526,7 +1608,7 @@ export function SchoolAdminPanel() {
     setEditingGallery({
       id: '',
       title: '',
-      category: '',
+      category: GALLERY_CATEGORY_OPTIONS[0].value,
       description: '',
       date: '',
       imageUrl: '',
@@ -1535,27 +1617,36 @@ export function SchoolAdminPanel() {
   };
 
   const openEditGalleryImage = (image: GalleryImage) => {
-    setEditingGallery({ ...image });
+    setEditingGallery({
+      ...image,
+      category: resolveGalleryCategoryLabel(image.category),
+    });
     setGalleryDialog(true);
   };
 
   const saveGalleryImage = async () => {
     if (!editingGallery) return;
+    const resolvedCategory = resolveGalleryCategoryLabel(editingGallery.category);
     const galleryEntry: GalleryImage = {
       ...editingGallery,
       id: editingGallery.id || `gallery-${Date.now()}`,
+      category: resolvedCategory,
     };
     const updatedList = editingGallery.id
       ? galleryImages.map((image) => (image.id === editingGallery.id ? galleryEntry : image))
       : [...galleryImages, galleryEntry];
+    const normalizedList = updatedList.map((image) => ({
+      ...image,
+      category: resolveGalleryCategoryLabel(image.category),
+    }));
 
     const targetSchoolId = schoolId || 'educonnect';
     try {
       setIsSaving(true);
-      await updateGalleryPageContent(targetSchoolId, updatedList);
+      await updateGalleryPageContent(targetSchoolId, normalizedList);
       setGalleryDialog(false);
       setEditingGallery(null);
-      setGalleryImages(updatedList);
+      setGalleryImages(normalizedList);
       await refreshSchoolData();
       showSuccess('Gallery item saved successfully!');
     } catch (error) {
@@ -2385,7 +2476,11 @@ export function SchoolAdminPanel() {
                         <TableRow key={image.id}>
                           <TableCell>{image.title}</TableCell>
                           <TableCell>
-                            <Chip sx={{ fontWeight: 600 }} label={image.category} size="small" />
+                            <Chip
+                              sx={{ fontWeight: 600 }}
+                              label={getGalleryCategoryLabel(image.category)}
+                              size="small"
+                            />
                           </TableCell>
                           <TableCell>{image.date}</TableCell>
                           <TableCell sx={{ maxWidth: 320 }}>
@@ -3010,13 +3105,27 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingGallery({ ...editingGallery, title: e.target.value })}
                 placeholder="Gallery item title"
               />
-              <TextField
-                fullWidth
-                label="Category"
-                value={editingGallery.category}
-                onChange={(e) => setEditingGallery({ ...editingGallery, category: e.target.value })}
-                placeholder="e.g., events, sports"
-              />
+              <FormControl fullWidth>
+                <InputLabel id="gallery-category-label">Category</InputLabel>
+                <Select
+                  labelId="gallery-category-label"
+                  label="Category"
+                  value={editingGallery.category || ''}
+                  onChange={(event: SelectChangeEvent<string>) => {
+                    const value = typeof event.target.value === 'string' ? event.target.value : '';
+                    setEditingGallery({
+                      ...editingGallery,
+                      category: resolveGalleryCategoryLabel(value),
+                    });
+                  }}
+                >
+                  {GALLERY_CATEGORY_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <TextField
                 fullWidth
                 label="Date"

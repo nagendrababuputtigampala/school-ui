@@ -656,12 +656,13 @@ export async function updateGalleryPageContent(identifier: string, galleryItems:
 
     // Update galleryPage document directly
     const galleryPageDocRef = doc(db, collectionId, 'galleryPage');
-    
-    const galleryPageUpdates = {
-      galleryImages: normalizedGallery
-    };
 
-    await setDoc(galleryPageDocRef, galleryPageUpdates, { merge: true });
+    const galleryPageData = normalizedGallery.reduce<Record<string, any>>((acc, image, index) => {
+      acc[String(index)] = image;
+      return acc;
+    }, {});
+
+    await setDoc(galleryPageDocRef, galleryPageData);
   } catch (err) {
     console.error(`Failed to update gallery page for school ${identifier}:`, err);
     throw err;
@@ -737,8 +738,6 @@ export async function updateAnnouncementsPageContent(identifier: string, announc
       acc[String(index)] = announcement;
       return acc;
     }, {});
-
-    announcementsPageData.lastUpdated = new Date().toISOString();
 
     await setDoc(announcementsPageDocRef, announcementsPageData);
     
