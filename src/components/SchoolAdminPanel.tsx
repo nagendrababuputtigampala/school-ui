@@ -27,6 +27,7 @@ import {
   ListItemText,
   ListItemIcon,
   Tooltip,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -48,6 +49,7 @@ import {
   MenuItem,
   CircularProgress
 } from '@mui/material';
+import { SelectChangeEvent } from '@mui/material/Select';
 import {
   School,
   Home,
@@ -75,6 +77,11 @@ import {
   TrendingUp,
   WorkspacePremium
 } from '@mui/icons-material';
+import {
+  ANNOUNCEMENT_CATEGORY_OPTIONS,
+  formatAnnouncementCategoryLabel,
+  normalizeAnnouncementCategoryList,
+} from '../config/announcementCategories';
 
 type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact';
 
@@ -154,6 +161,7 @@ interface Announcement {
   description: string;
   date: string;
   category: string;
+  categories: string[];
   priority: string;
   type: string;
 }
@@ -1041,23 +1049,46 @@ export function SchoolAdminPanel() {
     }
     setGalleryImages(galleryItems);
 
-    const rawAnnouncements = Array.isArray(pages.announcementsPage?.announcements)
-      ? pages.announcementsPage.announcements
-      : Array.isArray(homePage.announcementsSection?.recentUpdates)
-        ? homePage.announcementsSection.recentUpdates
-        : [];
+    const extractAnnouncements = (source: any): any[] => {
+      if (!source) return [];
+      if (Array.isArray(source)) return source;
+      if (Array.isArray(source.announcements)) return source.announcements;
+      if (Array.isArray(source.recentUpdates)) return source.recentUpdates;
+      if (typeof source === 'object') {
+        const values = Object.values(source).filter((value: any) => {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            return false;
+          }
+          const keys = Object.keys(value);
+          return keys.some((key) => ['title', 'content', 'description'].includes(key));
+        });
+        if (values.length) {
+          return values;
+        }
+      }
+      return [];
+    };
 
-    setAnnouncements(
-      rawAnnouncements.map((announcement: any, index: number) => ({
+    const announcementsFromPage = extractAnnouncements(pages.announcementsPage);
+    const announcementsFromHome = extractAnnouncements(homePage.announcementsSection);
+    const rawAnnouncements = announcementsFromPage.length ? announcementsFromPage : announcementsFromHome;
+
+    const normalizedAnnouncements: Announcement[] = rawAnnouncements.map((announcement: any, index: number) => {
+      const categories = normalizeAnnouncementCategoryList([announcement.categories, announcement.category]);
+      const primaryCategory = categories[0] || '';
+      return {
         id: announcement.id || `announcement-${index + 1}`,
         title: announcement.title || '',
         description: announcement.description || '',
         date: announcement.date || '',
-        category: announcement.category || '',
+        category: primaryCategory,
+        categories,
         priority: (announcement.priority || 'medium').toLowerCase(),
         type: (announcement.type || 'announcement').toLowerCase(),
-      }))
-    );
+      };
+    });
+
+    setAnnouncements(normalizedAnnouncements);
 
     const rawContactPage = (pages.contactPage?.content ?? pages.contactPage ?? {}) as Record<string, any>;
     const rawContactInfo = (schoolData.contactInfo ?? {}) as Record<string, any>;
@@ -1562,6 +1593,7 @@ export function SchoolAdminPanel() {
       description: '',
       date: '',
       category: '',
+      categories: [],
       priority: 'medium',
       type: 'announcement',
     });
@@ -1569,8 +1601,12 @@ export function SchoolAdminPanel() {
   };
 
   const openEditAnnouncement = (announcement: Announcement) => {
+    const categories = normalizeAnnouncementCategoryList([announcement.categories, announcement.category]);
+
     setEditingAnnouncement({
       ...announcement,
+      category: categories[0] || '',
+      categories,
       priority: (announcement.priority || 'medium').toLowerCase(),
       type: (announcement.type || 'announcement').toLowerCase(),
     });
@@ -1579,9 +1615,16 @@ export function SchoolAdminPanel() {
 
   const saveAnnouncement = async () => {
     if (!editingAnnouncement) return;
+    const categories = normalizeAnnouncementCategoryList(
+      editingAnnouncement.categories && editingAnnouncement.categories.length
+        ? editingAnnouncement.categories
+        : editingAnnouncement.category
+    );
     const announcementEntry: Announcement = {
       ...editingAnnouncement,
       id: editingAnnouncement.id || `announcement-${Date.now()}`,
+      category: categories[0] || '',
+      categories,
       priority: (editingAnnouncement.priority || 'medium').toLowerCase(),
       type: (editingAnnouncement.type || 'announcement').toLowerCase(),
     };
@@ -2431,9 +2474,9 @@ export function SchoolAdminPanel() {
                       <TableRow>
                         <TableCell sx={tableHeaderSx}>Title</TableCell>
                         <TableCell sx={tableHeaderSx}>Category</TableCell>
-                        <TableCell sx={tableHeaderSx}>Priority</TableCell>
                         <TableCell sx={tableHeaderSx}>Date</TableCell>
                         <TableCell sx={tableHeaderSx}>Description</TableCell>
+                        <TableCell sx={tableHeaderSx}>Priority</TableCell>
                         <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -2451,29 +2494,24 @@ export function SchoolAdminPanel() {
                         <TableRow key={announcement.id}>
                           <TableCell>{announcement.title}</TableCell>
                           <TableCell>
-                            <Chip sx={{ fontWeight: 600 }} label={announcement.category} size="small" />
-                          </TableCell>
-                          <TableCell>
-                            {(() => {
-                              const priority = (announcement.priority || '').toLowerCase();
-                              const chipColor =
-                                priority === 'high'
-                                  ? 'error'
-                                  : priority === 'medium'
-                                  ? 'warning'
-                                  : 'default';
-                              const priorityLabel = priority
-                                ? priority.charAt(0).toUpperCase() + priority.slice(1)
-                                : 'Low';
-                              return (
-                                <Chip 
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {(announcement.categories?.length
+                                ? announcement.categories
+                                : announcement.category
+                                ? [announcement.category]
+                                : []
+                              ).map((category) => (
+                                <Chip
+                                  key={category}
                                   sx={{ fontWeight: 600 }}
-                                  label={priorityLabel}
+                                  label={formatAnnouncementCategoryLabel(category)}
                                   size="small"
-                                  color={chipColor}
                                 />
-                              );
-                            })()}
+                              ))}
+                              {!announcement.categories?.length && !announcement.category && (
+                                <Chip sx={{ fontWeight: 600 }} label="Uncategorized" size="small" />
+                              )}
+                            </Box>
                           </TableCell>
                           <TableCell>{announcement.date}</TableCell>
                           <TableCell sx={{ maxWidth: 320 }}>
@@ -2508,6 +2546,28 @@ export function SchoolAdminPanel() {
                                 {announcement.description || '—'}
                               </Typography>
                             </Box>
+                          </TableCell>
+                          <TableCell>
+                            {(() => {
+                              const priority = (announcement.priority || '').toLowerCase();
+                              const chipColor =
+                                priority === 'high'
+                                  ? 'error'
+                                  : priority === 'medium'
+                                  ? 'warning'
+                                  : 'default';
+                              const priorityLabel = priority
+                                ? priority.charAt(0).toUpperCase() + priority.slice(1)
+                                : 'Low';
+                              return (
+                                <Chip
+                                  sx={{ fontWeight: 600 }}
+                                  label={priorityLabel}
+                                  size="small"
+                                  color={chipColor}
+                                />
+                              );
+                            })()}
                           </TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
@@ -3044,13 +3104,39 @@ export function SchoolAdminPanel() {
                   onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, date: e.target.value })}
                   InputLabelProps={{ shrink: true }}
                 />
-                <TextField
-                  fullWidth
-                  label="Category"
-                  value={editingAnnouncement.category}
-                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, category: e.target.value })}
-                  placeholder="e.g., Event"
-                />
+                <FormControl fullWidth>
+                  <InputLabel id="announcement-category-label">Categories</InputLabel>
+                  <Select
+                    labelId="announcement-category-label"
+                    multiple
+                    label="Categories"
+                    value={editingAnnouncement.categories || []}
+                    onChange={(event: SelectChangeEvent<string[]>) => {
+                      const value = event.target.value;
+                      const rawSelection = typeof value === 'string' ? value.split(',') : value;
+                      const normalizedSelection = normalizeAnnouncementCategoryList(rawSelection);
+                      setEditingAnnouncement({
+                        ...editingAnnouncement,
+                        categories: normalizedSelection,
+                        category: normalizedSelection[0] || '',
+                      });
+                    }}
+                    renderValue={(selected) =>
+                      (selected as string[])
+                        .map((category) => formatAnnouncementCategoryLabel(category))
+                        .join(', ')
+                    }
+                  >
+                    {ANNOUNCEMENT_CATEGORY_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Checkbox
+                          checked={(editingAnnouncement.categories || []).includes(option.value)}
+                        />
+                        <ListItemText primary={option.label} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
               <FormControl fullWidth>
                 <InputLabel id="announcement-priority-label">Priority</InputLabel>
@@ -3126,3 +3212,4 @@ export function SchoolAdminPanel() {
     </>
   );
 }
+

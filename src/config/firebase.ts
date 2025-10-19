@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, setDoc } from 'firebase/firestore';
 import { sampleSchoolData } from '../data/schoolData';
+import { normalizeAnnouncementCategoryList } from './announcementCategories';
 
 // Interface for timeline milestone
 export interface TimelineMilestone {
@@ -675,26 +676,71 @@ export async function updateAnnouncementsPageContent(identifier: string, announc
     const normalizedAnnouncements = (announcements || []).map((announcement: any, index: number) => {
       const priority = (announcement.priority || 'medium').toLowerCase();
       const type = (announcement.type || 'announcement').toLowerCase();
+      const id = announcement.id || `announcement-${index + 1}`;
 
-      return {
-        id: announcement.id || `announcement-${index + 1}`,
+      const categories = normalizeAnnouncementCategoryList([announcement.categories, announcement.category]);
+      const primaryCategory = categories[0] || '';
+
+      const normalized: Record<string, any> = {
+        ...announcement,
+        id,
         title: announcement.title || '',
-        description: announcement.description || '',
+        description: announcement.description || announcement.content || '',
+        content: announcement.content || announcement.description || '',
         date: announcement.date || '',
-        category: announcement.category || '',
+        endDate: announcement.endDate || '',
+        category: primaryCategory,
+        categories,
         priority,
         type,
+        audience: (announcement.audience || 'all').toLowerCase(),
+        author: announcement.author || '',
       };
+
+      if (!Array.isArray(normalized.tags)) {
+        const rawTags = normalized.tags;
+        if (typeof rawTags === 'string' && rawTags.trim()) {
+          normalized.tags = rawTags
+            .split(',')
+            .map((tag: string) => tag.trim())
+            .filter(Boolean);
+        } else if (!rawTags) {
+          delete normalized.tags;
+        }
+      } else {
+        normalized.tags = normalized.tags.filter((tag: any) => typeof tag === 'string' && tag.trim());
+      }
+
+      ['isPinned', 'isUrgent'].forEach((flagKey) => {
+        if (flagKey in normalized) {
+          normalized[flagKey] = Boolean(normalized[flagKey]);
+        }
+      });
+
+      if (!Array.isArray(normalized.categories) || !normalized.categories.length) {
+        delete normalized.categories;
+      }
+
+      Object.keys(normalized).forEach((key) => {
+        if (normalized[key] === undefined) {
+          delete normalized[key];
+        }
+      });
+
+      return normalized;
     });
 
     // Update announcementsPage document directly
     const announcementsPageDocRef = doc(db, collectionId, 'announcementsPage');
-    
-    const announcementsPageUpdates = {
-      announcements: normalizedAnnouncements
-    };
 
-    await setDoc(announcementsPageDocRef, announcementsPageUpdates, { merge: true });
+    const announcementsPageData = normalizedAnnouncements.reduce<Record<string, any>>((acc, announcement, index) => {
+      acc[String(index)] = announcement;
+      return acc;
+    }, {});
+
+    announcementsPageData.lastUpdated = new Date().toISOString();
+
+    await setDoc(announcementsPageDocRef, announcementsPageData);
     
     // Also update homePage with recent announcements
     const homePageDocRef = doc(db, collectionId, 'homePage');
