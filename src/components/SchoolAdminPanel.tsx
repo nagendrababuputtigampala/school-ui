@@ -14,6 +14,9 @@ import {
   Card,
   CardContent,
   CardHeader,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Typography,
   TextField,
   Button,
@@ -59,6 +62,7 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
+  ExpandMore,
   LocationOn,
   Phone as PhoneIcon,
   Email as EmailIcon,
@@ -130,6 +134,40 @@ interface GalleryImage {
   imageUrl: string;
 }
 
+interface JourneyMilestone {
+  id: string;
+  year: string;
+  title: string;
+  description: string;
+}
+
+const parseJourneyYear = (value: string): number | null => {
+  const match = value.match(/\d{4}/);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[0], 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const sortJourneyMilestones = (items: JourneyMilestone[]) =>
+  [...items].sort((a, b) => {
+    const yearA = parseJourneyYear(a.year);
+    const yearB = parseJourneyYear(b.year);
+
+    if (yearA !== null && yearB !== null && yearA !== yearB) {
+      return yearB - yearA;
+    }
+
+    if (yearA === null && yearB !== null) {
+      return 1;
+    }
+
+    if (yearB === null && yearA !== null) {
+      return -1;
+    }
+
+    return a.title.localeCompare(b.title);
+  });
+
 export function SchoolAdminPanel() {
   // Store school info for sidebar header
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
@@ -146,14 +184,17 @@ export function SchoolAdminPanel() {
   const [alumniDialog, setAlumniDialog] = useState(false);
   const [galleryDialog, setGalleryDialog] = useState(false);
   const [announcementDialog, setAnnouncementDialog] = useState(false);
+  const [journeyDialog, setJourneyDialog] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [editingAlumni, setEditingAlumni] = useState<AlumniMember | null>(null);
   const [editingGallery, setEditingGallery] = useState<GalleryImage | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [editingJourney, setEditingJourney] = useState<JourneyMilestone | null>(null);
 
   // Data states
   const [homeData, setHomeData] = useState<any>(null);
+  const [journeyMilestones, setJourneyMilestones] = useState<JourneyMilestone[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [alumniMembers, setAlumniMembers] = useState<AlumniMember[]>([]);
@@ -164,7 +205,68 @@ export function SchoolAdminPanel() {
   const [editingField, setEditingField] = useState<{ section: 'home' | 'contact'; key: string } | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [inlineError, setInlineError] = useState<string | null>(null);
+  const [expandedHomeSection, setExpandedHomeSection] = useState<string>('overview');
   const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', color: 'text.secondary' };
+
+  const handleHomeSectionToggle = (sectionId: string) => (_: unknown, isExpanded: boolean) => {
+    setExpandedHomeSection(isExpanded ? sectionId : '');
+  };
+
+  const renderHomeAccordionSummary = (
+    icon: ReactElement,
+    title: string,
+    subtitle: string,
+    metaLabel?: string
+  ) => (
+    <Stack
+      direction="row"
+      alignItems="center"
+      justifyContent="space-between"
+      sx={{ width: '100%', gap: { xs: 1.5, sm: 2 } }}
+    >
+      <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Box
+          sx={{
+            width: 42,
+            height: 42,
+            borderRadius: '50%',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 12px 28px rgba(25,118,210,0.35)',
+          }}
+        >
+          {icon}
+        </Box>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {subtitle}
+          </Typography>
+        </Box>
+      </Stack>
+      {metaLabel ? (
+        <Chip
+          label={metaLabel}
+          size="small"
+          variant="outlined"
+          sx={{
+            fontWeight: 600,
+            borderColor: 'rgba(25,118,210,0.35)',
+            color: 'primary.main',
+            bgcolor: 'rgba(25,118,210,0.1)',
+          }}
+        />
+      ) : null}
+    </Stack>
+  );
+
+  const formatCountLabel = (count: number, singular: string) =>
+    count === 1 ? `1 ${singular}` : `${count} ${singular}s`;
 
   const contactFieldMap: Record<string, string> = {
     address: 'address',
@@ -424,6 +526,58 @@ export function SchoolAdminPanel() {
     return value;
   };
 
+  const buildHomePagePayload = (
+    home: typeof homeData,
+    milestones: JourneyMilestone[]
+  ) => ({
+    welcomeTitle: home?.welcomeTitle || '',
+    welcomeSubTitle: home?.welcomeSubTitle || '',
+    principalName: home?.principalName || '',
+    principalMessage: home?.principalMessage || '',
+    yearEstablished: home?.yearEstablished || '',
+    students: home?.students || '',
+    successRate: home?.successRate || '',
+    journeyMilestones: sortJourneyMilestones(milestones).map((milestone) => ({
+      id: milestone.id,
+      year: milestone.year,
+      title: milestone.title,
+      description: milestone.description,
+    })),
+  });
+
+  const normalizeStaffSpecializations = (value: any): string => {
+    if (!value) return '';
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter((item) => item.length > 0)
+        .join(', ');
+    }
+    if (typeof value === 'object') {
+      return Object.values(value)
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter((item) => item.length > 0)
+        .join(', ');
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    return '';
+  };
+
+  const extractStaffEntries = (raw: any): any[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+
+    const values = Object.values(raw);
+    return values.filter(
+      (value) =>
+        value &&
+        typeof value === 'object' &&
+        ('name' in value || 'department' in value || 'position' in value)
+    );
+  };
+
   const saveInlineEdit = async () => {
     if (!editingField) return;
     const { section, key } = editingField;
@@ -460,15 +614,10 @@ export function SchoolAdminPanel() {
         if (!fieldName) return;
         const updated = { ...homeData, [fieldName]: normalizedValue };
         setHomeData(updated);
-        await updateHomePageContent(targetSchoolId, {
-          welcomeTitle: updated.welcomeTitle || '',
-          welcomeSubTitle: updated.welcomeSubTitle || '',
-          principalName: updated.principalName || '',
-          principalMessage: updated.principalMessage || '',
-          yearEstablished: updated.yearEstablished || '',
-          students: updated.students || '',
-          successRate: updated.successRate || '',
-        });
+        await updateHomePageContent(
+          targetSchoolId,
+          buildHomePagePayload(updated, journeyMilestones)
+        );
         await refreshSchoolData();
         showSuccess('Home information updated successfully!');
         setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
@@ -609,13 +758,14 @@ export function SchoolAdminPanel() {
     if (!schoolData) {
       setSchoolInfo(null);
       setHomeData(null);
+      setJourneyMilestones([]);
       setAchievements([]);
       setStaffMembers([]);
       setAlumniMembers([]);
       setGalleryImages([]);
       setAnnouncements([]);
       setContactData(null);
-        setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+      setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
       return;
     }
 
@@ -642,6 +792,27 @@ export function SchoolAdminPanel() {
       students: statisticsSection.studentsCount || schoolData.studentsCount || '',
       successRate: statisticsSection.successRate || schoolData.successRate || '',
     });
+
+    const timelineSourceCandidates = [
+      homePage.timelineSection?.milestones,
+      homePage.timelineSection,
+      homePage.timeline,
+      schoolData.timelineSection?.milestones,
+      schoolData.timeline?.milestones,
+      schoolData.timeline,
+    ];
+
+    const timelineEntries = (timelineSourceCandidates.find((candidate) => Array.isArray(candidate)) ||
+      []) as Array<Record<string, any>>;
+
+    const normalizedJourney = timelineEntries.map((milestone, index) => ({
+      id: milestone.id || `journey-${index + 1}`,
+      year: milestone.year || '',
+      title: milestone.title || '',
+      description: milestone.description || '',
+    }));
+
+    setJourneyMilestones(sortJourneyMilestones(normalizedJourney));
 
     const achievementsPage = pages.achievementsPage || {};
     const sectionMeta: Record<string, { title: string }> = {};
@@ -681,17 +852,17 @@ export function SchoolAdminPanel() {
       ...flattenAchievements(achievementsPage.artsSection, 'Arts', 'artsSection'),
     ]);
 
-    const staffSource = Array.isArray(pages.staffPage?.staff) ? pages.staffPage?.staff : [];
+    const staffEntries = extractStaffEntries(pages.staffPage);
     setStaffMembers(
-      staffSource.map((staff: any, index: number) => ({
+      staffEntries.map((staff: any, index: number) => ({
         id: staff.id || `staff-${index + 1}`,
         name: staff.name || '',
-        department: staff.department || '',
+        department: staff.department || 'other',
         position: staff.position || '',
         education: staff.education || '',
-        specializations: Array.isArray(staff.specializations)
-          ? staff.specializations.join(', ')
-          : staff.specializations || '',
+        specializations: normalizeStaffSpecializations(
+          staff.specializations || staff.specialties || staff.skills || ''
+        ),
         experience: staff.experience || '',
         email: staff.email || '',
         phone: staff.phone || '',
@@ -923,6 +1094,106 @@ export function SchoolAdminPanel() {
 
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
+  };
+
+  // Journey handlers
+  const openAddJourney = () => {
+    setEditingJourney({
+      id: '',
+      year: '',
+      title: '',
+      description: '',
+    });
+    setJourneyDialog(true);
+  };
+
+  const openEditJourney = (milestone: JourneyMilestone) => {
+    setEditingJourney({ ...milestone });
+    setJourneyDialog(true);
+  };
+
+  const closeJourneyDialog = () => {
+    setJourneyDialog(false);
+    setEditingJourney(null);
+  };
+
+  const saveJourneyMilestone = async () => {
+    if (!editingJourney) return;
+    if (!homeData) {
+      showError('Home data is unavailable.');
+      return;
+    }
+
+    const trimmedYear = editingJourney.year.trim();
+    const trimmedTitle = editingJourney.title.trim();
+    const trimmedDescription = editingJourney.description.trim();
+
+    if (!trimmedYear || !trimmedTitle || !trimmedDescription) {
+      showError('Year, title, and description are required.');
+      return;
+    }
+
+    const normalizedEntry: JourneyMilestone = {
+      id: editingJourney.id || `journey-${Date.now()}`,
+      year: trimmedYear,
+      title: trimmedTitle,
+      description: trimmedDescription,
+    };
+
+    const updatedList = editingJourney.id
+      ? journeyMilestones.map((item) => (item.id === editingJourney.id ? normalizedEntry : item))
+      : [...journeyMilestones, normalizedEntry];
+    const sortedList = sortJourneyMilestones(updatedList);
+
+    const targetSchoolId = schoolId || 'educonnect';
+
+    try {
+      setIsSaving(true);
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(homeData, sortedList)
+      );
+      setJourneyMilestones(sortedList);
+      closeJourneyDialog();
+      await refreshSchoolData();
+      showSuccess('Journey milestone saved successfully!');
+      setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+    } catch (error) {
+      console.error('Failed to save journey milestone:', error);
+      showError('Failed to save journey milestone. Please try again.');
+      await refreshSchoolData();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteJourneyMilestone = async (id: string) => {
+    if (!homeData) {
+      showError('Home data is unavailable.');
+      return;
+    }
+
+    const updatedList = journeyMilestones.filter((milestone) => milestone.id !== id);
+    const sortedList = sortJourneyMilestones(updatedList);
+    const targetSchoolId = schoolId || 'educonnect';
+
+    try {
+      setIsSaving(true);
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(homeData, sortedList)
+      );
+      setJourneyMilestones(sortedList);
+      await refreshSchoolData();
+      showSuccess('Journey milestone removed.');
+      setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+    } catch (error) {
+      console.error('Failed to delete journey milestone:', error);
+      showError('Failed to delete journey milestone. Please try again.');
+      await refreshSchoolData();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Achievement handlers
@@ -1431,32 +1702,243 @@ export function SchoolAdminPanel() {
               ];
 
               const homeMetricsItems = [
-                { key: 'yearEstablished', title: 'Year Established', icon: <AccessTime fontSize='small' />, lines: getHomeDisplayLines('yearEstablished') },
                 { key: 'students', title: 'Students', icon: <Users fontSize='small' />, lines: getHomeDisplayLines('students') },
+                { key: 'yearEstablished', title: 'Year Established', icon: <AccessTime fontSize='small' />, lines: getHomeDisplayLines('yearEstablished') },
                 { key: 'successRate', title: 'Success Rate', icon: <Trophy fontSize='small' />, lines: getHomeDisplayLines('successRate') },
               ];
 
-              return (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <Card>
-                    <CardHeader
-                      title={<Typography variant="h5">Home Overview</Typography>}
-                      subheader="Update the hero welcome content and principal message."
-                    />
-                    <CardContent>
-                      {renderSummaryGrid('home', homeOverviewItems)}
-                    </CardContent>
-                  </Card>
+              const accordionBaseSx = {
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 3,
+                border: '1px solid rgba(25,118,210,0.14)',
+                background: 'linear-gradient(135deg, rgba(25,118,210,0.05) 0%, rgba(25,118,210,0.015) 60%)',
+                backdropFilter: 'blur(14px)',
+                boxShadow: '0 18px 40px rgba(15,23,42,0.12)',
+                transition: 'border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  borderColor: 'rgba(25,118,210,0.32)',
+                  boxShadow: '0 22px 48px rgba(15,23,42,0.16)',
+                  transform: 'translateY(-2px)',
+                },
+                '&.Mui-expanded': {
+                  borderColor: 'rgba(25,118,210,0.4)',
+                  boxShadow: '0 22px 52px rgba(15,23,42,0.2)',
+                },
+                '&:before': { display: 'none' },
+                '& + &': { mt: 2.5 },
+              } as const;
 
-                  <Card>
-                    <CardHeader
-                      title={<Typography variant="h6">Key Metrics</Typography>}
-                      subheader="These stats display on the home page banner."
-                    />
-                    <CardContent>
+              const accordionDetailsSx = {
+                px: { xs: 2.5, md: 3 },
+                pb: 3,
+                pt: 0,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.03) 60%)',
+                borderTop: '1px solid rgba(255,255,255,0.12)',
+              } as const;
+
+              const summarySx = {
+                px: { xs: 2.5, md: 3 },
+                py: 2,
+                '& .MuiAccordionSummary-content': {
+                  m: 0,
+                },
+                '& .MuiAccordionSummary-expandIconWrapper': {
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  bgcolor: 'rgba(25,118,210,0.08)',
+                  color: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 10px 24px rgba(25,118,210,0.2)',
+                  transition: 'transform 0.3s ease, background-color 0.3s ease, color 0.3s ease',
+                },
+                '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': {
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                },
+              } as const;
+
+              const journeyMetaLabel =
+                journeyMilestones.length > 0
+                  ? formatCountLabel(journeyMilestones.length, 'milestone')
+                  : 'Add milestone';
+
+              return (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={expandedHomeSection === 'overview'}
+                    onChange={handleHomeSectionToggle('overview')}
+                    sx={accordionBaseSx}
+                  >
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={summarySx}
+                    >
+                      {renderHomeAccordionSummary(
+                        <Home fontSize="small" />,
+                        'Home Overview',
+                        'Update the hero welcome content and principal message.',
+                        formatCountLabel(homeOverviewItems.length, 'field')
+                      )}
+                    </AccordionSummary>
+                    <AccordionDetails sx={accordionDetailsSx}>
+                      {renderSummaryGrid('home', homeOverviewItems)}
+                    </AccordionDetails>
+                  </Accordion>
+
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={expandedHomeSection === 'metrics'}
+                    onChange={handleHomeSectionToggle('metrics')}
+                    sx={accordionBaseSx}
+                  >
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={summarySx}
+                    >
+                      {renderHomeAccordionSummary(
+                        <TrendingUp fontSize="small" />,
+                        'Key Metrics',
+                        'These stats display on the home page banner.',
+                        formatCountLabel(homeMetricsItems.length, 'metric')
+                      )}
+                    </AccordionSummary>
+                    <AccordionDetails sx={accordionDetailsSx}>
                       {renderSummaryGrid('home', homeMetricsItems)}
-                    </CardContent>
-                  </Card>
+                    </AccordionDetails>
+                  </Accordion>
+
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={expandedHomeSection === 'journey'}
+                    onChange={handleHomeSectionToggle('journey')}
+                    sx={accordionBaseSx}
+                  >
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={summarySx}
+                    >
+                      {renderHomeAccordionSummary(
+                        <WorkspacePremium fontSize="small" />,
+                        'Our Journey',
+                        'Capture the milestones that define your school\'s story.',
+                        journeyMetaLabel
+                      )}
+                    </AccordionSummary>
+                    <AccordionDetails sx={accordionDetailsSx}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: { xs: 'column', sm: 'row' },
+                          alignItems: { xs: 'stretch', sm: 'center' },
+                          justifyContent: 'space-between',
+                          gap: 2,
+                          mb: 2.5,
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Showcase pivotal years, achievements, and growth moments to appear on the public timeline.
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={openAddJourney}
+                          disabled={isSaving}
+                          startIcon={<Plus fontSize="small" />}
+                          sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}
+                        >
+                          Add Journey
+                        </Button>
+                      </Box>
+                      {journeyMilestones.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          No milestones yet. Use "Add Journey" to highlight key moments in your history.
+                        </Typography>
+                      ) : (
+                        <Stack spacing={2.5}>
+                          {journeyMilestones.map((milestone) => (
+                            <Card
+                              key={milestone.id}
+                              variant="outlined"
+                              sx={{
+                                position: 'relative',
+                                overflow: 'hidden',
+                                borderRadius: 2,
+                                border: '1px solid rgba(255,255,255,0.14)',
+                                backgroundColor: 'rgba(255,255,255,0.08)',
+                                backdropFilter: 'blur(14px)',
+                                boxShadow: '0 12px 24px rgba(15,23,42,0.18)',
+                                '&::before': {
+                                  content: '""',
+                                  position: 'absolute',
+                                  inset: 0,
+                                  background: 'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.02) 60%)',
+                                  opacity: 0.65,
+                                },
+                                '& > *': {
+                                  position: 'relative',
+                                },
+                              }}
+                            >
+                              <CardContent
+                                sx={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 1.5,
+                                  py: 2.5,
+                                  px: { xs: 2, sm: 2.5 },
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                    justifyContent: 'space-between',
+                                    alignItems: { xs: 'flex-start', sm: 'center' },
+                                    gap: { xs: 1, sm: 1.5 },
+                                  }}
+                                >
+                                  <Stack direction="row" spacing={1.5} alignItems="center">
+                                    <Chip label={milestone.year || 'Year'} size="small" sx={{ fontWeight: 600 }} />
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                      {milestone.title || 'Untitled Milestone'}
+                                    </Typography>
+                                  </Stack>
+                                  <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <IconButton
+                                      size="small"
+                                      disabled={isSaving}
+                                      onClick={() => openEditJourney(milestone)}
+                                    >
+                                      <Edit fontSize="small" />
+                                    </IconButton>
+                                    <IconButton
+                                      size="small"
+                                      color="error"
+                                      disabled={isSaving}
+                                      onClick={() => deleteJourneyMilestone(milestone.id)}
+                                    >
+                                      <Trash2 fontSize="small" />
+                                    </IconButton>
+                                  </Box>
+                                </Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {milestone.description || 'No description provided.'}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Stack>
+                      )}
+                    </AccordionDetails>
+                  </Accordion>
                 </Box>
               );
             })()}
@@ -1594,9 +2076,9 @@ export function SchoolAdminPanel() {
                     <TableHead>
                       <TableRow>
                         <TableCell sx={tableHeaderSx}>Name</TableCell>
-                        <TableCell sx={tableHeaderSx}>Department</TableCell>
                         <TableCell sx={tableHeaderSx}>Position</TableCell>
                         <TableCell sx={tableHeaderSx}>Experience</TableCell>
+                        <TableCell sx={tableHeaderSx}>Department</TableCell>
                         <TableCell sx={tableHeaderSx}>Email</TableCell>
                         <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>Actions</TableCell>
                       </TableRow>
@@ -1988,9 +2470,69 @@ export function SchoolAdminPanel() {
                 </Card>
               );
             })()}
-          </Box>
-        </Box>
       </Box>
+    </Box>
+  </Box>
+
+      {/* Journey Dialog */}
+      <Dialog
+        open={journeyDialog}
+        onClose={closeJourneyDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingJourney?.id ? 'Edit Journey Milestone' : 'Add Journey Milestone'}
+        </DialogTitle>
+        <DialogContent>
+          {editingJourney && (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                fullWidth
+                label="Year"
+                value={editingJourney.year}
+                onChange={(e) =>
+                  setEditingJourney({ ...editingJourney, year: e.target.value })
+                }
+                placeholder="e.g., 2024"
+              />
+              <TextField
+                fullWidth
+                label="Title"
+                value={editingJourney.title}
+                onChange={(e) =>
+                  setEditingJourney({ ...editingJourney, title: e.target.value })
+                }
+                placeholder="Milestone title"
+              />
+              <TextField
+                fullWidth
+                label="Description"
+                multiline
+                rows={4}
+                value={editingJourney.description}
+                onChange={(e) =>
+                  setEditingJourney({ ...editingJourney, description: e.target.value })
+                }
+                placeholder="Describe what happened during this year"
+              />
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeJourneyDialog} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={saveJourneyMilestone}
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {isSaving ? 'Saving...' : editingJourney?.id ? 'Update' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Achievement Dialog */}
       <Dialog 

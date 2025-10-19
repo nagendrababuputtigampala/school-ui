@@ -392,6 +392,13 @@ export async function fetchContactPageData(schoolId: string): Promise<ContactUsI
   }
 }
 
+export interface AdminJourneyMilestone {
+  id: string;
+  year: string;
+  title: string;
+  description: string;
+}
+
 export interface AdminHomePagePayload {
   welcomeTitle: string;
   welcomeSubTitle: string;
@@ -400,6 +407,7 @@ export interface AdminHomePagePayload {
   yearEstablished: string;
   students: string;
   successRate: string;
+  journeyMilestones: AdminJourneyMilestone[];
 }
 
 export interface AdminContactPagePayload {
@@ -431,7 +439,15 @@ export async function updateHomePageContent(identifier: string, payload: AdminHo
         yearEstablished: payload.yearEstablished,
         studentsCount: payload.students,
         successRate: payload.successRate
-      }
+      },
+      timelineSection: {
+        milestones: (payload.journeyMilestones || []).map((milestone) => ({
+          id: milestone.id,
+          year: milestone.year,
+          title: milestone.title,
+          description: milestone.description,
+        }))
+      },
     };
 
     await setDoc(homePageDocRef, homePageUpdates, { merge: true });
@@ -579,11 +595,12 @@ export async function updateStaffPageContent(identifier: string, staffMembers: a
     // Update staffPage document directly
     const staffPageDocRef = doc(db, collectionId, 'staffPage');
     
-    const staffPageUpdates = {
-      staff: normalizedStaff
-    };
+    const staffPayload = normalizedStaff.reduce((acc, staff, index) => {
+      acc[index.toString()] = staff;
+      return acc;
+    }, {} as Record<string, any>);
 
-    await setDoc(staffPageDocRef, staffPageUpdates, { merge: true });
+    await setDoc(staffPageDocRef, staffPayload);
   } catch (err) {
     console.error(`Failed to update staff page for school ${identifier}:`, err);
     throw err;
@@ -706,6 +723,17 @@ export async function updateAnnouncementsPageContent(identifier: string, announc
 }
 
 // Fetch staff members for a specific school from new collection structure
+const staffDocToArray = (data: any): any[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  return Object.values(data).filter(
+    (item) =>
+      item &&
+      typeof item === 'object' &&
+      ('name' in item || 'department' in item || 'position' in item)
+  );
+};
+
 export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
   try {
     // Convert schoolId to collection ID format
@@ -721,7 +749,7 @@ export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
         
         if (staffDoc) {
           const staffData = staffDoc.data();
-          const staffArray = staffData.staff || [];
+          const staffArray = staffDocToArray(staffData);
           const staffMembers: StaffMember[] = [];
           
           staffArray.forEach((staff: any) => {
@@ -772,12 +800,16 @@ export async function fetchDepartments(schoolId: string): Promise<Department[]> 
       }
     }
     
-    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage || !schoolData.pages.staffPage.staff) {
+    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage) {
       console.log(`No staff data found for school: ${schoolId}`);
       return [];
     }
     
-    const staffArray = schoolData.pages.staffPage.staff;
+    const staffArray = staffDocToArray(schoolData.pages.staffPage);
+    if (staffArray.length === 0) {
+      console.log(`No staff data found for school: ${schoolId}`);
+      return [];
+    }
     const departmentSet = new Set<string>();
     
     // Extract departments from staff array
