@@ -139,7 +139,6 @@ interface StaffMember {
 interface AlumniMember {
   id: string;
   name: string;
-  bio: string;
   company: string;
   currentPosition: string;
   graduationYear: string;
@@ -147,7 +146,6 @@ interface AlumniMember {
   industry: string;
   location: string;
   linkedinUrl: string;
-  achievements: string;
 }
 
 interface Announcement {
@@ -653,6 +651,23 @@ export function SchoolAdminPanel() {
     );
   };
 
+  const extractAlumniEntries = (raw: any): any[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw.alumni)) return raw.alumni;
+    if (Array.isArray(raw.alumniMembers)) return raw.alumniMembers;
+
+    return Object.entries(raw)
+      .sort(([keyA], [keyB]) => Number(keyA) - Number(keyB))
+      .map(([, value]) => value)
+      .filter(
+        (value) =>
+          value &&
+          typeof value === 'object' &&
+          ('name' in value || 'currentPosition' in value || 'company' in value)
+      );
+  };
+
   const saveInlineEdit = async () => {
     if (!editingField) return;
     const { section, key } = editingField;
@@ -974,24 +989,18 @@ export function SchoolAdminPanel() {
       }))
     );
 
-    const alumniSource = Array.isArray(pages.alumniPage?.alumniMembers)
-      ? pages.alumniPage.alumniMembers
-      : [];
+    const alumniSource = extractAlumniEntries(pages.alumniPage);
     setAlumniMembers(
       alumniSource.map((alumni: any, index: number) => ({
         id: alumni.id || `alumni-${index + 1}`,
-        name: alumni.name || '',
-        bio: alumni.bio || '',
-        company: alumni.company || '',
-        currentPosition: alumni.currentPosition || '',
-        graduationYear: alumni.graduationYear || '',
-        imageUrl: alumni.imageUrl || alumni.image || '',
-        industry: alumni.industry || '',
-        location: alumni.location || '',
-        linkedinUrl: alumni.linkedinUrl || alumni.linkedIn || '',
-        achievements: Array.isArray(alumni.achievements)
-          ? alumni.achievements.join(', ')
-          : alumni.achievements || '',
+        name: String(alumni.name || `Alumni ${index + 1}`).trim(),
+        company: String(alumni.company || '').trim(),
+        currentPosition: String(alumni.currentPosition || '').trim(),
+        graduationYear: String(alumni.graduationYear || '').trim(),
+        imageUrl: String(alumni.imageUrl || alumni.image || '').trim(),
+        industry: String(alumni.industry || '').trim() || 'Other',
+        location: String(alumni.location || '').trim(),
+        linkedinUrl: String(alumni.linkedinUrl || alumni.linkedIn || '').trim(),
       }))
     );
 
@@ -1412,15 +1421,13 @@ export function SchoolAdminPanel() {
     setEditingAlumni({
       id: '',
       name: '',
-      bio: '',
       company: '',
       currentPosition: '',
       graduationYear: '',
       imageUrl: '',
-      industry: '',
+      industry: 'Other',
       location: '',
       linkedinUrl: '',
-      achievements: '',
     });
     setAlumniDialog(true);
   };
@@ -1433,8 +1440,15 @@ export function SchoolAdminPanel() {
   const saveAlumniMember = async () => {
     if (!editingAlumni) return;
     const alumniEntry: AlumniMember = {
-      ...editingAlumni,
       id: editingAlumni.id || `alumni-${Date.now()}`,
+      name: (editingAlumni.name || '').trim(),
+      company: (editingAlumni.company || '').trim(),
+      currentPosition: (editingAlumni.currentPosition || '').trim(),
+      graduationYear: (editingAlumni.graduationYear || '').trim(),
+      imageUrl: (editingAlumni.imageUrl || '').trim(),
+      industry: (editingAlumni.industry || '').trim() || 'Other',
+      location: (editingAlumni.location || '').trim(),
+      linkedinUrl: (editingAlumni.linkedinUrl || '').trim(),
     };
     const updatedList = editingAlumni.id
       ? alumniMembers.map((a) => (a.id === editingAlumni.id ? alumniEntry : a))
@@ -2836,15 +2850,6 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingAlumni({ ...editingAlumni, name: e.target.value })}
                 placeholder="Full name"
               />
-              <TextField
-                fullWidth
-                label="Bio"
-                multiline
-                rows={3}
-                value={editingAlumni.bio}
-                onChange={(e) => setEditingAlumni({ ...editingAlumni, bio: e.target.value })}
-                placeholder="Short biography"
-              />
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
                 <TextField
                   fullWidth
@@ -2893,13 +2898,6 @@ export function SchoolAdminPanel() {
                   placeholder="https://linkedin.com/in/example"
                 />
               </Box>
-              <TextField
-                fullWidth
-                label="Key Achievements (comma separated)"
-                value={editingAlumni.achievements}
-                onChange={(e) => setEditingAlumni({ ...editingAlumni, achievements: e.target.value })}
-                placeholder="Achievement 1, Achievement 2"
-              />
               <TextField
                 fullWidth
                 label="Profile Image URL"

@@ -67,9 +67,7 @@ export interface AlumniMember {
   company: string;
   location: string;
   industry: string;
-  achievements: string[];
   image: string;
-  bio: string;
   linkedIn?: string;
   schoolId: string;
 }
@@ -614,18 +612,9 @@ export async function updateAlumniPageContent(identifier: string, alumniMembers:
     // Convert identifier to collection ID format
     const collectionId = identifier.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_]/g, '');
 
-    const parseCSV = (value: string) =>
-      value
-        ? value
-            .split(',')
-            .map((item) => item.trim())
-            .filter((item) => item.length > 0)
-        : [];
-
     const normalizedAlumni = (alumniMembers || []).map((alumni: any, index: number) => ({
       id: alumni.id || `alumni-${index + 1}`,
       name: alumni.name || '',
-      bio: alumni.bio || '',
       company: alumni.company || '',
       currentPosition: alumni.currentPosition || '',
       graduationYear: alumni.graduationYear || '',
@@ -633,19 +622,17 @@ export async function updateAlumniPageContent(identifier: string, alumniMembers:
       industry: alumni.industry || '',
       location: alumni.location || '',
       linkedIn: alumni.linkedinUrl || alumni.linkedIn || '',
-      achievements: Array.isArray(alumni.achievements)
-        ? alumni.achievements
-        : parseCSV(alumni.achievements || ''),
+      schoolId: alumni.schoolId || identifier,
     }));
+
+    const alumniPayload = normalizedAlumni.reduce((acc, member, index) => {
+      acc[index.toString()] = member;
+      return acc;
+    }, {} as Record<string, any>);
 
     // Update alumniPage document directly
     const alumniPageDocRef = doc(db, collectionId, 'alumniPage');
-    
-     const alumniPageUpdates = {
-      alumni: normalizedAlumni
-    };
-
-    await setDoc(alumniPageDocRef, alumniPageUpdates, { merge: true });
+    await setDoc(alumniPageDocRef, alumniPayload);
   } catch (err) {
     console.error(`Failed to update alumni page for school ${identifier}:`, err);
     throw err;
@@ -734,6 +721,22 @@ const staffDocToArray = (data: any): any[] => {
       typeof item === 'object' &&
       ('name' in item || 'department' in item || 'position' in item)
   );
+};
+
+const alumniDocToArray = (data: any): any[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.alumni)) return data.alumni;
+  if (Array.isArray(data.alumniMembers)) return data.alumniMembers;
+  return Object.entries(data)
+    .sort(([keyA], [keyB]) => Number(keyA) - Number(keyB))
+    .map(([, value]) => value)
+    .filter(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        ('name' in item || 'currentPosition' in item || 'company' in item)
+    );
 };
 
 export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
@@ -901,10 +904,23 @@ export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData 
         
         if (alumniDoc) {
           const alumniPage = alumniDoc.data();
-          const alumniMembers = alumniPage.alumni || [];
+          const rawAlumni = alumniDocToArray(alumniPage);
+
+          const normalizedAlumniMembers: AlumniMember[] = rawAlumni.map((member: any, index: number) => ({
+            id: member.id || `alumni-${index + 1}`,
+            name: member.name || '',
+            graduationYear: member.graduationYear || '',
+            currentPosition: member.currentPosition || '',
+            company: member.company || '',
+            location: member.location || '',
+            industry: member.industry || '',
+            image: member.imageUrl || member.image || '',
+            linkedIn: member.linkedinUrl || member.linkedIn || '',
+            schoolId,
+          }));
           
           // Generate decades dynamically from alumni members
-          const graduationYears = alumniMembers.map((member: AlumniMember) => parseInt(member.graduationYear));
+          const graduationYears = normalizedAlumniMembers.map((member: AlumniMember) => parseInt(member.graduationYear));
           const decadeNumbers = graduationYears.map((year: number) => Math.floor(year / 10) * 10);
           const uniqueDecades = Array.from(new Set(decadeNumbers)) as number[];
           uniqueDecades.sort((a: number, b: number) => b - a);
@@ -918,7 +934,7 @@ export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData 
           ];
           
           // Generate industries dynamically from alumni members
-          const industriesArray = alumniMembers
+          const industriesArray = normalizedAlumniMembers
             .map((member: AlumniMember) => member.industry)
             .filter((industry: string | undefined): industry is string => Boolean(industry));
           const uniqueIndustries = Array.from(new Set(industriesArray)) as string[];
@@ -936,7 +952,7 @@ export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData 
             stats: alumniPage.stats || [],
             decades,
             industries,
-            alumniMembers
+            alumniMembers: normalizedAlumniMembers
           };
         }
       }
