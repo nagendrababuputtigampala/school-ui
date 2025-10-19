@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, ReactElement } from 'react';
+import { useState, useEffect, useCallback, ReactElement, ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   fetchSchoolData,
@@ -27,7 +27,6 @@ import {
   ListItemText,
   ListItemIcon,
   Tooltip,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -72,6 +71,8 @@ import {
   AccessTime,
   Facebook as FacebookIcon,
   Instagram as InstagramIcon,
+  PhotoCamera,
+  CloudUpload,
   Public,
   Star,
   TrendingUp,
@@ -279,6 +280,7 @@ export function SchoolAdminPanel() {
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [contactData, setContactData] = useState<any>(null);
+  const [principalPhotoFileName, setPrincipalPhotoFileName] = useState<string>('');
   const [achievementSectionsMeta, setAchievementSectionsMeta] =
     useState<Record<string, { title: string }>>(defaultAchievementSections);
   const [editingField, setEditingField] = useState<{ section: 'home' | 'contact'; key: string } | null>(null);
@@ -318,6 +320,16 @@ export function SchoolAdminPanel() {
 
   const handleHomeSectionToggle = (sectionId: string) => (_: unknown, isExpanded: boolean) => {
     setExpandedHomeSection(isExpanded ? sectionId : '');
+  };
+
+  const handlePrincipalPhotoSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setPrincipalPhotoFileName(file.name);
+    event.target.value = '';
   };
 
   const renderHomeAccordionSummary = (
@@ -411,6 +423,7 @@ export function SchoolAdminPanel() {
       subtitle: 'Add a welcome subtitle',
       principalName: "Add the principal's name",
       principalMessage: "Add a principal message",
+      principalPhoto: 'No principal photo uploaded yet',
       yearEstablished: 'Add the founding year',
       students: 'Add total enrolled students',
       successRate: 'Add success rate percentage',
@@ -432,6 +445,7 @@ export function SchoolAdminPanel() {
       subtitle: 'Displayed beneath the welcome title.',
       principalName: 'Shown in the principal highlight section.',
       principalMessage: 'Share a short greeting from the principal (max 500 characters).',
+      principalPhoto: 'Upload a friendly portrait of the principal (PNG or JPG).',
       yearEstablished: 'Use a four-digit year (e.g., 1998).',
       students: 'Example: 1500 or 2500+.',
       successRate: 'Enter a percentage between 0 and 100.',
@@ -796,6 +810,78 @@ export function SchoolAdminPanel() {
             ? `${editingValue.length}/500 characters`
             : helperBase;
 
+        if (section === 'home' && key === 'principalPhoto') {
+          const fileLabel = principalPhotoFileName;
+
+          return (
+            <Paper
+              key={`${section}-${key}`}
+              variant="outlined"
+              sx={{
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.5,
+                borderColor: 'rgba(255,255,255,0.2)',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {icon}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {title}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Stack spacing={2} sx={{ py: 1 }}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  alignItems="flex-start"
+                >
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ fontWeight: 600 }}
+                  >
+                    Choose Image
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePrincipalPhotoSelect}
+                    />
+                  </Button>
+                  {fileLabel && (
+                    <Typography variant="body2" color="text.secondary">
+                      Selected file: {fileLabel}
+                    </Typography>
+                  )}
+                </Stack>
+                {!fileLabel && (
+                  <Typography variant="body2" color="text.secondary">
+                    No file selected yet.
+                  </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  Image uploads will be enabled in a future update. Selecting a file here only
+                  displays the file name for reference.
+                </Typography>
+              </Stack>
+            </Paper>
+          );
+        }
+
         return (
           <Paper
             key={`${section}-${key}`}
@@ -928,6 +1014,8 @@ export function SchoolAdminPanel() {
       students: statisticsSection.studentsCount || schoolData.studentsCount || '',
       successRate: statisticsSection.successRate || schoolData.successRate || '',
     });
+
+    setPrincipalPhotoFileName('');
 
     const timelineSourceCandidates = [
       homePage.timelineSection?.milestones,
@@ -1158,13 +1246,14 @@ export function SchoolAdminPanel() {
     const normalizedAnnouncements: Announcement[] = rawAnnouncements.map((announcement: any, index: number) => {
       const categories = normalizeAnnouncementCategoryList([announcement.categories, announcement.category]);
       const primaryCategory = categories[0] || '';
+      const normalizedCategories = primaryCategory ? [primaryCategory] : [];
       return {
         id: announcement.id || `announcement-${index + 1}`,
         title: announcement.title || '',
         description: announcement.description || '',
         date: announcement.date || '',
         category: primaryCategory,
-        categories,
+        categories: normalizedCategories,
         priority: (announcement.priority || 'medium').toLowerCase(),
         type: (announcement.type || 'announcement').toLowerCase(),
       };
@@ -1693,11 +1782,13 @@ export function SchoolAdminPanel() {
 
   const openEditAnnouncement = (announcement: Announcement) => {
     const categories = normalizeAnnouncementCategoryList([announcement.categories, announcement.category]);
+    const primaryCategory = categories[0] || '';
+    const normalizedCategories = primaryCategory ? [primaryCategory] : [];
 
     setEditingAnnouncement({
       ...announcement,
-      category: categories[0] || '',
-      categories,
+      category: primaryCategory,
+      categories: normalizedCategories,
       priority: (announcement.priority || 'medium').toLowerCase(),
       type: (announcement.type || 'announcement').toLowerCase(),
     });
@@ -1706,16 +1797,17 @@ export function SchoolAdminPanel() {
 
   const saveAnnouncement = async () => {
     if (!editingAnnouncement) return;
-    const categories = normalizeAnnouncementCategoryList(
-      editingAnnouncement.categories && editingAnnouncement.categories.length
-        ? editingAnnouncement.categories
-        : editingAnnouncement.category
-    );
+    const categories = normalizeAnnouncementCategoryList([
+      editingAnnouncement.category,
+      editingAnnouncement.categories,
+    ]);
+    const primaryCategory = categories[0] || '';
+    const normalizedCategories = primaryCategory ? [primaryCategory] : [];
     const announcementEntry: Announcement = {
       ...editingAnnouncement,
       id: editingAnnouncement.id || `announcement-${Date.now()}`,
-      category: categories[0] || '',
-      categories,
+      category: primaryCategory,
+      categories: normalizedCategories,
       priority: (editingAnnouncement.priority || 'medium').toLowerCase(),
       type: (editingAnnouncement.type || 'announcement').toLowerCase(),
     };
@@ -1923,6 +2015,7 @@ export function SchoolAdminPanel() {
                 { key: 'subtitle', title: 'Welcome Subtitle', icon: <Megaphone fontSize='small' />, lines: getHomeDisplayLines('subtitle') },
                 { key: 'principalName', title: 'Principal Name', icon: <School fontSize='small' />, lines: getHomeDisplayLines('principalName') },
                 { key: 'principalMessage', title: "Principal's Message", icon: <Mail fontSize='small' />, lines: getHomeDisplayLines('principalMessage') },
+                { key: 'principalPhoto', title: 'Principal Photo', icon: <PhotoCamera fontSize='small' />, lines: [] },
               ];
 
               const homeMetricsItems = [
@@ -3214,34 +3307,28 @@ export function SchoolAdminPanel() {
                   InputLabelProps={{ shrink: true }}
                 />
                 <FormControl fullWidth>
-                  <InputLabel id="announcement-category-label">Categories</InputLabel>
+                  <InputLabel id="announcement-category-label">Category</InputLabel>
                   <Select
                     labelId="announcement-category-label"
-                    multiple
-                    label="Categories"
-                    value={editingAnnouncement.categories || []}
-                    onChange={(event: SelectChangeEvent<string[]>) => {
+                    label="Category"
+                    value={editingAnnouncement.category || ''}
+                    onChange={(event: SelectChangeEvent<string>) => {
                       const value = event.target.value;
-                      const rawSelection = typeof value === 'string' ? value.split(',') : value;
-                      const normalizedSelection = normalizeAnnouncementCategoryList(rawSelection);
+                      const normalizedSelection = normalizeAnnouncementCategoryList(value);
+                      const primaryCategory = normalizedSelection[0] || '';
                       setEditingAnnouncement({
                         ...editingAnnouncement,
-                        categories: normalizedSelection,
-                        category: normalizedSelection[0] || '',
+                        category: primaryCategory,
+                        categories: primaryCategory ? [primaryCategory] : [],
                       });
                     }}
-                    renderValue={(selected) =>
-                      (selected as string[])
-                        .map((category) => formatAnnouncementCategoryLabel(category))
-                        .join(', ')
-                    }
                   >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
                     {ANNOUNCEMENT_CATEGORY_OPTIONS.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
-                        <Checkbox
-                          checked={(editingAnnouncement.categories || []).includes(option.value)}
-                        />
-                        <ListItemText primary={option.label} />
+                        {option.label}
                       </MenuItem>
                     ))}
                   </Select>
