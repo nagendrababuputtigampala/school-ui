@@ -67,27 +67,53 @@ export function StaffDirectoryPage() {
 
   // Get staff data from school context
   const getStaffMembers = (): StaffMember[] => {
-    if (schoolData?.pages?.staffPage) {
-      const staffData = schoolData.pages.staffPage;
-      
-      // Convert Firestore object format to array
-      const staffArray = Object.values(staffData);
-      
-      return staffArray.map((staff: any, index: number): StaffMember => ({
-        id: staff.id || `staff-${index}`,
-        name: staff.name,
-        position: staff.position,
-        department: staff.department,
-        email: staff.email,
-        phone: staff.phone,
-        education: staff.education,
-        experience: staff.experience,
-        specializations: staff.specializations,
-        image: staff.image
-      }));
-    }
-    
-    return [];
+    const staffPage = schoolData?.pages?.staffPage;
+    if (!staffPage) return [];
+
+    const normalizeSpecializations = (value: unknown): string[] => {
+      if (!value) return [];
+      if (Array.isArray(value)) {
+        return value
+          .map((item) => (typeof item === 'string' ? item.trim() : ''))
+          .filter((item) => item.length > 0);
+      }
+      if (typeof value === 'string') {
+        return value
+          .split(',')
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0);
+      }
+      return [];
+    };
+
+    const flattenStaff = (raw: any): any[] => {
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+
+      return Object.values(raw).filter(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          ('name' in item || 'position' in item || 'department' in item)
+      );
+    };
+
+    const staffArray = flattenStaff(staffPage);
+
+    return staffArray.map((staff: any, index: number): StaffMember => ({
+      id: staff.id || `staff-${index}`,
+      name: staff.name || '',
+      position: staff.position || '',
+      department: staff.department || 'other',
+      email: staff.email || '',
+      phone: staff.phone || '',
+      education: staff.education || '',
+      experience: staff.experience || '',
+      specializations: normalizeSpecializations(
+        staff.specializations || staff.specialties || staff.skills
+      ),
+      image: staff.imageUrl || staff.image || '',
+    }));
   };
 
   const staffMembers = getStaffMembers();

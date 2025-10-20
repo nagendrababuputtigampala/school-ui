@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, setDoc } from 'firebase/firestore';
 import { sampleSchoolData } from '../data/schoolData';
+import { normalizeAnnouncementCategoryList } from './announcementCategories';
 
 // Interface for timeline milestone
 export interface TimelineMilestone {
@@ -18,7 +19,11 @@ export interface Announcement {
   type: 'event' | 'announcement' | 'news';
   date: string;
   priority: 'high' | 'medium' | 'low';
+  audience: string;
+  isPinned: boolean;
+  isUrgent: boolean;
   category: string;
+  tags: string | string[];
 }
 
 //Interface for Contact us page
@@ -67,9 +72,7 @@ export interface AlumniMember {
   company: string;
   location: string;
   industry: string;
-  achievements: string[];
   image: string;
-  bio: string;
   linkedIn?: string;
   schoolId: string;
 }
@@ -392,14 +395,23 @@ export async function fetchContactPageData(schoolId: string): Promise<ContactUsI
   }
 }
 
+export interface AdminJourneyMilestone {
+  id: string;
+  year: string;
+  title: string;
+  description: string;
+}
+
 export interface AdminHomePagePayload {
   welcomeTitle: string;
   welcomeSubTitle: string;
   principalName: string;
   principalMessage: string;
+  principalPhotoUrl?: string;
   yearEstablished: string;
   students: string;
   successRate: string;
+  journeyMilestones: AdminJourneyMilestone[];
 }
 
 export interface AdminContactPagePayload {
@@ -414,37 +426,32 @@ export interface AdminContactPagePayload {
 
 export async function updateHomePageContent(identifier: string, payload: AdminHomePagePayload): Promise<void> {
   try {
-    // Convert identifier to collection ID format
     const collectionId = identifier.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_]/g, '');
-    
-    // Update homePage document directly
     const homePageDocRef = doc(db, collectionId, 'homePage');
-    
+
     const homePageUpdates = {
-      welcomeTitle: payload.welcomeTitle,
-      welcomeSubtitle: payload.welcomeSubTitle,
+      heroSection: {
+        welcomeTitle: payload.welcomeTitle,
+        welcomeSubtitle: payload.welcomeSubTitle,
+      },
       principalSection: {
         name: payload.principalName,
-        message: payload.principalMessage
+        message: payload.principalMessage,
+        image: payload.principalPhotoUrl || ''
       },
       statisticsSection: {
         yearEstablished: payload.yearEstablished,
         studentsCount: payload.students,
         successRate: payload.successRate
-      }
+      },
+      timelineSection: (payload.journeyMilestones || []).map((milestone) => ({
+        year: milestone.year,
+        title: milestone.title,
+        description: milestone.description,
+      })),
     };
 
     await setDoc(homePageDocRef, homePageUpdates, { merge: true });
-    
-    // Also update school info document with basic stats
-    const schoolInfoDocRef = doc(db, collectionId, 'schoolInfo');
-    const schoolInfoUpdates = {
-      yearEstablished: payload.yearEstablished,
-      studentsCount: payload.students,
-      successRate: payload.successRate
-    };
-    
-    await setDoc(schoolInfoDocRef, schoolInfoUpdates, { merge: true });
   } catch (err) {
     console.error(`Failed to update home page for school ${identifier}:`, err);
     throw err;
@@ -515,32 +522,32 @@ export async function updateContactPageContent(identifier: string, payload: Admi
 
 export async function updateAchievementsPageContent(
   identifier: string,
-  sections: Record<string, { title: string; achievements: any[] }>
+  achievements: any[]
 ): Promise<void> {
   try {
     // Convert identifier to collection ID format
     const collectionId = identifier.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_]/g, '');
 
-    const normalizedSections: Record<string, any> = {};
-
-    Object.entries(sections).forEach(([key, sectionValue]) => {
-      normalizedSections[key] = {
-        title: sectionValue.title,
-        achievements: (sectionValue.achievements || []).map((item: any, index: number) => ({
-          id: item.id || `${key}-${index + 1}`,
-          title: item.title || '',
-          description: item.description || '',
-          level: item.level || '',
-          year: item.year || item.date || '',
-          date: item.date || '',
-        })),
+    const achievementsPayload = (achievements || []).reduce((acc, item, index) => {
+      acc[index.toString()] = {
+        id: item.id || `achievement-${index + 1}`,
+        title: item.title || '',
+        description: item.description || '',
+        level: item.level || '',
+        year: item.year || item.date || '',
+        date: item.date || item.year || '',
+        category: item.category || '',
+        image: item.image || '',
+        participants: item.participants || '',
+        award: item.award || '',
       };
-    });
+      return acc;
+    }, {} as Record<string, any>);
 
     // Update achievementsPage document directly
     const achievementsPageDocRef = doc(db, collectionId, 'achievementsPage');
     
-    await setDoc(achievementsPageDocRef, normalizedSections, { merge: true });
+    await setDoc(achievementsPageDocRef, achievementsPayload);
   } catch (err) {
     console.error(`Failed to update achievements page for school ${identifier}:`, err);
     throw err;
@@ -572,18 +579,19 @@ export async function updateStaffPageContent(identifier: string, staffMembers: a
       specializations: Array.isArray(staff.specializations)
         ? staff.specializations
         : parseCSV(staff.specializations || ''),
-      image: staff.imageUrl || staff.image || '',
+      image: staff.image ||  '',
       schoolId: staff.schoolId || identifier,
     }));
 
     // Update staffPage document directly
     const staffPageDocRef = doc(db, collectionId, 'staffPage');
     
-    const staffPageUpdates = {
-      staff: normalizedStaff
-    };
+    const staffPayload = normalizedStaff.reduce((acc, staff, index) => {
+      acc[index.toString()] = staff;
+      return acc;
+    }, {} as Record<string, any>);
 
-    await setDoc(staffPageDocRef, staffPageUpdates, { merge: true });
+    await setDoc(staffPageDocRef, staffPayload);
   } catch (err) {
     console.error(`Failed to update staff page for school ${identifier}:`, err);
     throw err;
@@ -595,38 +603,27 @@ export async function updateAlumniPageContent(identifier: string, alumniMembers:
     // Convert identifier to collection ID format
     const collectionId = identifier.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_]/g, '');
 
-    const parseCSV = (value: string) =>
-      value
-        ? value
-            .split(',')
-            .map((item) => item.trim())
-            .filter((item) => item.length > 0)
-        : [];
-
     const normalizedAlumni = (alumniMembers || []).map((alumni: any, index: number) => ({
       id: alumni.id || `alumni-${index + 1}`,
       name: alumni.name || '',
-      bio: alumni.bio || '',
       company: alumni.company || '',
       currentPosition: alumni.currentPosition || '',
       graduationYear: alumni.graduationYear || '',
-      image: alumni.imageUrl || alumni.image || '',
+      image: alumni.image ||  '',
       industry: alumni.industry || '',
       location: alumni.location || '',
-      linkedIn: alumni.linkedinUrl || alumni.linkedIn || '',
-      achievements: Array.isArray(alumni.achievements)
-        ? alumni.achievements
-        : parseCSV(alumni.achievements || ''),
+      linkedIn: alumni.linkedIn || '',
+      schoolId: alumni.schoolId || identifier,
     }));
+
+    const alumniPayload = normalizedAlumni.reduce((acc, member, index) => {
+      acc[index.toString()] = member;
+      return acc;
+    }, {} as Record<string, any>);
 
     // Update alumniPage document directly
     const alumniPageDocRef = doc(db, collectionId, 'alumniPage');
-    
-    const alumniPageUpdates = {
-      alumni: normalizedAlumni
-    };
-
-    await setDoc(alumniPageDocRef, alumniPageUpdates, { merge: true });
+    await setDoc(alumniPageDocRef, alumniPayload);
   } catch (err) {
     console.error(`Failed to update alumni page for school ${identifier}:`, err);
     throw err;
@@ -642,19 +639,25 @@ export async function updateGalleryPageContent(identifier: string, galleryItems:
       id: item.id || `gallery-${index + 1}`,
       title: item.title || '',
       category: item.category || '',
+      type: item.type || 'image',
       description: item.description || '',
       date: item.date || '',
-      imageUrl: item.imageUrl || item.image || '',
+      images: Array.isArray(item.images)
+        ? item.images.filter((url: string) => typeof url === 'string' && url.trim().length > 0)
+        : item.image
+        ? [item.image]
+        : [],
     }));
 
     // Update galleryPage document directly
     const galleryPageDocRef = doc(db, collectionId, 'galleryPage');
-    
-    const galleryPageUpdates = {
-      galleryImages: normalizedGallery
-    };
 
-    await setDoc(galleryPageDocRef, galleryPageUpdates, { merge: true });
+    const galleryPageData = normalizedGallery.reduce<Record<string, any>>((acc, image, index) => {
+      acc[String(index)] = image;
+      return acc;
+    }, {});
+
+    await setDoc(galleryPageDocRef, galleryPageData);
   } catch (err) {
     console.error(`Failed to update gallery page for school ${identifier}:`, err);
     throw err;
@@ -669,26 +672,70 @@ export async function updateAnnouncementsPageContent(identifier: string, announc
     const normalizedAnnouncements = (announcements || []).map((announcement: any, index: number) => {
       const priority = (announcement.priority || 'medium').toLowerCase();
       const type = (announcement.type || 'announcement').toLowerCase();
+      const id = announcement.id || `announcement-${index + 1}`;
 
-      return {
-        id: announcement.id || `announcement-${index + 1}`,
+      const categories = normalizeAnnouncementCategoryList([announcement.categories, announcement.category]);
+      const primaryCategory = categories[0] || '';
+
+      const normalized: Record<string, any> = {
+        ...announcement,
+        id,
         title: announcement.title || '',
-        description: announcement.description || '',
+        description: announcement.description || announcement.content || '',
+        content: announcement.content || announcement.description || '',
         date: announcement.date || '',
-        category: announcement.category || '',
+        endDate: announcement.endDate || '',
+        category: primaryCategory,
         priority,
         type,
+        isPinned: Boolean(announcement.isPinned),
+        isUrgent: Boolean(announcement.isUrgent),
+        audience: (announcement.audience || 'all').toLowerCase(),
+        author: announcement.author || '',
       };
+
+      if (!Array.isArray(normalized.tags)) {
+        const rawTags = normalized.tags;
+        if (typeof rawTags === 'string' && rawTags.trim()) {
+          normalized.tags = rawTags
+            .split(',')
+            .map((tag: string) => tag.trim())
+            .filter(Boolean);
+        } else if (!rawTags) {
+          delete normalized.tags;
+        }
+      } else {
+        normalized.tags = normalized.tags.filter((tag: any) => typeof tag === 'string' && tag.trim());
+      }
+
+      ['isPinned', 'isUrgent'].forEach((flagKey) => {
+        if (flagKey in normalized) {
+          normalized[flagKey] = Boolean(normalized[flagKey]);
+        }
+      });
+
+      if (!Array.isArray(normalized.categories) || !normalized.categories.length) {
+        delete normalized.categories;
+      }
+
+      Object.keys(normalized).forEach((key) => {
+        if (normalized[key] === undefined) {
+          delete normalized[key];
+        }
+      });
+
+      return normalized;
     });
 
     // Update announcementsPage document directly
     const announcementsPageDocRef = doc(db, collectionId, 'announcementsPage');
-    
-    const announcementsPageUpdates = {
-      announcements: normalizedAnnouncements
-    };
 
-    await setDoc(announcementsPageDocRef, announcementsPageUpdates, { merge: true });
+    const announcementsPageData = normalizedAnnouncements.reduce<Record<string, any>>((acc, announcement, index) => {
+      acc[String(index)] = announcement;
+      return acc;
+    }, {});
+
+    await setDoc(announcementsPageDocRef, announcementsPageData);
     
     // Also update homePage with recent announcements
     const homePageDocRef = doc(db, collectionId, 'homePage');
@@ -706,6 +753,33 @@ export async function updateAnnouncementsPageContent(identifier: string, announc
 }
 
 // Fetch staff members for a specific school from new collection structure
+const staffDocToArray = (data: any): any[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  return Object.values(data).filter(
+    (item) =>
+      item &&
+      typeof item === 'object' &&
+      ('name' in item || 'department' in item || 'position' in item)
+  );
+};
+
+const alumniDocToArray = (data: any): any[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.alumni)) return data.alumni;
+  if (Array.isArray(data.alumniMembers)) return data.alumniMembers;
+  return Object.entries(data)
+    .sort(([keyA], [keyB]) => Number(keyA) - Number(keyB))
+    .map(([, value]) => value)
+    .filter(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        ('name' in item || 'currentPosition' in item || 'company' in item)
+    );
+};
+
 export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
   try {
     // Convert schoolId to collection ID format
@@ -721,7 +795,7 @@ export async function fetchStaffData(schoolId: string): Promise<StaffMember[]> {
         
         if (staffDoc) {
           const staffData = staffDoc.data();
-          const staffArray = staffData.staff || [];
+          const staffArray = staffDocToArray(staffData);
           const staffMembers: StaffMember[] = [];
           
           staffArray.forEach((staff: any) => {
@@ -772,12 +846,16 @@ export async function fetchDepartments(schoolId: string): Promise<Department[]> 
       }
     }
     
-    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage || !schoolData.pages.staffPage.staff) {
+    if (!schoolData || !schoolData.pages || !schoolData.pages.staffPage) {
       console.log(`No staff data found for school: ${schoolId}`);
       return [];
     }
     
-    const staffArray = schoolData.pages.staffPage.staff;
+    const staffArray = staffDocToArray(schoolData.pages.staffPage);
+    if (staffArray.length === 0) {
+      console.log(`No staff data found for school: ${schoolId}`);
+      return [];
+    }
     const departmentSet = new Set<string>();
     
     // Extract departments from staff array
@@ -867,10 +945,23 @@ export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData 
         
         if (alumniDoc) {
           const alumniPage = alumniDoc.data();
-          const alumniMembers = alumniPage.alumni || [];
+          const rawAlumni = alumniDocToArray(alumniPage);
+
+          const normalizedAlumniMembers: AlumniMember[] = rawAlumni.map((member: any, index: number) => ({
+            id: member.id || `alumni-${index + 1}`,
+            name: member.name || '',
+            graduationYear: member.graduationYear || '',
+            currentPosition: member.currentPosition || '',
+            company: member.company || '',
+            location: member.location || '',
+            industry: member.industry || '',
+            image: member.image || '',
+            linkedIn: member.linkedIn || '',
+            schoolId,
+          }));
           
           // Generate decades dynamically from alumni members
-          const graduationYears = alumniMembers.map((member: AlumniMember) => parseInt(member.graduationYear));
+          const graduationYears = normalizedAlumniMembers.map((member: AlumniMember) => parseInt(member.graduationYear));
           const decadeNumbers = graduationYears.map((year: number) => Math.floor(year / 10) * 10);
           const uniqueDecades = Array.from(new Set(decadeNumbers)) as number[];
           uniqueDecades.sort((a: number, b: number) => b - a);
@@ -884,7 +975,7 @@ export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData 
           ];
           
           // Generate industries dynamically from alumni members
-          const industriesArray = alumniMembers
+          const industriesArray = normalizedAlumniMembers
             .map((member: AlumniMember) => member.industry)
             .filter((industry: string | undefined): industry is string => Boolean(industry));
           const uniqueIndustries = Array.from(new Set(industriesArray)) as string[];
@@ -902,7 +993,7 @@ export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData 
             stats: alumniPage.stats || [],
             decades,
             industries,
-            alumniMembers
+            alumniMembers: normalizedAlumniMembers
           };
         }
       }

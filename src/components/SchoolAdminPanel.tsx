@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, ReactElement } from 'react';
+import { useState, useEffect, useCallback, ReactElement, ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   fetchSchoolData,
@@ -10,10 +10,14 @@ import {
   updateGalleryPageContent,
   updateAnnouncementsPageContent,
 } from '../config/firebase';
+import { uploadImageToCloudinary } from '../config/cloudinary';
 import {
   Card,
   CardContent,
   CardHeader,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Typography,
   TextField,
   Button,
@@ -43,8 +47,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress
+  CircularProgress,
+  Avatar,
+  Divider,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
+import { SelectChangeEvent } from '@mui/material/Select';
 import {
   School,
   Home,
@@ -59,6 +68,7 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
+  ExpandMore,
   LocationOn,
   Phone as PhoneIcon,
   Email as EmailIcon,
@@ -66,13 +76,92 @@ import {
   AccessTime,
   Facebook as FacebookIcon,
   Instagram as InstagramIcon,
+  PhotoCamera,
+  CloudUpload,
   Public,
   Star,
   TrendingUp,
-  WorkspacePremium
+  WorkspacePremium,
 } from '@mui/icons-material';
+import {
+  ANNOUNCEMENT_CATEGORY_OPTIONS,
+  formatAnnouncementCategoryLabel,
+  normalizeAnnouncementCategoryList,
+} from '../config/announcementCategories';
+
+const GALLERY_CATEGORY_OPTIONS = [
+  { value: 'Academics', label: 'Academics', aliases: ['academic', 'academics'] },
+  { value: 'Sports', label: 'Sports', aliases: ['sport', 'athletics', 'games'] },
+  { value: 'Cultural', label: 'Cultural', aliases: ['culture', 'arts', 'events', 'event', 'festivals'] },
+  { value: 'Students & Campus Life', label: 'Students & Campus Life', aliases: ['students', 'student', 'campus', 'campus life', 'student life'] },
+  { value: 'Infrastructure', label: 'Infrastructure', aliases: ['facility', 'facilities', 'infrastructure', 'buildings'] },
+  { value: 'Others', label: 'Others', aliases: ['other', 'misc', 'gallery', 'general'] },
+] as const;
+
+const canonicalizeGalleryCategory = (value: string) =>
+  value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
+const galleryCategoryLookup: Record<string, string> = (() => {
+  const lookup: Record<string, string> = {};
+  GALLERY_CATEGORY_OPTIONS.forEach((option) => {
+    lookup[canonicalizeGalleryCategory(option.value)] = option.label;
+    option.aliases?.forEach((alias) => {
+      lookup[canonicalizeGalleryCategory(alias)] = option.label;
+    });
+  });
+  return lookup;
+})();
+
+const defaultGalleryCategory = 'Others';
+const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB limit for uploads
+
+const resolveGalleryCategoryLabel = (value?: string, fallback?: string): string => {
+  const attempt = (candidate?: string) => {
+    if (!candidate) return null;
+    const normalized = canonicalizeGalleryCategory(candidate);
+    return galleryCategoryLookup[normalized] || null;
+  };
+  return attempt(value) || attempt(fallback) || defaultGalleryCategory;
+};
+
+const getGalleryCategoryLabel = (value?: string) =>
+  resolveGalleryCategoryLabel(value, defaultGalleryCategory);
 
 type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact';
+
+const ACHIEVEMENT_SECTION_ORDER = [
+  { key: 'general', title: 'General' },
+  { key: 'academics', title: 'Academic' },
+  { key: 'arts', title: 'Arts' },
+  { key: 'sports', title: 'Sports' },
+  { key: 'community', title: 'Community' },
+  { key: 'cultural', title: 'Cultural' },
+  { key: 'others', title: 'Other' },
+] as const;
+
+const defaultAchievementSections = ACHIEVEMENT_SECTION_ORDER.reduce<Record<string, { title: string }>>(
+  (acc, { key, title }) => {
+    acc[key] = { title };
+    return acc;
+  },
+  {}
+);
+
+const capitalize = (value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '');
+
+const normalizeAchievementSectionKey = (rawKey: string | undefined): string => {
+  const key = (rawKey || '').toLowerCase();
+  if (!key) return 'general';
+  if (['generalsection', 'general'].includes(key)) return 'general';
+  if (['academicsection', 'academics', 'academic'].includes(key)) return 'academics';
+  if (['artssection', 'art'].includes(key)) return 'arts';
+  if (['sportssection', 'sport'].includes(key)) return 'sports';
+  if (['communitysection', 'communityservice', 'service'].includes(key)) return 'community';
+  if (['culturalsection', 'culture'].includes(key)) return 'cultural';
+  if (['other', 'othersection'].includes(key)) return 'others';
+  if (defaultAchievementSections[key]) return key;
+  return key;
+};
 
 interface Achievement {
   id: string;
@@ -81,6 +170,7 @@ interface Achievement {
   date: string;
   level: string;
   sectionKey?: string;
+  sectionTitle?: string;
 }
 
 interface StaffMember {
@@ -93,22 +183,20 @@ interface StaffMember {
   experience: string;
   email: string;
   phone: string;
-  imageUrl: string;
+  image: string;
   schoolId: string;
 }
 
 interface AlumniMember {
   id: string;
   name: string;
-  bio: string;
   company: string;
   currentPosition: string;
   graduationYear: string;
-  imageUrl: string;
+  image: string;
   industry: string;
   location: string;
   linkedinUrl: string;
-  achievements: string;
 }
 
 interface Announcement {
@@ -119,6 +207,9 @@ interface Announcement {
   category: string;
   priority: string;
   type: string;
+  isPinned: boolean;
+  isUrgent: boolean;
+  audience: string
 }
 
 interface GalleryImage {
@@ -127,8 +218,42 @@ interface GalleryImage {
   category: string;
   description: string;
   date: string;
-  imageUrl: string;
+  images: string[];
 }
+
+interface JourneyMilestone {
+  id: string;
+  year: string;
+  title: string;
+  description: string;
+}
+
+const parseJourneyYear = (value: string): number | null => {
+  const match = value.match(/\d{4}/);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[0], 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const sortJourneyMilestones = (items: JourneyMilestone[]) =>
+  [...items].sort((a, b) => {
+    const yearA = parseJourneyYear(a.year);
+    const yearB = parseJourneyYear(b.year);
+
+    if (yearA !== null && yearB !== null && yearA !== yearB) {
+      return yearB - yearA;
+    }
+
+    if (yearA === null && yearB !== null) {
+      return 1;
+    }
+
+    if (yearB === null && yearA !== null) {
+      return -1;
+    }
+
+    return a.title.localeCompare(b.title);
+  });
 
 export function SchoolAdminPanel() {
   // Store school info for sidebar header
@@ -146,25 +271,381 @@ export function SchoolAdminPanel() {
   const [alumniDialog, setAlumniDialog] = useState(false);
   const [galleryDialog, setGalleryDialog] = useState(false);
   const [announcementDialog, setAnnouncementDialog] = useState(false);
+  const [journeyDialog, setJourneyDialog] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [editingAlumni, setEditingAlumni] = useState<AlumniMember | null>(null);
   const [editingGallery, setEditingGallery] = useState<GalleryImage | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [editingJourney, setEditingJourney] = useState<JourneyMilestone | null>(null);
 
   // Data states
   const [homeData, setHomeData] = useState<any>(null);
+  const [journeyMilestones, setJourneyMilestones] = useState<JourneyMilestone[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [alumniMembers, setAlumniMembers] = useState<AlumniMember[]>([]);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [contactData, setContactData] = useState<any>(null);
-  const [achievementSectionsMeta, setAchievementSectionsMeta] = useState<Record<string, { title: string }>>({});
+  const [principalPhotoFileName, setPrincipalPhotoFileName] = useState<string>('');
+  const [principalPhotoUploading, setPrincipalPhotoUploading] = useState<boolean>(false);
+  const [staffPhotoFileName, setStaffPhotoFileName] = useState<string>('');
+  const [pendingStaffPhotoFile, setPendingStaffPhotoFile] = useState<File | null>(null);
+  const [staffPhotoPreviewUrl, setStaffPhotoPreviewUrl] = useState<string>('');
+  const [staffPhotoUploading, setStaffPhotoUploading] = useState<boolean>(false);
+  const [alumniPhotoFileName, setAlumniPhotoFileName] = useState<string>('');
+  const [pendingAlumniPhotoFile, setPendingAlumniPhotoFile] = useState<File | null>(null);
+  const [alumniPhotoPreviewUrl, setAlumniPhotoPreviewUrl] = useState<string>('');
+  const [alumniPhotoUploading, setAlumniPhotoUploading] = useState<boolean>(false);
+  const [galleryPhotoFileNames, setGalleryPhotoFileNames] = useState<string[]>([]);
+  const [pendingGalleryPhotoFiles, setPendingGalleryPhotoFiles] = useState<File[]>([]);
+  const [galleryPhotoPreviewUrls, setGalleryPhotoPreviewUrls] = useState<string[]>([]);
+  const [galleryPhotoUploading, setGalleryPhotoUploading] = useState<boolean>(false);
+  const [achievementSectionsMeta, setAchievementSectionsMeta] =
+    useState<Record<string, { title: string }>>(defaultAchievementSections);
   const [editingField, setEditingField] = useState<{ section: 'home' | 'contact'; key: string } | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [inlineError, setInlineError] = useState<string | null>(null);
+  const [expandedHomeSection, setExpandedHomeSection] = useState<string>('overview');
   const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', color: 'text.secondary' };
+
+  const hasPendingStaffPhotoSelection = Boolean(pendingStaffPhotoFile || staffPhotoPreviewUrl);
+  const hasExistingStaffPhoto = Boolean(editingStaff?.image);
+  const staffPhotoChooseDisabled =
+    isSaving || staffPhotoUploading || (hasExistingStaffPhoto && !hasPendingStaffPhotoSelection);
+  const staffPhotoRemoveDisabled =
+    staffPhotoUploading || isSaving || (!hasExistingStaffPhoto && !hasPendingStaffPhotoSelection);
+  const hasPendingAlumniPhotoSelection = Boolean(pendingAlumniPhotoFile || alumniPhotoPreviewUrl);
+  const hasExistingAlumniPhoto = Boolean(editingAlumni?.image);
+  const alumniPhotoChooseDisabled =
+    isSaving || alumniPhotoUploading || (hasExistingAlumniPhoto && !hasPendingAlumniPhotoSelection);
+  const alumniPhotoRemoveDisabled =
+    alumniPhotoUploading || isSaving || (!hasExistingAlumniPhoto && !hasPendingAlumniPhotoSelection);
+  const hasExistingGalleryPhoto = Boolean(editingGallery?.images && editingGallery.images.length > 0);
+  const galleryPhotoChooseDisabled = isSaving || galleryPhotoUploading;
+  const galleryPhotoRemoveDisabled = galleryPhotoUploading || isSaving;
+
+  const getAchievementSectionLabel = useCallback(
+    (key: string) => {
+      const normalizedKey = normalizeAchievementSectionKey(key);
+      if (achievementSectionsMeta[normalizedKey]) {
+        return achievementSectionsMeta[normalizedKey].title;
+      }
+      if (defaultAchievementSections[normalizedKey]) {
+        return defaultAchievementSections[normalizedKey].title;
+      }
+      return `${capitalize(normalizedKey)} Achievements`;
+    },
+    [achievementSectionsMeta]
+  );
+
+  const achievementSectionOptions = [
+    ...ACHIEVEMENT_SECTION_ORDER.map(({ key, title }) => ({
+      key,
+      title: achievementSectionsMeta[key]?.title || title,
+    })),
+    ...Object.entries(achievementSectionsMeta)
+      .filter(
+        ([key]) => !ACHIEVEMENT_SECTION_ORDER.some((section) => section.key === key)
+      )
+      .map(([key, value]) => ({
+        key,
+        title: value.title || `${capitalize(key)} Achievements`,
+      })),
+  ];
+
+  const handleHomeSectionToggle = (sectionId: string) => (_: unknown, isExpanded: boolean) => {
+    setExpandedHomeSection(isExpanded ? sectionId : '');
+  };
+
+  const handlePrincipalPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showError('Please choose a valid image file (PNG or JPG).');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showError('Image is too large. Please upload a file smaller than 5 MB.');
+      input.value = '';
+      return;
+    }
+
+    if (!homeData) {
+      showError('Home data is unavailable. Please refresh and try again.');
+      input.value = '';
+      return;
+    }
+
+    const previousPhoto = homeData.principalPhoto || '';
+
+    try {
+      setPrincipalPhotoFileName(file.name);
+      setPrincipalPhotoUploading(true);
+
+      const targetSchoolId = schoolId || 'educonnect';
+      const folder = `schools/${targetSchoolId}`;
+      const { secureUrl } = await uploadImageToCloudinary(file, { folder });
+
+      const updatedHome = { ...homeData, principalPhoto: secureUrl };
+      setHomeData(updatedHome);
+
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(updatedHome, journeyMilestones)
+      );
+
+      await refreshSchoolData();
+      showSuccess('Principal photo updated successfully!');
+      setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+    } catch (error) {
+      console.error('Failed to upload principal photo:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to upload principal photo.';
+      showError(message);
+      setHomeData((prev: any) =>
+        prev ? { ...prev, principalPhoto: previousPhoto } : prev
+      );
+    } finally {
+      setPrincipalPhotoUploading(false);
+      setPrincipalPhotoFileName('');
+      input.value = '';
+    }
+  };
+
+  const handleStaffPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !editingStaff) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showError('Please choose a valid image file (PNG or JPG).');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showError('Image is too large. Please upload a file smaller than 5 MB.');
+      input.value = '';
+      return;
+    }
+
+  if (staffPhotoPreviewUrl) {
+    URL.revokeObjectURL(staffPhotoPreviewUrl);
+  }
+
+  setStaffPhotoFileName(file.name);
+  setPendingStaffPhotoFile(file);
+    setStaffPhotoPreviewUrl(URL.createObjectURL(file));
+  input.value = '';
+};
+
+  const handleAlumniPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !editingAlumni) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showError('Please choose a valid image file (PNG or JPG).');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showError('Image is too large. Please upload a file smaller than 5 MB.');
+      input.value = '';
+      return;
+    }
+
+    if (alumniPhotoPreviewUrl) {
+      URL.revokeObjectURL(alumniPhotoPreviewUrl);
+    }
+
+    setAlumniPhotoFileName(file.name);
+    setPendingAlumniPhotoFile(file);
+    setAlumniPhotoPreviewUrl(URL.createObjectURL(file));
+    input.value = '';
+  };
+
+  const handleStaffPhotoRemove = () => {
+    if (!editingStaff) return;
+
+    if (pendingStaffPhotoFile || staffPhotoPreviewUrl) {
+      if (staffPhotoPreviewUrl) {
+        URL.revokeObjectURL(staffPhotoPreviewUrl);
+      }
+      setStaffPhotoPreviewUrl('');
+      setPendingStaffPhotoFile(null);
+      setStaffPhotoFileName('');
+      return;
+    }
+
+    if (editingStaff.image) {
+      if (staffPhotoPreviewUrl) {
+        URL.revokeObjectURL(staffPhotoPreviewUrl);
+      }
+      setStaffPhotoPreviewUrl('');
+      setPendingStaffPhotoFile(null);
+      setEditingStaff({ ...editingStaff, image: '' });
+      setStaffPhotoFileName('');
+      showSuccess('Staff photo removed. Save to apply the change.');
+    }
+  };
+
+  const handleAlumniPhotoRemove = () => {
+    if (!editingAlumni) return;
+
+    if (pendingAlumniPhotoFile || alumniPhotoPreviewUrl) {
+      if (alumniPhotoPreviewUrl) {
+        URL.revokeObjectURL(alumniPhotoPreviewUrl);
+      }
+      setAlumniPhotoPreviewUrl('');
+      setPendingAlumniPhotoFile(null);
+      setAlumniPhotoFileName('');
+      return;
+    }
+
+    if (editingAlumni.image) {
+      if (alumniPhotoPreviewUrl) {
+        URL.revokeObjectURL(alumniPhotoPreviewUrl);
+      }
+      setAlumniPhotoPreviewUrl('');
+      setPendingAlumniPhotoFile(null);
+      setEditingAlumni({ ...editingAlumni, image: '' });
+      setAlumniPhotoFileName('');
+      showSuccess('Alumni photo removed. Save to apply the change.');
+    }
+  };
+
+  const handleGalleryPhotoSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const files = input.files;
+    if (!editingGallery || !files || files.length === 0) {
+      input.value = '';
+      return;
+    }
+
+    const acceptedFiles: File[] = [];
+    const newPreviews: string[] = [];
+    const newNames: string[] = [];
+    let skipped = false;
+
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        skipped = true;
+        return;
+      }
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        skipped = true;
+        return;
+      }
+      acceptedFiles.push(file);
+      newPreviews.push(URL.createObjectURL(file));
+      newNames.push(file.name);
+    });
+
+    if (skipped) {
+      showError('Some files were skipped because they were not valid images under 5 MB.');
+    }
+
+    if (!acceptedFiles.length) {
+      input.value = '';
+      return;
+    }
+
+    setPendingGalleryPhotoFiles((prev) => [...prev, ...acceptedFiles]);
+    setGalleryPhotoPreviewUrls((prev) => [...prev, ...newPreviews]);
+    setGalleryPhotoFileNames((prev) => [...prev, ...newNames]);
+    input.value = '';
+  };
+
+  const removePendingGalleryPhoto = (index: number) => {
+    setPendingGalleryPhotoFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+    setGalleryPhotoFileNames((prev) => prev.filter((_, nameIndex) => nameIndex !== index));
+    setGalleryPhotoPreviewUrls((prev) => {
+      const next = [...prev];
+      const removed = next.splice(index, 1);
+      if (removed[0]) {
+        URL.revokeObjectURL(removed[0]);
+      }
+      return next;
+    });
+  };
+
+  const removeExistingGalleryPhoto = (index: number) => {
+    setEditingGallery((prev) => {
+      if (!prev) return prev;
+      const nextImages = (prev.images || []).filter((_, imageIndex) => imageIndex !== index);
+      return { ...prev, images: nextImages };
+    });
+  };
+
+  const renderHomeAccordionSummary = (
+    icon: ReactElement,
+    title: string,
+    subtitle: string,
+    metaLabel?: string
+  ) => (
+    <Stack
+      direction="row"
+      alignItems="center"
+      justifyContent="space-between"
+      sx={{ width: '100%', gap: { xs: 1.5, sm: 2 } }}
+    >
+      <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Box
+          sx={{
+            width: 42,
+            height: 42,
+            borderRadius: '50%',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 12px 28px rgba(25,118,210,0.35)',
+          }}
+        >
+          {icon}
+        </Box>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {subtitle}
+          </Typography>
+        </Box>
+      </Stack>
+      {metaLabel ? (
+        <Chip
+          label={metaLabel}
+          size="small"
+          variant="outlined"
+          sx={{
+            fontWeight: 600,
+            borderColor: 'rgba(25,118,210,0.35)',
+            color: 'primary.main',
+            bgcolor: 'rgba(25,118,210,0.1)',
+          }}
+        />
+      ) : null}
+    </Stack>
+  );
+
+  const formatCountLabel = (count: number, singular: string) =>
+    count === 1 ? `1 ${singular}` : `${count} ${singular}s`;
 
   const contactFieldMap: Record<string, string> = {
     address: 'address',
@@ -181,6 +662,7 @@ export function SchoolAdminPanel() {
     subtitle: 'welcomeSubTitle',
     principalName: 'principalName',
     principalMessage: 'principalMessage',
+    principalPhoto: 'principalPhoto',
     yearEstablished: 'yearEstablished',
     students: 'students',
     successRate: 'successRate',
@@ -201,6 +683,7 @@ export function SchoolAdminPanel() {
       subtitle: 'Add a welcome subtitle',
       principalName: "Add the principal's name",
       principalMessage: "Add a principal message",
+      principalPhoto: 'No principal photo uploaded yet',
       yearEstablished: 'Add the founding year',
       students: 'Add total enrolled students',
       successRate: 'Add success rate percentage',
@@ -222,6 +705,7 @@ export function SchoolAdminPanel() {
       subtitle: 'Displayed beneath the welcome title.',
       principalName: 'Shown in the principal highlight section.',
       principalMessage: 'Share a short greeting from the principal (max 500 characters).',
+      principalPhoto: 'Upload a friendly portrait of the principal (PNG or JPG).',
       yearEstablished: 'Use a four-digit year (e.g., 1998).',
       students: 'Example: 1500 or 2500+.',
       successRate: 'Enter a percentage between 0 and 100.',
@@ -235,7 +719,17 @@ export function SchoolAdminPanel() {
     state: { label: 'State', color: '#388e3c', icon: TrendingUp },
     district: { label: 'District', color: '#1976d2', icon: WorkspacePremium },
     school: { label: 'School', color: '#7b1fa2', icon: School },
+    others: { label: 'Others', color: '#546e7a', icon: WorkspacePremium },
   };
+
+  const achievementLevelOptions = [
+    { value: 'international', label: 'International' },
+    { value: 'national', label: 'National' },
+    { value: 'state', label: 'State' },
+    { value: 'district', label: 'District' },
+    { value: 'school', label: 'School' },
+    { value: 'others', label: 'Others' },
+  ];
 
   const renderLevelChip = (level: string) => {
     const key = (level || '').toLowerCase();
@@ -312,7 +806,7 @@ export function SchoolAdminPanel() {
     const value = getFieldValue('home', key);
     if (!value) return [];
     if (key === 'principalMessage') {
-      const truncated = value.length > 240 ? `${value.slice(0, 240)}…` : value;
+      const truncated = value.length > 240 ? `${value.slice(0, 240)}...` : value;
       return truncated
         .split(/\r?\n/)
         .map((line) => line.trim())
@@ -424,6 +918,76 @@ export function SchoolAdminPanel() {
     return value;
   };
 
+  const buildHomePagePayload = (
+    home: typeof homeData,
+    milestones: JourneyMilestone[]
+  ) => ({
+    welcomeTitle: home?.heroSection?.welcomeTitle || home?.welcomeTitle || '',
+    welcomeSubTitle: home?.heroSection?.welcomeSubtitle || home?.welcomeSubTitle || '',
+    principalName: home?.principalName || '',
+    principalMessage: home?.principalMessage || '',
+    principalPhotoUrl: home?.principalPhoto || '',
+    yearEstablished: home?.yearEstablished || '',
+    students: home?.students || '',
+    successRate: home?.successRate || '',
+    journeyMilestones: sortJourneyMilestones(milestones).map((milestone) => ({
+      id: milestone.id,
+      year: milestone.year,
+      title: milestone.title,
+      description: milestone.description,
+    })),
+  });
+
+  const normalizeStaffSpecializations = (value: any): string => {
+    if (!value) return '';
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter((item) => item.length > 0)
+        .join(', ');
+    }
+    if (typeof value === 'object') {
+      return Object.values(value)
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter((item) => item.length > 0)
+        .join(', ');
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    return '';
+  };
+
+  const extractStaffEntries = (raw: any): any[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+
+    const values = Object.values(raw);
+    return values.filter(
+      (value) =>
+        value &&
+        typeof value === 'object' &&
+        ('name' in value || 'department' in value || 'position' in value)
+    );
+  };
+
+  const extractAlumniEntries = (raw: any): any[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw.alumni)) return raw.alumni;
+    if (Array.isArray(raw.alumniMembers)) return raw.alumniMembers;
+
+    return Object.entries(raw)
+      .sort(([keyA], [keyB]) => Number(keyA) - Number(keyB))
+      .map(([, value]) => value)
+      .filter(
+        (value) =>
+          value &&
+          typeof value === 'object' &&
+          ('name' in value || 'currentPosition' in value || 'company' in value)
+      );
+  };
+
   const saveInlineEdit = async () => {
     if (!editingField) return;
     const { section, key } = editingField;
@@ -460,15 +1024,10 @@ export function SchoolAdminPanel() {
         if (!fieldName) return;
         const updated = { ...homeData, [fieldName]: normalizedValue };
         setHomeData(updated);
-        await updateHomePageContent(targetSchoolId, {
-          welcomeTitle: updated.welcomeTitle || '',
-          welcomeSubTitle: updated.welcomeSubTitle || '',
-          principalName: updated.principalName || '',
-          principalMessage: updated.principalMessage || '',
-          yearEstablished: updated.yearEstablished || '',
-          students: updated.students || '',
-          successRate: updated.successRate || '',
-        });
+        await updateHomePageContent(
+          targetSchoolId,
+          buildHomePagePayload(updated, journeyMilestones)
+        );
         await refreshSchoolData();
         showSuccess('Home information updated successfully!');
         setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
@@ -511,6 +1070,127 @@ export function SchoolAdminPanel() {
             : section === 'home' && key === 'principalMessage' && isEditing
             ? `${editingValue.length}/500 characters`
             : helperBase;
+
+        if (section === 'home' && key === 'principalPhoto') {
+          const fileLabel = principalPhotoFileName;
+          const currentPhotoUrl = homeData?.principalPhoto;
+          const sanitizedUrl = currentPhotoUrl
+            ? currentPhotoUrl.replace(/^https?:\/\//i, '').replace(/\?.*$/, '')
+            : '';
+
+          return (
+            <Paper
+              key={`${section}-${key}`}
+              variant="outlined"
+              sx={{
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.5,
+                borderColor: 'rgba(255,255,255,0.2)',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {icon}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {title}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Stack spacing={2} sx={{ py: 1 }}>
+                {currentPhotoUrl ? (
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1.5}
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  >
+                    <Box
+                      component="img"
+                      src={currentPhotoUrl}
+                      alt="Principal portrait"
+                      sx={{
+                        width: 96,
+                        height: 96,
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
+                      }}
+                    />
+                    <Stack spacing={0.5}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        Current photo
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {sanitizedUrl}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        component="a"
+                        href={currentPhotoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ px: 0, alignSelf: 'flex-start' }}
+                      >
+                        Open full size
+                      </Button>
+                    </Stack>
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No photo saved yet. Upload one to highlight the principal on the home page.
+                  </Typography>
+                )}
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  alignItems="center"
+                  alignSelf="flex-start"
+                >
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ fontWeight: 600 }}
+                    disabled={principalPhotoUploading}
+                  >
+                    {principalPhotoUploading ? 'Uploading...' : 'Choose Image'}
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePrincipalPhotoSelect}
+                      disabled={principalPhotoUploading}
+                    />
+                  </Button>
+                  {principalPhotoUploading && (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <CircularProgress size={18} />
+                      <Typography variant="body2" color="text.secondary">
+                        Uploading {fileLabel || 'image'}...
+                      </Typography>
+                    </Stack>
+                  )}
+                </Stack>
+
+                <Typography variant="caption" color="text.secondary">
+                  Upload a clear PNG or JPG portrait up to 5 MB.
+                </Typography>
+              </Stack>
+            </Paper>
+          );
+        }
 
         return (
           <Paper
@@ -609,13 +1289,15 @@ export function SchoolAdminPanel() {
     if (!schoolData) {
       setSchoolInfo(null);
       setHomeData(null);
+      setJourneyMilestones([]);
       setAchievements([]);
+      setAchievementSectionsMeta({ ...defaultAchievementSections });
       setStaffMembers([]);
       setAlumniMembers([]);
       setGalleryImages([]);
       setAnnouncements([]);
       setContactData(null);
-        setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+      setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
       return;
     }
 
@@ -638,143 +1320,319 @@ export function SchoolAdminPanel() {
       welcomeSubTitle: homePage.welcomeSubtitle || schoolData.welcomeSubtitle || '',
       principalName: principalSection.name || homePage.principalName || '',
       principalMessage: principalSection.message || homePage.principalMessage || '',
+      principalPhoto: principalSection.image || homePage.principalPhoto || '',
       yearEstablished: statisticsSection.yearEstablished || schoolData.yearEstablished || '',
       students: statisticsSection.studentsCount || schoolData.studentsCount || '',
       successRate: statisticsSection.successRate || schoolData.successRate || '',
     });
 
+    setPrincipalPhotoFileName('');
+
+    const timelineSourceCandidates = [
+      homePage.timelineSection?.milestones,
+      homePage.timelineSection,
+      homePage.timeline,
+      schoolData.timelineSection?.milestones,
+      schoolData.timeline?.milestones,
+      schoolData.timeline,
+    ];
+
+    const timelineEntries = (timelineSourceCandidates.find((candidate) => Array.isArray(candidate)) ||
+      []) as Array<Record<string, any>>;
+
+    const normalizedJourney = timelineEntries.map((milestone, index) => ({
+      id: milestone.id || `journey-${index + 1}`,
+      year: milestone.year || '',
+      title: milestone.title || '',
+      description: milestone.description || '',
+    }));
+
+    setJourneyMilestones(sortJourneyMilestones(normalizedJourney));
+
     const achievementsPage = pages.achievementsPage || {};
-    const sectionMeta: Record<string, { title: string }> = {};
-    if (achievementsPage.academicSection) {
-      sectionMeta.academicSection = {
-        title: achievementsPage.academicSection.title || 'Academic Achievements',
-      };
+    const achievementItems: Array<{ item: any; fallbackKey?: string; fallbackTitle?: string }> = [];
+
+    const pushAchievementItem = (item: any, fallbackKey?: string, fallbackTitle?: string) => {
+      if (!item || typeof item !== 'object') return;
+      achievementItems.push({ item, fallbackKey, fallbackTitle });
+    };
+
+    if (Array.isArray(achievementsPage)) {
+      achievementsPage.forEach((item: any) => pushAchievementItem(item));
+    } else {
+      Object.entries(achievementsPage)
+        .sort(([keyA], [keyB]) => Number(keyA) - Number(keyB))
+        .forEach(([key, value]) => {
+          if (!value) return;
+          if (Array.isArray(value)) {
+            value.forEach((item: any) => pushAchievementItem(item, key));
+            return;
+          }
+          const sectionObject = value as any;
+          if (Array.isArray(sectionObject?.achievements)) {
+            const fallbackKey = normalizeAchievementSectionKey(sectionObject.sectionKey || key);
+            const fallbackTitle = sectionObject.title || sectionObject.sectionTitle;
+            sectionObject.achievements.forEach((item: any) =>
+              pushAchievementItem(item, fallbackKey, fallbackTitle)
+            );
+            return;
+          }
+          pushAchievementItem(sectionObject, key, sectionObject.title || sectionObject.sectionTitle);
+        });
     }
-    if (achievementsPage.sportsSection) {
-      sectionMeta.sportsSection = {
-        title: achievementsPage.sportsSection.title || 'Sports Achievements',
-      };
-    }
-    if (achievementsPage.artsSection) {
-      sectionMeta.artsSection = {
-        title: achievementsPage.artsSection.title || 'Arts Achievements',
-      };
-    }
-    setAchievementSectionsMeta(sectionMeta);
-    const flattenAchievements = (section: any, fallbackLabel: string, sectionKey: string) => {
-      if (!section) return [];
-      const sectionLabel = section.title || fallbackLabel;
-      const items = Array.isArray(section.achievements) ? section.achievements : [];
-      return items.map((item: any, index: number) => ({
-        id: item.id || `${fallbackLabel.toLowerCase()}-${index + 1}`,
+
+    const computedAchievements = achievementItems.map(({ item, fallbackKey, fallbackTitle }, index) => {
+      const rawLevel = (item.level || item.Level || '').toString().trim();
+      const normalizedLevel = rawLevel ? rawLevel.toLowerCase() : 'others';
+      const resolvedSectionKey = item.sectionKey || item.section || fallbackKey || 'general';
+      const normalizedSectionKey = normalizeAchievementSectionKey(resolvedSectionKey);
+      const sectionTitle =
+        item.sectionTitle ||
+        fallbackTitle ||
+        defaultAchievementSections[normalizedSectionKey]?.title ||
+        `${capitalize(normalizedSectionKey)} Achievements`;
+
+      return {
+        id: item.id || `achievement-${index + 1}`,
         title: item.title || '',
         description: item.description || '',
         date: item.date || item.year || '',
-        level: item.level || sectionLabel,
-        sectionKey,
-      }));
-    };
+        level: normalizedLevel,
+        sectionKey: normalizedSectionKey,
+        sectionTitle,
+      };
+    });
 
-    setAchievements([
-      ...flattenAchievements(achievementsPage.academicSection, 'Academic', 'academicSection'),
-      ...flattenAchievements(achievementsPage.sportsSection, 'Sports', 'sportsSection'),
-      ...flattenAchievements(achievementsPage.artsSection, 'Arts', 'artsSection'),
-    ]);
+    const sectionsMeta = computedAchievements.reduce<Record<string, { title: string }>>((acc, item) => {
+      const key = item.sectionKey || 'general';
+      if (!acc[key]) {
+        acc[key] = { title: item.sectionTitle || `${capitalize(key)} Achievements` };
+      }
+      return acc;
+    }, { ...defaultAchievementSections });
 
-    const staffSource = Array.isArray(pages.staffPage?.staff) ? pages.staffPage?.staff : [];
+    setAchievementSectionsMeta(sectionsMeta);
+    setAchievements(computedAchievements);
+
+    const staffEntries = extractStaffEntries(pages.staffPage);
     setStaffMembers(
-      staffSource.map((staff: any, index: number) => ({
+      staffEntries.map((staff: any, index: number) => ({
         id: staff.id || `staff-${index + 1}`,
         name: staff.name || '',
-        department: staff.department || '',
+        department: staff.department || 'other',
         position: staff.position || '',
         education: staff.education || '',
-        specializations: Array.isArray(staff.specializations)
-          ? staff.specializations.join(', ')
-          : staff.specializations || '',
+        specializations: normalizeStaffSpecializations(
+          staff.specializations || staff.specialties || staff.skills || ''
+        ),
         experience: staff.experience || '',
         email: staff.email || '',
         phone: staff.phone || '',
-        imageUrl: staff.imageUrl || staff.image || '',
+        image: staff.image || staff.imageUrl || '',
         schoolId: staff.schoolId || schoolData.id,
       }))
     );
 
-    const alumniSource = Array.isArray(pages.alumniPage?.alumniMembers)
-      ? pages.alumniPage.alumniMembers
-      : [];
+    const alumniSource = extractAlumniEntries(pages.alumniPage);
     setAlumniMembers(
       alumniSource.map((alumni: any, index: number) => ({
         id: alumni.id || `alumni-${index + 1}`,
-        name: alumni.name || '',
-        bio: alumni.bio || '',
-        company: alumni.company || '',
-        currentPosition: alumni.currentPosition || '',
-        graduationYear: alumni.graduationYear || '',
-        imageUrl: alumni.imageUrl || alumni.image || '',
-        industry: alumni.industry || '',
-        location: alumni.location || '',
-        linkedinUrl: alumni.linkedinUrl || alumni.linkedIn || '',
-        achievements: Array.isArray(alumni.achievements)
-          ? alumni.achievements.join(', ')
-          : alumni.achievements || '',
+        name: String(alumni.name || `Alumni ${index + 1}`).trim(),
+        company: String(alumni.company || '').trim(),
+        currentPosition: String(alumni.currentPosition || '').trim(),
+        graduationYear: String(alumni.graduationYear || '').trim(),
+        image: String(alumni.image || alumni.imageUrl || '').trim(),
+        industry: String(alumni.industry || '').trim() || 'Other',
+        location: String(alumni.location || '').trim(),
+        linkedinUrl: String(alumni.linkedinUrl || alumni.linkedIn || '').trim(),
       }))
     );
 
     const galleryPage = pages.galleryPage || {};
     const galleryItems: GalleryImage[] = [];
 
-    if (Array.isArray(galleryPage.galleryImages)) {
-      galleryPage.galleryImages.forEach((image: any, index: number) => {
-        const imageUrl = typeof image === 'string' ? image : image?.url || image?.imageUrl || '';
-        if (!imageUrl) return;
-        galleryItems.push({
-          id: image.id || `gallery-${index + 1}`,
-          title: image.title || `Image ${index + 1}`,
-          category: image.category || 'Gallery',
-          description: image.description || '',
-          date: image.date || '',
-          imageUrl,
-        });
+  const looksLikeGalleryItem = (value: any): boolean => {
+    if (!value) return false;
+    if (typeof value === 'string') return true;
+    if (typeof value !== 'object') return false;
+    if (Array.isArray(value.images)) return true;
+    const possible = value.images || value.image || value.imageUrl || value.url || value.src;
+    if (Array.isArray(possible)) return true;
+    return ['imageUrl', 'url', 'image', 'src'].some((key) => Boolean(value[key]));
+  };
+
+  const toArray = (value: any): any[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'object') return Object.values(value);
+    return [];
+  };
+
+  const extractImagesArray = (value: any): string[] => {
+    const candidates = toArray(value);
+    if (!candidates.length && typeof value === 'string') {
+      return value.trim() ? [value.trim()] : [];
+    }
+    if (!candidates.length && typeof value === 'object') {
+      const nested = value?.image || value?.imageUrl || value?.url || value?.src;
+      if (typeof nested === 'string') {
+        return nested.trim() ? [nested.trim()] : [];
+      }
+      return extractImagesArray(nested);
+    }
+    return candidates
+      .map((item) =>
+        typeof item === 'string'
+          ? item
+          : item?.image || item?.imageUrl || item?.url || item?.src || ''
+      )
+      .filter((url) => typeof url === 'string' && url.trim().length > 0);
+  };
+
+  const normalizeImage = (
+    image: any,
+    fallbackPrefix = 'gallery',
+    fallbackCategory = defaultGalleryCategory
+  ) => {
+    if (!image) return;
+
+    if (Array.isArray(image)) {
+      image.forEach((item) => normalizeImage(item, fallbackPrefix, fallbackCategory));
+      return;
+    }
+
+    if (typeof image === 'object' && Array.isArray(image.images)) {
+      const resolvedCategory = resolveGalleryCategoryLabel(
+        image.category || fallbackCategory,
+        fallbackCategory
+      );
+      const normalizedImages = extractImagesArray(image.images);
+      if (!normalizedImages.length) return;
+
+      galleryItems.push({
+        id: image.id || image.key || image.slug || `${fallbackPrefix}-${galleryItems.length + 1}`,
+        title: image.title || image.name || `${resolvedCategory} ${galleryItems.length + 1}`,
+        category: resolvedCategory,
+        description: image.description || '',
+        date: image.date || '',
+        images: normalizedImages,
       });
+      return;
+    }
+
+    const imageSource =
+      typeof image === 'string'
+        ? image
+        : image?.imageUrl || image?.url || image?.image || image?.src || '';
+    if (!imageSource) return;
+
+    const rawCategory =
+      typeof image === 'object'
+        ? image?.category || image?.section || image?.group || fallbackCategory
+        : fallbackCategory;
+    const resolvedCategory = resolveGalleryCategoryLabel(rawCategory, fallbackCategory);
+    const titlePrefix = resolvedCategory;
+
+    galleryItems.push({
+      id:
+        (typeof image === 'object' && (image.id || image.key || image.slug)) ||
+        `${fallbackPrefix}-${galleryItems.length + 1}`,
+      title:
+        (typeof image === 'object' && (image.title || image.name)) ||
+        `${titlePrefix} ${galleryItems.length + 1}`,
+      category: resolvedCategory,
+      description: (typeof image === 'object' ? image.description : '') || '',
+      date: (typeof image === 'object' ? image.date : '') || '',
+      images: [imageSource],
+    });
+  };
+
+    if (Array.isArray(galleryPage)) {
+      galleryPage.forEach((entry: any) => normalizeImage(entry));
     } else {
-      Object.entries(galleryPage).forEach(([sectionKey, sectionValue]) => {
-        const section = sectionValue as any;
-        if (!Array.isArray(section?.images)) return;
-        const sectionTitle = section.title || sectionKey;
-        section.images.forEach((image: any, index: number) => {
-          const imageUrl = typeof image === 'string' ? image : image?.url || image?.imageUrl || image?.src || '';
-          if (!imageUrl) return;
-          galleryItems.push({
-            id: image.id || `${sectionKey}-${index + 1}`,
-            title: image.title || `${sectionTitle} ${index + 1}`,
-            category: sectionTitle,
-            description: image.description || '',
-            date: image.date || '',
-            imageUrl,
-          });
-        });
+      toArray(galleryPage).forEach((entry: any) => {
+        if (looksLikeGalleryItem(entry)) {
+          normalizeImage(entry);
+        }
       });
     }
-    setGalleryImages(galleryItems);
 
-    const rawAnnouncements = Array.isArray(pages.announcementsPage?.announcements)
-      ? pages.announcementsPage.announcements
-      : Array.isArray(homePage.announcementsSection?.recentUpdates)
-        ? homePage.announcementsSection.recentUpdates
-        : [];
+    toArray(galleryPage?.galleryImages).forEach((entry: any) =>
+      normalizeImage(entry, 'gallery', 'Gallery')
+    );
 
-    setAnnouncements(
-      rawAnnouncements.map((announcement: any, index: number) => ({
+    Object.entries(galleryPage).forEach(([sectionKey, sectionValue]) => {
+      if (sectionKey === 'galleryImages' || sectionKey === 'lastUpdated') return;
+      const section = sectionValue as any;
+
+      const imagesValue = section?.images;
+      const sectionImages = extractImagesArray(imagesValue);
+      if (sectionImages.length) {
+        const sectionTitle = section?.title || sectionKey;
+        normalizeImage({ ...section, images: sectionImages }, sectionKey, sectionTitle);
+        return;
+      }
+
+      if (looksLikeGalleryItem(section)) {
+        normalizeImage(section, sectionKey, sectionKey);
+        return;
+      }
+
+      toArray(section).forEach((entry: any) => normalizeImage(entry, sectionKey, sectionKey));
+    });
+
+    // Deduplicate by id to prevent duplicates when multiple paths contain same item
+    const dedupedGallery = galleryItems.reduce<GalleryImage[]>((acc, item) => {
+      if (!acc.some((existing) => existing.id === item.id)) {
+        acc.push(item);
+      }
+      return acc;
+    }, []);
+
+    setGalleryImages(dedupedGallery);
+
+    const extractAnnouncements = (source: any): any[] => {
+      if (!source) return [];
+      if (Array.isArray(source)) return source;
+      if (Array.isArray(source.announcements)) return source.announcements;
+      if (Array.isArray(source.recentUpdates)) return source.recentUpdates;
+      if (typeof source === 'object') {
+        const values = Object.values(source).filter((value: any) => {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            return false;
+          }
+          const keys = Object.keys(value);
+          return keys.some((key) => ['title', 'content', 'description'].includes(key));
+        });
+        if (values.length) {
+          return values;
+        }
+      }
+      return [];
+    };
+
+    const announcementsFromPage = extractAnnouncements(pages.announcementsPage);
+    const announcementsFromHome = extractAnnouncements(homePage.announcementsSection);
+    const rawAnnouncements = announcementsFromPage.length ? announcementsFromPage : announcementsFromHome;
+
+    const normalizedAnnouncements: Announcement[] = rawAnnouncements.map((announcement: any, index: number) => {
+      const primaryCategory =
+      normalizeAnnouncementCategoryList([announcement.category])[0] || '';
+      return {
         id: announcement.id || `announcement-${index + 1}`,
         title: announcement.title || '',
         description: announcement.description || '',
         date: announcement.date || '',
-        category: announcement.category || '',
+        category: primaryCategory,
         priority: (announcement.priority || 'medium').toLowerCase(),
         type: (announcement.type || 'announcement').toLowerCase(),
-      }))
-    );
+        isPinned: announcement.isPinned === true,
+        isUrgent: announcement.isUrgent === true,
+        audience: announcement.audience || '',
+      };
+    });
+
+    setAnnouncements(normalizedAnnouncements);
 
     const rawContactPage = (pages.contactPage?.content ?? pages.contactPage ?? {}) as Record<string, any>;
     const rawContactInfo = (schoolData.contactInfo ?? {}) as Record<string, any>;
@@ -851,54 +1709,21 @@ export function SchoolAdminPanel() {
     };
   }, [applySchoolData, fetchAllData]);
 
-  const getAchievementSectionLabel = (key: string) => {
-    if (achievementSectionsMeta[key]) {
-      return achievementSectionsMeta[key].title;
-    }
-    switch (key) {
-      case 'academicSection':
-        return 'Academic Achievements';
-      case 'sportsSection':
-        return 'Sports Achievements';
-      case 'artsSection':
-        return 'Arts Achievements';
-      default:
-        return 'General Achievements';
-    }
-  };
-
-  const buildAchievementsUpdate = (achievementsList: Achievement[] = achievements) => {
-    const sections: Record<string, { title: string; achievements: any[] }> = {};
-    const meta = {
-      academicSection: { title: 'Academic Achievements' },
-      sportsSection: { title: 'Sports Achievements' },
-      artsSection: { title: 'Arts Achievements' },
-      ...achievementSectionsMeta,
-    };
-
-    Object.entries(meta).forEach(([key, value]) => {
-      sections[key] = {
-        title: value.title,
-        achievements: [],
-      };
-    });
-
-    achievementsList.forEach((item) => {
-      const key = item.sectionKey && sections[item.sectionKey] ? item.sectionKey : 'academicSection';
-      if (!sections[key]) {
-        sections[key] = { title: key, achievements: [] };
-      }
-      sections[key].achievements.push({
-        id: item.id,
+  const buildAchievementsPayload = (achievementsList: Achievement[] = achievements) => {
+    return achievementsList.map((item, index) => {
+      const normalizedSectionKey = normalizeAchievementSectionKey(item.sectionKey || 'general');
+      const normalizedLevel = (item.level || 'others').toLowerCase();
+      return {
+        id: item.id || `achievement-${index + 1}`,
         title: item.title,
         description: item.description,
         date: item.date,
         year: item.date,
-        level: item.level,
-      });
+        level: normalizedLevel,
+        sectionKey: normalizedSectionKey,
+        sectionTitle: getAchievementSectionLabel(normalizedSectionKey),
+      };
     });
-
-    return sections;
   };
 
   const refreshSchoolData = useCallback(async () => {
@@ -925,6 +1750,106 @@ export function SchoolAdminPanel() {
     setSnackbarOpen(false);
   };
 
+  // Journey handlers
+  const openAddJourney = () => {
+    setEditingJourney({
+      id: '',
+      year: '',
+      title: '',
+      description: '',
+    });
+    setJourneyDialog(true);
+  };
+
+  const openEditJourney = (milestone: JourneyMilestone) => {
+    setEditingJourney({ ...milestone });
+    setJourneyDialog(true);
+  };
+
+  const closeJourneyDialog = () => {
+    setJourneyDialog(false);
+    setEditingJourney(null);
+  };
+
+  const saveJourneyMilestone = async () => {
+    if (!editingJourney) return;
+    if (!homeData) {
+      showError('Home data is unavailable.');
+      return;
+    }
+
+    const trimmedYear = editingJourney.year.trim();
+    const trimmedTitle = editingJourney.title.trim();
+    const trimmedDescription = editingJourney.description.trim();
+
+    if (!trimmedYear || !trimmedTitle || !trimmedDescription) {
+      showError('Year, title, and description are required.');
+      return;
+    }
+
+    const normalizedEntry: JourneyMilestone = {
+      id: editingJourney.id || `journey-${Date.now()}`,
+      year: trimmedYear,
+      title: trimmedTitle,
+      description: trimmedDescription,
+    };
+
+    const updatedList = editingJourney.id
+      ? journeyMilestones.map((item) => (item.id === editingJourney.id ? normalizedEntry : item))
+      : [...journeyMilestones, normalizedEntry];
+    const sortedList = sortJourneyMilestones(updatedList);
+
+    const targetSchoolId = schoolId || 'educonnect';
+
+    try {
+      setIsSaving(true);
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(homeData, sortedList)
+      );
+      setJourneyMilestones(sortedList);
+      closeJourneyDialog();
+      await refreshSchoolData();
+      showSuccess('Journey milestone saved successfully!');
+      setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+    } catch (error) {
+      console.error('Failed to save journey milestone:', error);
+      showError('Failed to save journey milestone. Please try again.');
+      await refreshSchoolData();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteJourneyMilestone = async (id: string) => {
+    if (!homeData) {
+      showError('Home data is unavailable.');
+      return;
+    }
+
+    const updatedList = journeyMilestones.filter((milestone) => milestone.id !== id);
+    const sortedList = sortJourneyMilestones(updatedList);
+    const targetSchoolId = schoolId || 'educonnect';
+
+    try {
+      setIsSaving(true);
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(homeData, sortedList)
+      );
+      setJourneyMilestones(sortedList);
+      await refreshSchoolData();
+      showSuccess('Journey milestone removed.');
+      setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+    } catch (error) {
+      console.error('Failed to delete journey milestone:', error);
+      showError('Failed to delete journey milestone. Please try again.');
+      await refreshSchoolData();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Achievement handlers
   const openAddAchievement = () => {
     setEditingAchievement({
@@ -932,8 +1857,9 @@ export function SchoolAdminPanel() {
       title: '',
       description: '',
       date: '',
-      level: '',
-      sectionKey: 'academicSection'
+      level: 'national',
+      sectionKey: 'general',
+      sectionTitle: getAchievementSectionLabel('general'),
     });
     setAchievementDialog(true);
   };
@@ -945,10 +1871,15 @@ export function SchoolAdminPanel() {
 
   const saveAchievement = async () => {
     if (!editingAchievement) return;
-    const sectionKey = editingAchievement.sectionKey || 'academicSection';
+    const sectionKey = editingAchievement.sectionKey || 'general';
+    const normalizedSectionKey = normalizeAchievementSectionKey(sectionKey);
+    const normalizedLevel = (editingAchievement.level || 'others').toString().toLowerCase();
+    const sectionTitle = getAchievementSectionLabel(normalizedSectionKey);
     const achievementEntry: Achievement = {
       ...editingAchievement,
-      sectionKey,
+      sectionKey: normalizedSectionKey,
+      level: normalizedLevel,
+      sectionTitle,
     };
     const updatedList = editingAchievement.id
       ? achievements.map((a: Achievement) => (a.id === editingAchievement.id ? achievementEntry : a))
@@ -956,7 +1887,7 @@ export function SchoolAdminPanel() {
     const targetSchoolId = schoolId || 'educonnect';
     try {
       setIsSaving(true);
-      const payload = buildAchievementsUpdate(updatedList);
+      const payload = buildAchievementsPayload(updatedList);
       await updateAchievementsPageContent(targetSchoolId, payload);
       setAchievementDialog(false);
       setEditingAchievement(null);
@@ -979,7 +1910,7 @@ export function SchoolAdminPanel() {
     const targetSchoolId = schoolId || 'educonnect';
     try {
       setIsSaving(true);
-      const payload = buildAchievementsUpdate(updatedList);
+      const payload = buildAchievementsPayload(updatedList);
       await updateAchievementsPageContent(targetSchoolId, payload);
       await refreshSchoolData();
       showSuccess('Achievement removed successfully!');
@@ -992,7 +1923,36 @@ export function SchoolAdminPanel() {
     }
   };
 
+  const resetStaffPhotoSelection = () => {
+    if (staffPhotoPreviewUrl) {
+      URL.revokeObjectURL(staffPhotoPreviewUrl);
+    }
+    setStaffPhotoPreviewUrl('');
+    setStaffPhotoFileName('');
+    setPendingStaffPhotoFile(null);
+    setStaffPhotoUploading(false);
+  };
+
+  const resetAlumniPhotoSelection = () => {
+    if (alumniPhotoPreviewUrl) {
+      URL.revokeObjectURL(alumniPhotoPreviewUrl);
+    }
+    setAlumniPhotoPreviewUrl('');
+    setAlumniPhotoFileName('');
+    setPendingAlumniPhotoFile(null);
+    setAlumniPhotoUploading(false);
+  };
+
+  const resetGalleryPhotoSelection = () => {
+    galleryPhotoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setGalleryPhotoPreviewUrls([]);
+    setGalleryPhotoFileNames([]);
+    setPendingGalleryPhotoFiles([]);
+    setGalleryPhotoUploading(false);
+  };
+
   const openAddStaff = () => {
+    resetStaffPhotoSelection();
     setEditingStaff({
       id: '',
       name: '',
@@ -1003,41 +1963,73 @@ export function SchoolAdminPanel() {
       experience: '',
       email: '',
       phone: '',
-      imageUrl: '',
+      image: '',
       schoolId: schoolInfo?.id || schoolId || '',
     });
     setStaffDialog(true);
   };
 
   const openEditStaff = (staff: StaffMember) => {
+    resetStaffPhotoSelection();
     setEditingStaff({ ...staff });
     setStaffDialog(true);
   };
 
+  const closeStaffDialog = () => {
+    setStaffDialog(false);
+    setEditingStaff(null);
+    resetStaffPhotoSelection();
+  };
+
   const saveStaffMember = async () => {
     if (!editingStaff) return;
-    const staffEntry: StaffMember = {
-      ...editingStaff,
-      id: editingStaff.id || `staff-${Date.now()}`,
-      schoolId: editingStaff.schoolId || schoolInfo?.id || schoolId || '',
-    };
-    const updatedList = editingStaff.id
-      ? staffMembers.map((s) => (s.id === editingStaff.id ? staffEntry : s))
-      : [...staffMembers, staffEntry];
+
+    setIsSaving(true);
+
     const targetSchoolId = schoolId || 'educonnect';
+    let image = (editingStaff.image || '').trim();
+
     try {
-      setIsSaving(true);
+      if (pendingStaffPhotoFile) {
+        setStaffPhotoUploading(true);
+        const folder = `schools/${targetSchoolId}`;
+        const { secureUrl } = await uploadImageToCloudinary(pendingStaffPhotoFile, {
+          folder,
+        });
+        image = secureUrl;
+      } else if (!image) {
+        image = '';
+      }
+
+      const staffEntry: StaffMember = {
+        id: editingStaff.id || `staff-${Date.now()}`,
+        name: (editingStaff.name || '').trim(),
+        department: (editingStaff.department || '').trim(),
+        position: (editingStaff.position || '').trim(),
+        education: (editingStaff.education || '').trim(),
+        specializations: (editingStaff.specializations || '').trim(),
+        experience: (editingStaff.experience || '').trim(),
+        email: (editingStaff.email || '').trim(),
+        phone: (editingStaff.phone || '').trim(),
+        image,
+        schoolId: editingStaff.schoolId || schoolInfo?.id || schoolId || '',
+      };
+      const updatedList = editingStaff.id
+        ? staffMembers.map((s) => (s.id === editingStaff.id ? staffEntry : s))
+        : [...staffMembers, staffEntry];
+
       await updateStaffPageContent(targetSchoolId, updatedList);
-      setStaffDialog(false);
-      setEditingStaff(null);
       setStaffMembers(updatedList);
+      closeStaffDialog();
       await refreshSchoolData();
       showSuccess('Staff member saved successfully!');
+
     } catch (error) {
       console.error('Failed to save staff member:', error);
       showError('Failed to save staff member. Please try again.');
       await refreshSchoolData();
     } finally {
+      setStaffPhotoUploading(false);
       setIsSaving(false);
     }
   };
@@ -1062,44 +2054,69 @@ export function SchoolAdminPanel() {
   };
 
   const openAddAlumni = () => {
+    resetAlumniPhotoSelection();
     setEditingAlumni({
       id: '',
       name: '',
-      bio: '',
       company: '',
       currentPosition: '',
       graduationYear: '',
-      imageUrl: '',
-      industry: '',
+      image: '',
+      industry: 'Other',
       location: '',
       linkedinUrl: '',
-      achievements: '',
     });
     setAlumniDialog(true);
   };
 
   const openEditAlumni = (alumni: AlumniMember) => {
+    resetAlumniPhotoSelection();
     setEditingAlumni({ ...alumni });
     setAlumniDialog(true);
   };
 
+  const closeAlumniDialog = () => {
+    setAlumniDialog(false);
+    setEditingAlumni(null);
+    resetAlumniPhotoSelection();
+  };
+
   const saveAlumniMember = async () => {
     if (!editingAlumni) return;
+
+    setIsSaving(true);
+
+    const targetSchoolId = schoolId || 'educonnect';
+    let image = (editingAlumni.image || '').trim();
+
+    try {
+      if (pendingAlumniPhotoFile) {
+        setAlumniPhotoUploading(true);
+        const folder = `schools/${targetSchoolId}`;
+        const { secureUrl } = await uploadImageToCloudinary(pendingAlumniPhotoFile, { folder });
+        image = secureUrl;
+      } else if (!image) {
+        image = '';
+      }
+
     const alumniEntry: AlumniMember = {
-      ...editingAlumni,
       id: editingAlumni.id || `alumni-${Date.now()}`,
+      name: (editingAlumni.name || '').trim(),
+      company: (editingAlumni.company || '').trim(),
+      currentPosition: (editingAlumni.currentPosition || '').trim(),
+      graduationYear: (editingAlumni.graduationYear || '').trim(),
+      image,
+      industry: (editingAlumni.industry || '').trim() || 'Other',
+      location: (editingAlumni.location || '').trim(),
+      linkedinUrl: (editingAlumni.linkedinUrl || '').trim(),
     };
     const updatedList = editingAlumni.id
       ? alumniMembers.map((a) => (a.id === editingAlumni.id ? alumniEntry : a))
       : [...alumniMembers, alumniEntry];
 
-    const targetSchoolId = schoolId || 'educonnect';
-    try {
-      setIsSaving(true);
       await updateAlumniPageContent(targetSchoolId, updatedList);
-      setAlumniDialog(false);
-      setEditingAlumni(null);
       setAlumniMembers(updatedList);
+      closeAlumniDialog();
       await refreshSchoolData();
       showSuccess('Alumni entry saved successfully!');
     } catch (error) {
@@ -1107,6 +2124,7 @@ export function SchoolAdminPanel() {
       showError('Failed to save alumni entry. Please try again.');
       await refreshSchoolData();
     } finally {
+      setAlumniPhotoUploading(false);
       setIsSaving(false);
     }
   };
@@ -1131,39 +2149,79 @@ export function SchoolAdminPanel() {
   };
 
   const openAddGalleryImage = () => {
+    resetGalleryPhotoSelection();
     setEditingGallery({
       id: '',
       title: '',
-      category: '',
+      category: GALLERY_CATEGORY_OPTIONS[0].value,
       description: '',
       date: '',
-      imageUrl: '',
+      images: [],
     });
     setGalleryDialog(true);
   };
 
   const openEditGalleryImage = (image: GalleryImage) => {
-    setEditingGallery({ ...image });
+    resetGalleryPhotoSelection();
+    const normalizedImages = Array.isArray(image.images)
+      ? image.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+      : [];
+    setEditingGallery({
+      ...image,
+      images: normalizedImages,
+      category: resolveGalleryCategoryLabel(image.category),
+    });
     setGalleryDialog(true);
+  };
+
+  const closeGalleryDialog = () => {
+    setGalleryDialog(false);
+    setEditingGallery(null);
+    resetGalleryPhotoSelection();
   };
 
   const saveGalleryImage = async () => {
     if (!editingGallery) return;
-    const galleryEntry: GalleryImage = {
-      ...editingGallery,
-      id: editingGallery.id || `gallery-${Date.now()}`,
-    };
-    const updatedList = editingGallery.id
-      ? galleryImages.map((image) => (image.id === editingGallery.id ? galleryEntry : image))
-      : [...galleryImages, galleryEntry];
+
+    setIsSaving(true);
 
     const targetSchoolId = schoolId || 'educonnect';
+    const existingImages = Array.isArray(editingGallery.images)
+      ? editingGallery.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+      : [];
+    let images = [...existingImages];
+
     try {
-      setIsSaving(true);
-      await updateGalleryPageContent(targetSchoolId, updatedList);
-      setGalleryDialog(false);
-      setEditingGallery(null);
-      setGalleryImages(updatedList);
+      if (pendingGalleryPhotoFiles.length > 0) {
+        setGalleryPhotoUploading(true);
+        const folder = `schools/${targetSchoolId}`;
+        for (const file of pendingGalleryPhotoFiles) {
+          const { secureUrl } = await uploadImageToCloudinary(file, { folder });
+          images.push(secureUrl);
+        }
+      }
+
+      const resolvedCategory = resolveGalleryCategoryLabel(editingGallery.category);
+      const galleryEntry: GalleryImage = {
+        ...editingGallery,
+        id: editingGallery.id || `gallery-${Date.now()}`,
+        category: resolvedCategory,
+        images,
+      };
+      const updatedList = editingGallery.id
+        ? galleryImages.map((image) => (image.id === editingGallery.id ? galleryEntry : image))
+        : [...galleryImages, galleryEntry];
+      const normalizedList = updatedList.map((image) => ({
+        ...image,
+        category: resolveGalleryCategoryLabel(image.category),
+        images: Array.isArray(image.images)
+          ? image.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+          : [],
+      }));
+
+      await updateGalleryPageContent(targetSchoolId, normalizedList);
+      setGalleryImages(normalizedList);
+      closeGalleryDialog();
       await refreshSchoolData();
       showSuccess('Gallery item saved successfully!');
     } catch (error) {
@@ -1171,6 +2229,7 @@ export function SchoolAdminPanel() {
       showError('Failed to save gallery item. Please try again.');
       await refreshSchoolData();
     } finally {
+      setGalleryPhotoUploading(false);
       setIsSaving(false);
     }
   };
@@ -1203,13 +2262,18 @@ export function SchoolAdminPanel() {
       category: '',
       priority: 'medium',
       type: 'announcement',
+      audience: '',
+      isPinned: false,
+      isUrgent: false,
     });
     setAnnouncementDialog(true);
   };
 
   const openEditAnnouncement = (announcement: Announcement) => {
+
     setEditingAnnouncement({
       ...announcement,
+      category: announcement.category || '',
       priority: (announcement.priority || 'medium').toLowerCase(),
       type: (announcement.type || 'announcement').toLowerCase(),
     });
@@ -1218,9 +2282,14 @@ export function SchoolAdminPanel() {
 
   const saveAnnouncement = async () => {
     if (!editingAnnouncement) return;
+    const categories = normalizeAnnouncementCategoryList([
+      editingAnnouncement.category,
+    ]);
+    const primaryCategory = categories[0] || '';
     const announcementEntry: Announcement = {
       ...editingAnnouncement,
       id: editingAnnouncement.id || `announcement-${Date.now()}`,
+      category: primaryCategory,
       priority: (editingAnnouncement.priority || 'medium').toLowerCase(),
       type: (editingAnnouncement.type || 'announcement').toLowerCase(),
     };
@@ -1428,35 +2497,247 @@ export function SchoolAdminPanel() {
                 { key: 'subtitle', title: 'Welcome Subtitle', icon: <Megaphone fontSize='small' />, lines: getHomeDisplayLines('subtitle') },
                 { key: 'principalName', title: 'Principal Name', icon: <School fontSize='small' />, lines: getHomeDisplayLines('principalName') },
                 { key: 'principalMessage', title: "Principal's Message", icon: <Mail fontSize='small' />, lines: getHomeDisplayLines('principalMessage') },
+                { key: 'principalPhoto', title: 'Principal Photo', icon: <PhotoCamera fontSize='small' />, lines: [] },
               ];
 
               const homeMetricsItems = [
-                { key: 'yearEstablished', title: 'Year Established', icon: <AccessTime fontSize='small' />, lines: getHomeDisplayLines('yearEstablished') },
                 { key: 'students', title: 'Students', icon: <Users fontSize='small' />, lines: getHomeDisplayLines('students') },
+                { key: 'yearEstablished', title: 'Year Established', icon: <AccessTime fontSize='small' />, lines: getHomeDisplayLines('yearEstablished') },
                 { key: 'successRate', title: 'Success Rate', icon: <Trophy fontSize='small' />, lines: getHomeDisplayLines('successRate') },
               ];
 
-              return (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <Card>
-                    <CardHeader
-                      title={<Typography variant="h5">Home Overview</Typography>}
-                      subheader="Update the hero welcome content and principal message."
-                    />
-                    <CardContent>
-                      {renderSummaryGrid('home', homeOverviewItems)}
-                    </CardContent>
-                  </Card>
+              const accordionBaseSx = {
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 3,
+                border: '1px solid rgba(25,118,210,0.14)',
+                background: 'linear-gradient(135deg, rgba(25,118,210,0.05) 0%, rgba(25,118,210,0.015) 60%)',
+                backdropFilter: 'blur(14px)',
+                boxShadow: '0 18px 40px rgba(15,23,42,0.12)',
+                transition: 'border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  borderColor: 'rgba(25,118,210,0.32)',
+                  boxShadow: '0 22px 48px rgba(15,23,42,0.16)',
+                  transform: 'translateY(-2px)',
+                },
+                '&.Mui-expanded': {
+                  borderColor: 'rgba(25,118,210,0.4)',
+                  boxShadow: '0 22px 52px rgba(15,23,42,0.2)',
+                },
+                '&:before': { display: 'none' },
+                '& + &': { mt: 2.5 },
+              } as const;
 
-                  <Card>
-                    <CardHeader
-                      title={<Typography variant="h6">Key Metrics</Typography>}
-                      subheader="These stats display on the home page banner."
-                    />
-                    <CardContent>
+              const accordionDetailsSx = {
+                px: { xs: 2.5, md: 3 },
+                pb: 3,
+                pt: 0,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.03) 60%)',
+                borderTop: '1px solid rgba(255,255,255,0.12)',
+              } as const;
+
+              const summarySx = {
+                px: { xs: 2.5, md: 3 },
+                py: 2,
+                '& .MuiAccordionSummary-content': {
+                  m: 0,
+                },
+                '& .MuiAccordionSummary-expandIconWrapper': {
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  bgcolor: 'rgba(25,118,210,0.08)',
+                  color: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 10px 24px rgba(25,118,210,0.2)',
+                  transition: 'transform 0.3s ease, background-color 0.3s ease, color 0.3s ease',
+                },
+                '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': {
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                },
+              } as const;
+
+              const journeyMetaLabel =
+                journeyMilestones.length > 0
+                  ? formatCountLabel(journeyMilestones.length, 'milestone')
+                  : 'Add milestone';
+
+              return (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={expandedHomeSection === 'overview'}
+                    onChange={handleHomeSectionToggle('overview')}
+                    sx={accordionBaseSx}
+                  >
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={summarySx}
+                    >
+                      {renderHomeAccordionSummary(
+                        <Home fontSize="small" />,
+                        'Home Overview',
+                        'Update the hero welcome content and principal message.',
+                        formatCountLabel(homeOverviewItems.length, 'field')
+                      )}
+                    </AccordionSummary>
+                    <AccordionDetails sx={accordionDetailsSx}>
+                      {renderSummaryGrid('home', homeOverviewItems)}
+                    </AccordionDetails>
+                  </Accordion>
+
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={expandedHomeSection === 'metrics'}
+                    onChange={handleHomeSectionToggle('metrics')}
+                    sx={accordionBaseSx}
+                  >
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={summarySx}
+                    >
+                      {renderHomeAccordionSummary(
+                        <TrendingUp fontSize="small" />,
+                        'Key Metrics',
+                        'These stats display on the home page banner.',
+                        formatCountLabel(homeMetricsItems.length, 'metric')
+                      )}
+                    </AccordionSummary>
+                    <AccordionDetails sx={accordionDetailsSx}>
                       {renderSummaryGrid('home', homeMetricsItems)}
-                    </CardContent>
-                  </Card>
+                    </AccordionDetails>
+                  </Accordion>
+
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={expandedHomeSection === 'journey'}
+                    onChange={handleHomeSectionToggle('journey')}
+                    sx={accordionBaseSx}
+                  >
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={summarySx}
+                    >
+                      {renderHomeAccordionSummary(
+                        <WorkspacePremium fontSize="small" />,
+                        'Our Journey',
+                        'Capture the milestones that define your school\'s story.',
+                        journeyMetaLabel
+                      )}
+                    </AccordionSummary>
+                    <AccordionDetails sx={accordionDetailsSx}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: { xs: 'column', sm: 'row' },
+                          alignItems: { xs: 'stretch', sm: 'center' },
+                          justifyContent: 'space-between',
+                          gap: 2,
+                          mb: 2.5,
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Showcase pivotal years, achievements, and growth moments to appear on the public timeline.
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={openAddJourney}
+                          disabled={isSaving}
+                          startIcon={<Plus fontSize="small" />}
+                          sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}
+                        >
+                          Add Journey
+                        </Button>
+                      </Box>
+                      {journeyMilestones.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          No milestones yet. Use "Add Journey" to highlight key moments in your history.
+                        </Typography>
+                      ) : (
+                        <Stack spacing={2.5}>
+                          {journeyMilestones.map((milestone) => (
+                            <Card
+                              key={milestone.id}
+                              variant="outlined"
+                              sx={{
+                                position: 'relative',
+                                overflow: 'hidden',
+                                borderRadius: 2,
+                                border: '1px solid rgba(255,255,255,0.14)',
+                                backgroundColor: 'rgba(255,255,255,0.08)',
+                                backdropFilter: 'blur(14px)',
+                                boxShadow: '0 12px 24px rgba(15,23,42,0.18)',
+                                '&::before': {
+                                  content: '""',
+                                  position: 'absolute',
+                                  inset: 0,
+                                  background: 'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.02) 60%)',
+                                  opacity: 0.65,
+                                },
+                                '& > *': {
+                                  position: 'relative',
+                                },
+                              }}
+                            >
+                              <CardContent
+                                sx={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 1.5,
+                                  py: 2.5,
+                                  px: { xs: 2, sm: 2.5 },
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                    justifyContent: 'space-between',
+                                    alignItems: { xs: 'flex-start', sm: 'center' },
+                                    gap: { xs: 1, sm: 1.5 },
+                                  }}
+                                >
+                                  <Stack direction="row" spacing={1.5} alignItems="center">
+                                    <Chip label={milestone.year || 'Year'} size="small" sx={{ fontWeight: 600 }} />
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                      {milestone.title || 'Untitled Milestone'}
+                                    </Typography>
+                                  </Stack>
+                                  <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <IconButton
+                                      size="small"
+                                      disabled={isSaving}
+                                      onClick={() => openEditJourney(milestone)}
+                                    >
+                                      <Edit fontSize="small" />
+                                    </IconButton>
+                                    <IconButton
+                                      size="small"
+                                      color="error"
+                                      disabled={isSaving}
+                                      onClick={() => deleteJourneyMilestone(milestone.id)}
+                                    >
+                                      <Trash2 fontSize="small" />
+                                    </IconButton>
+                                  </Box>
+                                </Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {milestone.description || 'No description provided.'}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Stack>
+                      )}
+                    </AccordionDetails>
+                  </Accordion>
                 </Box>
               );
             })()}
@@ -1486,8 +2767,8 @@ export function SchoolAdminPanel() {
                     <TableHead>
                       <TableRow>
                         <TableCell sx={tableHeaderSx}>Title</TableCell>
-                        <TableCell sx={tableHeaderSx}>Level</TableCell>
                         <TableCell sx={tableHeaderSx}>Date</TableCell>
+                        <TableCell sx={tableHeaderSx}>Level</TableCell>
                         <TableCell sx={tableHeaderSx}>Description</TableCell>
                         <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>Actions</TableCell>
                       </TableRow>
@@ -1505,10 +2786,10 @@ export function SchoolAdminPanel() {
                       {achievements.map((achievement) => (
                         <TableRow key={achievement.id}>
                           <TableCell>{achievement.title}</TableCell>
+                          <TableCell>{achievement.date}</TableCell>
                           <TableCell>
                             {renderLevelChip(achievement.level)}
                           </TableCell>
-                          <TableCell>{achievement.date}</TableCell>
                         <TableCell sx={{ maxWidth: 320 }}>
                           <Box
                             sx={{
@@ -1594,9 +2875,9 @@ export function SchoolAdminPanel() {
                     <TableHead>
                       <TableRow>
                         <TableCell sx={tableHeaderSx}>Name</TableCell>
-                        <TableCell sx={tableHeaderSx}>Department</TableCell>
                         <TableCell sx={tableHeaderSx}>Position</TableCell>
                         <TableCell sx={tableHeaderSx}>Experience</TableCell>
+                        <TableCell sx={tableHeaderSx}>Department</TableCell>
                         <TableCell sx={tableHeaderSx}>Email</TableCell>
                         <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>Actions</TableCell>
                       </TableRow>
@@ -1770,7 +3051,11 @@ export function SchoolAdminPanel() {
                         <TableRow key={image.id}>
                           <TableCell>{image.title}</TableCell>
                           <TableCell>
-                            <Chip sx={{ fontWeight: 600 }} label={image.category} size="small" />
+                            <Chip
+                              sx={{ fontWeight: 600 }}
+                              label={getGalleryCategoryLabel(image.category)}
+                              size="small"
+                            />
                           </TableCell>
                           <TableCell>{image.date}</TableCell>
                           <TableCell sx={{ maxWidth: 320 }}>
@@ -1836,15 +3121,25 @@ export function SchoolAdminPanel() {
             {/* Announcements Page */}
             {activePage === 'announcements' && (
               <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                {/* Header Section */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 3,
+                  }}
+                >
                   <Box>
-                    <Typography variant="h4" gutterBottom>Announcements</Typography>
+                    <Typography variant="h4" gutterBottom>
+                      Announcements
+                    </Typography>
                     <Typography variant="body1" color="text.secondary">
                       Manage school announcements and notices
                     </Typography>
                   </Box>
-                  <Button 
-                    variant="contained" 
+                  <Button
+                    variant="contained"
                     onClick={openAddAnnouncement}
                     disabled={isSaving}
                     startIcon={<Plus />}
@@ -1853,34 +3148,77 @@ export function SchoolAdminPanel() {
                   </Button>
                 </Box>
 
+                {/* Table Section */}
                 <TableContainer component={Paper}>
                   <Table>
                     <TableHead>
                       <TableRow>
                         <TableCell sx={tableHeaderSx}>Title</TableCell>
                         <TableCell sx={tableHeaderSx}>Category</TableCell>
-                        <TableCell sx={tableHeaderSx}>Priority</TableCell>
+                        <TableCell sx={tableHeaderSx}>Audience</TableCell>
                         <TableCell sx={tableHeaderSx}>Date</TableCell>
-                        <TableCell sx={tableHeaderSx}>Description</TableCell>
-                        <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>Actions</TableCell>
+                        <TableCell sx={tableHeaderSx}>Priority</TableCell>
+                        <TableCell sx={tableHeaderSx}>Pinned</TableCell>
+                        <TableCell sx={tableHeaderSx}>Urgent</TableCell>
+                        <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>
+                          Actions
+                        </TableCell>
                       </TableRow>
                     </TableHead>
+
                     <TableBody>
+                      {/* No announcements */}
                       {announcements.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6}>
-                            <Typography variant="body2" color="text.secondary" align="center">
+                          <TableCell colSpan={8}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              align="center"
+                            >
                               No announcements found. Use "Add Announcement" to create one.
                             </Typography>
                           </TableCell>
                         </TableRow>
                       )}
+
+                      {/* Announcements List */}
                       {announcements.map((announcement) => (
                         <TableRow key={announcement.id}>
+                          {/* Title */}
                           <TableCell>{announcement.title}</TableCell>
+
+                          {/* Category */}
                           <TableCell>
-                            <Chip sx={{ fontWeight: 600 }} label={announcement.category} size="small" />
+                            <Chip
+                              label={
+                                announcement.category
+                                  ? formatAnnouncementCategoryLabel(announcement.category)
+                                  : 'Uncategorized'
+                              }
+                              size="small"
+                              sx={{ fontWeight: 600 }}
+                            />
                           </TableCell>
+
+                          {/* Audience */}
+                          <TableCell>
+                            <Chip
+                              label={
+                                announcement.audience
+                                  ? announcement.audience.charAt(0).toUpperCase() +
+                                    announcement.audience.slice(1)
+                                  : 'All'
+                              }
+                              size="small"
+                              color="info"
+                            />
+                          </TableCell>
+
+                          {/* Date */}
+                          <TableCell>{announcement.date || '—'}</TableCell>
+
+                          {/* Priority */}
                           <TableCell>
                             {(() => {
                               const priority = (announcement.priority || '').toLowerCase();
@@ -1894,51 +3232,39 @@ export function SchoolAdminPanel() {
                                 ? priority.charAt(0).toUpperCase() + priority.slice(1)
                                 : 'Low';
                               return (
-                                <Chip 
-                                  sx={{ fontWeight: 600 }}
+                                <Chip
                                   label={priorityLabel}
                                   size="small"
                                   color={chipColor}
+                                  sx={{ fontWeight: 600 }}
                                 />
                               );
                             })()}
                           </TableCell>
-                          <TableCell>{announcement.date}</TableCell>
-                          <TableCell sx={{ maxWidth: 320 }}>
-                            <Box
-                              sx={{
-                                maxHeight: 48,
-                                overflow: 'hidden',
-                                pr: 1,
-                                transition: 'max-height 0.2s ease',
-                                '&:hover': {
-                                  maxHeight: 200,
-                                  overflowY: 'auto',
-                                  '& .description-text': {
-                                    display: 'block',
-                                    WebkitLineClamp: 'unset',
-                                  },
-                                },
-                              }}
-                            >
-                              <Typography
-                                variant="body2"
-                                className="description-text"
-                                sx={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'normal',
-                                }}
-                              >
-                                {announcement.description || '—'}
-                              </Typography>
-                            </Box>
+
+                          {/* isPinned */}
+                          <TableCell>
+                            {announcement.isPinned ? (
+                              <Chip label="Pinned" color="success" size="small" />
+                            ) : (
+                              <Chip label="No" size="small" variant="outlined" />
+                            )}
                           </TableCell>
+
+                          {/* isUrgent */}
+                          <TableCell>
+                            {announcement.isUrgent ? (
+                              <Chip label="Urgent" color="error" size="small" />
+                            ) : (
+                              <Chip label="No" size="small" variant="outlined" />
+                            )}
+                          </TableCell>
+
+                          {/* Actions */}
                           <TableCell align="right">
-                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                            <Box
+                              sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}
+                            >
                               <IconButton
                                 size="small"
                                 disabled={isSaving}
@@ -1988,9 +3314,69 @@ export function SchoolAdminPanel() {
                 </Card>
               );
             })()}
-          </Box>
-        </Box>
       </Box>
+    </Box>
+  </Box>
+
+      {/* Journey Dialog */}
+      <Dialog
+        open={journeyDialog}
+        onClose={closeJourneyDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingJourney?.id ? 'Edit Journey Milestone' : 'Add Journey Milestone'}
+        </DialogTitle>
+        <DialogContent>
+          {editingJourney && (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                fullWidth
+                label="Year"
+                value={editingJourney.year}
+                onChange={(e) =>
+                  setEditingJourney({ ...editingJourney, year: e.target.value })
+                }
+                placeholder="e.g., 2024"
+              />
+              <TextField
+                fullWidth
+                label="Title"
+                value={editingJourney.title}
+                onChange={(e) =>
+                  setEditingJourney({ ...editingJourney, title: e.target.value })
+                }
+                placeholder="Milestone title"
+              />
+              <TextField
+                fullWidth
+                label="Description"
+                multiline
+                rows={4}
+                value={editingJourney.description}
+                onChange={(e) =>
+                  setEditingJourney({ ...editingJourney, description: e.target.value })
+                }
+                placeholder="Describe what happened during this year"
+              />
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeJourneyDialog} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={saveJourneyMilestone}
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {isSaving ? 'Saving...' : editingJourney?.id ? 'Update' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Achievement Dialog */}
       <Dialog 
@@ -2013,30 +3399,44 @@ export function SchoolAdminPanel() {
                   onChange={(e) => setEditingAchievement({ ...editingAchievement, title: e.target.value })}
                   placeholder="Achievement title"
                 />
-                <TextField
-                  fullWidth
-                  label="Level"
-                  value={editingAchievement.level}
-                  onChange={(e) => setEditingAchievement({ ...editingAchievement, level: e.target.value })}
-                  placeholder="e.g., National, State, Regional"
-                />
+                <FormControl fullWidth>
+                  <InputLabel id="achievement-level-label">Level</InputLabel>
+                  <Select
+                    labelId="achievement-level-label"
+                    value={editingAchievement.level || 'others'}
+                    label="Level"
+                    onChange={(e) =>
+                      setEditingAchievement({
+                        ...editingAchievement,
+                       level: (e.target.value as string) || 'others',
+                      })
+                    }
+                  >
+                    {achievementLevelOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
               <FormControl fullWidth>
                 <InputLabel id="achievement-section-label">Section</InputLabel>
                 <Select
                   labelId="achievement-section-label"
-                  value={editingAchievement.sectionKey || 'academicSection'}
+                  value={editingAchievement.sectionKey || 'general'}
                   label="Section"
                   onChange={(e) =>
                     setEditingAchievement({
                       ...editingAchievement,
                       sectionKey: e.target.value as string,
+                      sectionTitle: getAchievementSectionLabel(e.target.value as string),
                     })
                   }
                 >
-                  {['academicSection', 'sportsSection', 'artsSection'].map((key) => (
-                    <MenuItem key={key} value={key}>
-                      {getAchievementSectionLabel(key)}
+                  {achievementSectionOptions.map((option) => (
+                    <MenuItem key={option.key} value={option.key}>
+                      {option.title}
                     </MenuItem>
                   ))}
                 </Select>
@@ -2079,10 +3479,7 @@ export function SchoolAdminPanel() {
       {/* Staff Dialog */}
       <Dialog
         open={staffDialog}
-        onClose={() => {
-          setStaffDialog(false);
-          setEditingStaff(null);
-        }}
+        onClose={closeStaffDialog}
         maxWidth="md"
         fullWidth
       >
@@ -2152,30 +3549,97 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingStaff({ ...editingStaff, specializations: e.target.value })}
                 placeholder="Mathematics, Algebra"
               />
-              <TextField
-                fullWidth
-                label="Profile Image URL"
-                value={editingStaff.imageUrl}
-                onChange={(e) => setEditingStaff({ ...editingStaff, imageUrl: e.target.value })}
-                placeholder="https://example.com/photo.jpg"
-              />
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Profile Photo
+                </Typography>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Avatar
+                    src={staffPhotoPreviewUrl || editingStaff.image || undefined}
+                    alt={editingStaff.name || 'Staff photo'}
+                    sx={{
+                      width: 96,
+                      height: 96,
+                      fontSize: 32,
+                      bgcolor: 'primary.main',
+                    }}
+                  >
+                    {!staffPhotoPreviewUrl &&
+                      !editingStaff.image &&
+                      editingStaff.name
+                      ? editingStaff.name.charAt(0).toUpperCase()
+                      : undefined}
+                  </Avatar>
+                  <Stack spacing={1.5} alignItems={{ xs: 'flex-start', sm: 'flex-start' }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    >
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CloudUpload />}
+                        sx={{ fontWeight: 600 }}
+                        disabled={staffPhotoChooseDisabled}
+                      >
+                        Choose Image
+                        <input
+                          hidden
+                          type="file"
+                          accept="image/*"
+                          onChange={handleStaffPhotoSelect}
+                          disabled={staffPhotoChooseDisabled}
+                        />
+                      </Button>
+                      {(pendingStaffPhotoFile || editingStaff.image) && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={handleStaffPhotoRemove}
+                          disabled={staffPhotoRemoveDisabled}
+                          sx={{ alignSelf: 'flex-start', px: 0 }}
+                        >
+                          Remove photo
+                        </Button>
+                      )}
+                    </Stack>
+                    {staffPhotoFileName ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Selected file: {staffPhotoFileName}. The image uploads when you save.
+                      </Typography>
+                    ) : hasExistingStaffPhoto ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Existing photo in use. Click remove to replace it.
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No photo selected yet.
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary">
+                      Upload a clear PNG or JPG portrait up to 5 MB. The image is stored in Cloudinary
+                      and the secure URL saves with the staff profile when you click Save.
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Stack>
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setStaffDialog(false);
-              setEditingStaff(null);
-            }}
-            disabled={isSaving}
-          >
+          <Button onClick={closeStaffDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={saveStaffMember}
-            disabled={isSaving}
+            disabled={isSaving || staffPhotoUploading}
             startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
             {isSaving ? 'Saving...' : editingStaff?.id ? 'Update' : 'Add'}
@@ -2186,10 +3650,7 @@ export function SchoolAdminPanel() {
       {/* Alumni Dialog */}
       <Dialog
         open={alumniDialog}
-        onClose={() => {
-          setAlumniDialog(false);
-          setEditingAlumni(null);
-        }}
+        onClose={closeAlumniDialog}
         maxWidth="md"
         fullWidth
       >
@@ -2203,15 +3664,6 @@ export function SchoolAdminPanel() {
                 value={editingAlumni.name}
                 onChange={(e) => setEditingAlumni({ ...editingAlumni, name: e.target.value })}
                 placeholder="Full name"
-              />
-              <TextField
-                fullWidth
-                label="Bio"
-                multiline
-                rows={3}
-                value={editingAlumni.bio}
-                onChange={(e) => setEditingAlumni({ ...editingAlumni, bio: e.target.value })}
-                placeholder="Short biography"
               />
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
                 <TextField
@@ -2261,37 +3713,97 @@ export function SchoolAdminPanel() {
                   placeholder="https://linkedin.com/in/example"
                 />
               </Box>
-              <TextField
-                fullWidth
-                label="Key Achievements (comma separated)"
-                value={editingAlumni.achievements}
-                onChange={(e) => setEditingAlumni({ ...editingAlumni, achievements: e.target.value })}
-                placeholder="Achievement 1, Achievement 2"
-              />
-              <TextField
-                fullWidth
-                label="Profile Image URL"
-                value={editingAlumni.imageUrl}
-                onChange={(e) => setEditingAlumni({ ...editingAlumni, imageUrl: e.target.value })}
-                placeholder="https://example.com/photo.jpg"
-              />
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Profile Photo
+                </Typography>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Avatar
+                    src={alumniPhotoPreviewUrl || editingAlumni.image || undefined}
+                    alt={editingAlumni.name || 'Alumni photo'}
+                    sx={{
+                      width: 96,
+                      height: 96,
+                      fontSize: 32,
+                      bgcolor: 'primary.main',
+                    }}
+                  >
+                    {!alumniPhotoPreviewUrl &&
+                      !editingAlumni.image &&
+                      editingAlumni.name
+                      ? editingAlumni.name.charAt(0).toUpperCase()
+                      : undefined}
+                  </Avatar>
+                  <Stack spacing={1.5} alignItems={{ xs: 'flex-start', sm: 'flex-start' }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    >
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CloudUpload />}
+                        sx={{ fontWeight: 600 }}
+                        disabled={alumniPhotoChooseDisabled}
+                      >
+                        Choose Image
+                        <input
+                          hidden
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAlumniPhotoSelect}
+                          disabled={alumniPhotoChooseDisabled}
+                        />
+                      </Button>
+                      {(pendingAlumniPhotoFile || editingAlumni.image) && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={handleAlumniPhotoRemove}
+                          disabled={alumniPhotoRemoveDisabled}
+                          sx={{ alignSelf: 'flex-start', px: 0 }}
+                        >
+                          Remove photo
+                        </Button>
+                      )}
+                    </Stack>
+                    {alumniPhotoFileName ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Selected file: {alumniPhotoFileName}. The image uploads when you save.
+                      </Typography>
+                    ) : hasExistingAlumniPhoto ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Existing photo in use. Click remove to replace it.
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No photo selected yet.
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary">
+                      Upload a clear PNG or JPG portrait up to 5 MB. The image is stored in Cloudinary
+                      and the secure URL saves with the alumni profile when you click Save.
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Stack>
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setAlumniDialog(false);
-              setEditingAlumni(null);
-            }}
-            disabled={isSaving}
-          >
+          <Button onClick={closeAlumniDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={saveAlumniMember}
-            disabled={isSaving}
+            disabled={isSaving || alumniPhotoUploading}
             startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
             {isSaving ? 'Saving...' : editingAlumni?.id ? 'Update' : 'Add'}
@@ -2302,10 +3814,7 @@ export function SchoolAdminPanel() {
       {/* Gallery Dialog */}
       <Dialog
         open={galleryDialog}
-        onClose={() => {
-          setGalleryDialog(false);
-          setEditingGallery(null);
-        }}
+        onClose={closeGalleryDialog}
         maxWidth="md"
         fullWidth
       >
@@ -2320,13 +3829,27 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingGallery({ ...editingGallery, title: e.target.value })}
                 placeholder="Gallery item title"
               />
-              <TextField
-                fullWidth
-                label="Category"
-                value={editingGallery.category}
-                onChange={(e) => setEditingGallery({ ...editingGallery, category: e.target.value })}
-                placeholder="e.g., events, sports"
-              />
+              <FormControl fullWidth>
+                <InputLabel id="gallery-category-label">Category</InputLabel>
+                <Select
+                  labelId="gallery-category-label"
+                  label="Category"
+                  value={editingGallery.category || ''}
+                  onChange={(event: SelectChangeEvent<string>) => {
+                    const value = typeof event.target.value === 'string' ? event.target.value : '';
+                    setEditingGallery({
+                      ...editingGallery,
+                      category: resolveGalleryCategoryLabel(value),
+                    });
+                  }}
+                >
+                  {GALLERY_CATEGORY_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <TextField
                 fullWidth
                 label="Date"
@@ -2335,13 +3858,140 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingGallery({ ...editingGallery, date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
               />
-              <TextField
-                fullWidth
-                label="Image URL"
-                value={editingGallery.imageUrl}
-                onChange={(e) => setEditingGallery({ ...editingGallery, imageUrl: e.target.value })}
-                placeholder="https://example.com/image.jpg"
-              />
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Existing Images
+                  </Typography>
+                  {hasExistingGalleryPhoto ? (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {(editingGallery.images || []).map((url, index) => (
+                        <Stack
+                          key={`gallery-existing-${index}`}
+                          spacing={0.5}
+                          alignItems="center"
+                          sx={{ width: 160 }}
+                        >
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 110,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              bgcolor: 'rgba(255,255,255,0.04)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Box
+                              component="img"
+                              src={url}
+                              alt={`${editingGallery.title || 'Gallery image'} ${index + 1}`}
+                              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </Box>
+                          <Button
+                            size="small"
+                            variant="text"
+                            color="error"
+                            onClick={() => removeExistingGalleryPhoto(index)}
+                            disabled={galleryPhotoRemoveDisabled}
+                            sx={{ px: 0 }}
+                          >
+                            Remove
+                          </Button>
+                        </Stack>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No images saved yet. Upload one or more images to populate this gallery entry.
+                    </Typography>
+                  )}
+                </Box>
+
+                {galleryPhotoPreviewUrls.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                      Pending Uploads
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {galleryPhotoPreviewUrls.map((previewUrl, index) => (
+                        <Stack
+                          key={`gallery-pending-${index}`}
+                          spacing={0.5}
+                          alignItems="center"
+                          sx={{ width: 160 }}
+                        >
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 110,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              bgcolor: 'rgba(255,255,255,0.04)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Box
+                              component="img"
+                              src={previewUrl}
+                              alt={`Pending gallery image ${index + 1}`}
+                              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {galleryPhotoFileNames[index]}
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="text"
+                            color="error"
+                            onClick={() => removePendingGalleryPhoto(index)}
+                            disabled={galleryPhotoRemoveDisabled}
+                            sx={{ px: 0 }}
+                          >
+                            Remove pending
+                          </Button>
+                        </Stack>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ fontWeight: 600 }}
+                    disabled={galleryPhotoChooseDisabled}
+                  >
+                    Add Images
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleGalleryPhotoSelect}
+                      disabled={galleryPhotoChooseDisabled}
+                    />
+                  </Button>
+                  <Typography variant="caption" color="text.secondary">
+                    Upload clear PNG or JPG files up to 5 MB each. Files are stored in Cloudinary and the secure URLs save
+                    with this gallery item when you click Save.
+                  </Typography>
+                </Stack>
+              </Stack>
               <TextField
                 fullWidth
                 label="Description"
@@ -2355,19 +4005,13 @@ export function SchoolAdminPanel() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setGalleryDialog(false);
-              setEditingGallery(null);
-            }}
-            disabled={isSaving}
-          >
+          <Button onClick={closeGalleryDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={saveGalleryImage}
-            disabled={isSaving}
+            disabled={isSaving || galleryPhotoUploading}
             startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
             {isSaving ? 'Saving...' : editingGallery?.id ? 'Update' : 'Add'}
@@ -2385,43 +4029,78 @@ export function SchoolAdminPanel() {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>{editingAnnouncement?.id ? 'Edit Announcement' : 'Add Announcement'}</DialogTitle>
+        <DialogTitle>
+          {editingAnnouncement?.id ? 'Edit Announcement' : 'Add Announcement'}
+        </DialogTitle>
+
         <DialogContent>
           {editingAnnouncement && (
             <Stack spacing={2} sx={{ mt: 1 }}>
+              {/* Title */}
               <TextField
                 fullWidth
                 label="Title"
                 value={editingAnnouncement.title}
-                onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })}
+                onChange={(e) =>
+                  setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })
+                }
                 placeholder="Announcement title"
               />
+
+              {/* Description */}
               <TextField
                 fullWidth
                 label="Description"
                 multiline
                 rows={3}
                 value={editingAnnouncement.description}
-                onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, description: e.target.value })}
+                onChange={(e) =>
+                  setEditingAnnouncement({ ...editingAnnouncement, description: e.target.value })
+                }
                 placeholder="Announcement details"
               />
+
+              {/* Date + Category */}
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
                 <TextField
                   fullWidth
                   label="Date"
                   type="date"
                   value={editingAnnouncement.date}
-                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, date: e.target.value })}
+                  onChange={(e) =>
+                    setEditingAnnouncement({ ...editingAnnouncement, date: e.target.value })
+                  }
                   InputLabelProps={{ shrink: true }}
                 />
-                <TextField
-                  fullWidth
-                  label="Category"
-                  value={editingAnnouncement.category}
-                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, category: e.target.value })}
-                  placeholder="e.g., Event"
-                />
+                <FormControl fullWidth>
+                  <InputLabel id="announcement-category-label">Category</InputLabel>
+                  <Select
+                    labelId="announcement-category-label"
+                    label="Category"
+                    value={editingAnnouncement.category || ''}
+                    onChange={(event: SelectChangeEvent<string>) => {
+                      const value = event.target.value;
+                      const normalizedSelection = normalizeAnnouncementCategoryList(value);
+                      const primaryCategory = normalizedSelection[0] || '';
+                      setEditingAnnouncement({
+                        ...editingAnnouncement,
+                        category: primaryCategory,
+                      });
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {ANNOUNCEMENT_CATEGORY_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
+
+              {/* Priority */}
               <FormControl fullWidth>
                 <InputLabel id="announcement-priority-label">Priority</InputLabel>
                 <Select
@@ -2440,6 +4119,8 @@ export function SchoolAdminPanel() {
                   <MenuItem value="low">Low</MenuItem>
                 </Select>
               </FormControl>
+
+              {/* Type */}
               <FormControl fullWidth>
                 <InputLabel id="announcement-type-label">Type</InputLabel>
                 <Select
@@ -2458,9 +4139,68 @@ export function SchoolAdminPanel() {
                   <MenuItem value="news">News</MenuItem>
                 </Select>
               </FormControl>
+
+              <Divider sx={{ my: 1 }} />
+
+              {/* Audience */}
+              <FormControl fullWidth>
+                <InputLabel id="announcement-audience-label">Audience</InputLabel>
+                <Select
+                  labelId="announcement-audience-label"
+                  label="Audience"
+                  value={editingAnnouncement.audience || ''}
+                  onChange={(e) =>
+                    setEditingAnnouncement({
+                      ...editingAnnouncement,
+                      audience: e.target.value as string,
+                    })
+                  }
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="students">Students</MenuItem>
+                  <MenuItem value="teachers">Teachers</MenuItem>
+                  <MenuItem value="parents">Parents</MenuItem>
+                  <MenuItem value="staff">Staff</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Pinned + Urgent Switches */}
+              <Box sx={{ display: 'flex', gap: 3, mt: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!editingAnnouncement.isPinned}
+                      onChange={(e) =>
+                        setEditingAnnouncement({
+                          ...editingAnnouncement,
+                          isPinned: e.target.checked,
+                        })
+                      }
+                    />
+                  }
+                  label="Pin to Top"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      color="error"
+                      checked={!!editingAnnouncement.isUrgent}
+                      onChange={(e) =>
+                        setEditingAnnouncement({
+                          ...editingAnnouncement,
+                          isUrgent: e.target.checked,
+                        })
+                      }
+                    />
+                  }
+                  label="Mark as Urgent"
+                />
+              </Box>
             </Stack>
           )}
         </DialogContent>
+
         <DialogActions>
           <Button
             onClick={() => {
@@ -2482,6 +4222,7 @@ export function SchoolAdminPanel() {
         </DialogActions>
       </Dialog>
 
+
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbarOpen}
@@ -2496,3 +4237,4 @@ export function SchoolAdminPanel() {
     </>
   );
 }
+
