@@ -82,7 +82,6 @@ import {
   Star,
   TrendingUp,
   WorkspacePremium,
-  Category
 } from '@mui/icons-material';
 import {
   ANNOUNCEMENT_CATEGORY_OPTIONS,
