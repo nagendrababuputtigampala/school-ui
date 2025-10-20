@@ -19,7 +19,11 @@ export interface Announcement {
   type: 'event' | 'announcement' | 'news';
   date: string;
   priority: 'high' | 'medium' | 'low';
+  audience: string;
+  isPinned: boolean;
+  isUrgent: boolean;
   category: string;
+  tags: string | string[];
 }
 
 //Interface for Contact us page
@@ -403,6 +407,7 @@ export interface AdminHomePagePayload {
   welcomeSubTitle: string;
   principalName: string;
   principalMessage: string;
+  principalPhotoUrl?: string;
   yearEstablished: string;
   students: string;
   successRate: string;
@@ -421,45 +426,32 @@ export interface AdminContactPagePayload {
 
 export async function updateHomePageContent(identifier: string, payload: AdminHomePagePayload): Promise<void> {
   try {
-    // Convert identifier to collection ID format
     const collectionId = identifier.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_]/g, '');
-    
-    // Update homePage document directly
     const homePageDocRef = doc(db, collectionId, 'homePage');
-    
+
     const homePageUpdates = {
-      welcomeTitle: payload.welcomeTitle,
-      welcomeSubtitle: payload.welcomeSubTitle,
+      heroSection: {
+        welcomeTitle: payload.welcomeTitle,
+        welcomeSubtitle: payload.welcomeSubTitle,
+      },
       principalSection: {
         name: payload.principalName,
-        message: payload.principalMessage
+        message: payload.principalMessage,
+        image: payload.principalPhotoUrl || ''
       },
       statisticsSection: {
         yearEstablished: payload.yearEstablished,
         studentsCount: payload.students,
         successRate: payload.successRate
       },
-      timelineSection: {
-        milestones: (payload.journeyMilestones || []).map((milestone) => ({
-          id: milestone.id,
-          year: milestone.year,
-          title: milestone.title,
-          description: milestone.description,
-        }))
-      },
+      timelineSection: (payload.journeyMilestones || []).map((milestone) => ({
+        year: milestone.year,
+        title: milestone.title,
+        description: milestone.description,
+      })),
     };
 
     await setDoc(homePageDocRef, homePageUpdates, { merge: true });
-    
-    // Also update school info document with basic stats
-    const schoolInfoDocRef = doc(db, collectionId, 'schoolInfo');
-    const schoolInfoUpdates = {
-      yearEstablished: payload.yearEstablished,
-      studentsCount: payload.students,
-      successRate: payload.successRate
-    };
-    
-    await setDoc(schoolInfoDocRef, schoolInfoUpdates, { merge: true });
   } catch (err) {
     console.error(`Failed to update home page for school ${identifier}:`, err);
     throw err;
@@ -544,8 +536,6 @@ export async function updateAchievementsPageContent(
         level: item.level || '',
         year: item.year || item.date || '',
         date: item.date || item.year || '',
-        sectionKey: item.sectionKey || 'general',
-        sectionTitle: item.sectionTitle || '',
         category: item.category || '',
         image: item.image || '',
         participants: item.participants || '',
@@ -589,7 +579,7 @@ export async function updateStaffPageContent(identifier: string, staffMembers: a
       specializations: Array.isArray(staff.specializations)
         ? staff.specializations
         : parseCSV(staff.specializations || ''),
-      image: staff.imageUrl || staff.image || '',
+      image: staff.image ||  '',
       schoolId: staff.schoolId || identifier,
     }));
 
@@ -619,10 +609,10 @@ export async function updateAlumniPageContent(identifier: string, alumniMembers:
       company: alumni.company || '',
       currentPosition: alumni.currentPosition || '',
       graduationYear: alumni.graduationYear || '',
-      image: alumni.imageUrl || alumni.image || '',
+      image: alumni.image ||  '',
       industry: alumni.industry || '',
       location: alumni.location || '',
-      linkedIn: alumni.linkedinUrl || alumni.linkedIn || '',
+      linkedIn: alumni.linkedIn || '',
       schoolId: alumni.schoolId || identifier,
     }));
 
@@ -649,9 +639,14 @@ export async function updateGalleryPageContent(identifier: string, galleryItems:
       id: item.id || `gallery-${index + 1}`,
       title: item.title || '',
       category: item.category || '',
+      type: item.type || 'image',
       description: item.description || '',
       date: item.date || '',
-      imageUrl: item.imageUrl || item.image || '',
+      images: Array.isArray(item.images)
+        ? item.images.filter((url: string) => typeof url === 'string' && url.trim().length > 0)
+        : item.image
+        ? [item.image]
+        : [],
     }));
 
     // Update galleryPage document directly
@@ -691,9 +686,10 @@ export async function updateAnnouncementsPageContent(identifier: string, announc
         date: announcement.date || '',
         endDate: announcement.endDate || '',
         category: primaryCategory,
-        categories,
         priority,
         type,
+        isPinned: Boolean(announcement.isPinned),
+        isUrgent: Boolean(announcement.isUrgent),
         audience: (announcement.audience || 'all').toLowerCase(),
         author: announcement.author || '',
       };
@@ -959,8 +955,8 @@ export async function fetchAlumniData(schoolId: string): Promise<AlumniPageData 
             company: member.company || '',
             location: member.location || '',
             industry: member.industry || '',
-            image: member.imageUrl || member.image || '',
-            linkedIn: member.linkedinUrl || member.linkedIn || '',
+            image: member.image || '',
+            linkedIn: member.linkedIn || '',
             schoolId,
           }));
           

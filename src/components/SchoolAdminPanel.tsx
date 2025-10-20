@@ -10,6 +10,7 @@ import {
   updateGalleryPageContent,
   updateAnnouncementsPageContent,
 } from '../config/firebase';
+import { uploadImageToCloudinary } from '../config/cloudinary';
 import {
   Card,
   CardContent,
@@ -46,7 +47,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress
+  CircularProgress,
+  Avatar,
+  Divider,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import {
@@ -76,7 +81,8 @@ import {
   Public,
   Star,
   TrendingUp,
-  WorkspacePremium
+  WorkspacePremium,
+  Category
 } from '@mui/icons-material';
 import {
   ANNOUNCEMENT_CATEGORY_OPTIONS,
@@ -108,6 +114,7 @@ const galleryCategoryLookup: Record<string, string> = (() => {
 })();
 
 const defaultGalleryCategory = 'Others';
+const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB limit for uploads
 
 const resolveGalleryCategoryLabel = (value?: string, fallback?: string): string => {
   const attempt = (candidate?: string) => {
@@ -177,7 +184,7 @@ interface StaffMember {
   experience: string;
   email: string;
   phone: string;
-  imageUrl: string;
+  image: string;
   schoolId: string;
 }
 
@@ -187,7 +194,7 @@ interface AlumniMember {
   company: string;
   currentPosition: string;
   graduationYear: string;
-  imageUrl: string;
+  image: string;
   industry: string;
   location: string;
   linkedinUrl: string;
@@ -199,9 +206,11 @@ interface Announcement {
   description: string;
   date: string;
   category: string;
-  categories: string[];
   priority: string;
   type: string;
+  isPinned: boolean;
+  isUrgent: boolean;
+  audience: string
 }
 
 interface GalleryImage {
@@ -210,7 +219,7 @@ interface GalleryImage {
   category: string;
   description: string;
   date: string;
-  imageUrl: string;
+  images: string[];
 }
 
 interface JourneyMilestone {
@@ -281,6 +290,19 @@ export function SchoolAdminPanel() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [contactData, setContactData] = useState<any>(null);
   const [principalPhotoFileName, setPrincipalPhotoFileName] = useState<string>('');
+  const [principalPhotoUploading, setPrincipalPhotoUploading] = useState<boolean>(false);
+  const [staffPhotoFileName, setStaffPhotoFileName] = useState<string>('');
+  const [pendingStaffPhotoFile, setPendingStaffPhotoFile] = useState<File | null>(null);
+  const [staffPhotoPreviewUrl, setStaffPhotoPreviewUrl] = useState<string>('');
+  const [staffPhotoUploading, setStaffPhotoUploading] = useState<boolean>(false);
+  const [alumniPhotoFileName, setAlumniPhotoFileName] = useState<string>('');
+  const [pendingAlumniPhotoFile, setPendingAlumniPhotoFile] = useState<File | null>(null);
+  const [alumniPhotoPreviewUrl, setAlumniPhotoPreviewUrl] = useState<string>('');
+  const [alumniPhotoUploading, setAlumniPhotoUploading] = useState<boolean>(false);
+  const [galleryPhotoFileNames, setGalleryPhotoFileNames] = useState<string[]>([]);
+  const [pendingGalleryPhotoFiles, setPendingGalleryPhotoFiles] = useState<File[]>([]);
+  const [galleryPhotoPreviewUrls, setGalleryPhotoPreviewUrls] = useState<string[]>([]);
+  const [galleryPhotoUploading, setGalleryPhotoUploading] = useState<boolean>(false);
   const [achievementSectionsMeta, setAchievementSectionsMeta] =
     useState<Record<string, { title: string }>>(defaultAchievementSections);
   const [editingField, setEditingField] = useState<{ section: 'home' | 'contact'; key: string } | null>(null);
@@ -288,6 +310,22 @@ export function SchoolAdminPanel() {
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [expandedHomeSection, setExpandedHomeSection] = useState<string>('overview');
   const tableHeaderSx = { fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', color: 'text.secondary' };
+
+  const hasPendingStaffPhotoSelection = Boolean(pendingStaffPhotoFile || staffPhotoPreviewUrl);
+  const hasExistingStaffPhoto = Boolean(editingStaff?.image);
+  const staffPhotoChooseDisabled =
+    isSaving || staffPhotoUploading || (hasExistingStaffPhoto && !hasPendingStaffPhotoSelection);
+  const staffPhotoRemoveDisabled =
+    staffPhotoUploading || isSaving || (!hasExistingStaffPhoto && !hasPendingStaffPhotoSelection);
+  const hasPendingAlumniPhotoSelection = Boolean(pendingAlumniPhotoFile || alumniPhotoPreviewUrl);
+  const hasExistingAlumniPhoto = Boolean(editingAlumni?.image);
+  const alumniPhotoChooseDisabled =
+    isSaving || alumniPhotoUploading || (hasExistingAlumniPhoto && !hasPendingAlumniPhotoSelection);
+  const alumniPhotoRemoveDisabled =
+    alumniPhotoUploading || isSaving || (!hasExistingAlumniPhoto && !hasPendingAlumniPhotoSelection);
+  const hasExistingGalleryPhoto = Boolean(editingGallery?.images && editingGallery.images.length > 0);
+  const galleryPhotoChooseDisabled = isSaving || galleryPhotoUploading;
+  const galleryPhotoRemoveDisabled = galleryPhotoUploading || isSaving;
 
   const getAchievementSectionLabel = useCallback(
     (key: string) => {
@@ -322,14 +360,236 @@ export function SchoolAdminPanel() {
     setExpandedHomeSection(isExpanded ? sectionId : '');
   };
 
-  const handlePrincipalPhotoSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handlePrincipalPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
     if (!file) {
       return;
     }
 
-    setPrincipalPhotoFileName(file.name);
-    event.target.value = '';
+    if (!file.type.startsWith('image/')) {
+      showError('Please choose a valid image file (PNG or JPG).');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showError('Image is too large. Please upload a file smaller than 5 MB.');
+      input.value = '';
+      return;
+    }
+
+    if (!homeData) {
+      showError('Home data is unavailable. Please refresh and try again.');
+      input.value = '';
+      return;
+    }
+
+    const previousPhoto = homeData.principalPhoto || '';
+
+    try {
+      setPrincipalPhotoFileName(file.name);
+      setPrincipalPhotoUploading(true);
+
+      const targetSchoolId = schoolId || 'educonnect';
+      const folder = `schools/${targetSchoolId}`;
+      const { secureUrl } = await uploadImageToCloudinary(file, { folder });
+
+      const updatedHome = { ...homeData, principalPhoto: secureUrl };
+      setHomeData(updatedHome);
+
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(updatedHome, journeyMilestones)
+      );
+
+      await refreshSchoolData();
+      showSuccess('Principal photo updated successfully!');
+      setDirtyPage((prev) => (prev === 'both' ? 'contact' : null));
+    } catch (error) {
+      console.error('Failed to upload principal photo:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to upload principal photo.';
+      showError(message);
+      setHomeData((prev: any) =>
+        prev ? { ...prev, principalPhoto: previousPhoto } : prev
+      );
+    } finally {
+      setPrincipalPhotoUploading(false);
+      setPrincipalPhotoFileName('');
+      input.value = '';
+    }
+  };
+
+  const handleStaffPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !editingStaff) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showError('Please choose a valid image file (PNG or JPG).');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showError('Image is too large. Please upload a file smaller than 5 MB.');
+      input.value = '';
+      return;
+    }
+
+  if (staffPhotoPreviewUrl) {
+    URL.revokeObjectURL(staffPhotoPreviewUrl);
+  }
+
+  setStaffPhotoFileName(file.name);
+  setPendingStaffPhotoFile(file);
+    setStaffPhotoPreviewUrl(URL.createObjectURL(file));
+  input.value = '';
+};
+
+  const handleAlumniPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !editingAlumni) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showError('Please choose a valid image file (PNG or JPG).');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showError('Image is too large. Please upload a file smaller than 5 MB.');
+      input.value = '';
+      return;
+    }
+
+    if (alumniPhotoPreviewUrl) {
+      URL.revokeObjectURL(alumniPhotoPreviewUrl);
+    }
+
+    setAlumniPhotoFileName(file.name);
+    setPendingAlumniPhotoFile(file);
+    setAlumniPhotoPreviewUrl(URL.createObjectURL(file));
+    input.value = '';
+  };
+
+  const handleStaffPhotoRemove = () => {
+    if (!editingStaff) return;
+
+    if (pendingStaffPhotoFile || staffPhotoPreviewUrl) {
+      if (staffPhotoPreviewUrl) {
+        URL.revokeObjectURL(staffPhotoPreviewUrl);
+      }
+      setStaffPhotoPreviewUrl('');
+      setPendingStaffPhotoFile(null);
+      setStaffPhotoFileName('');
+      return;
+    }
+
+    if (editingStaff.image) {
+      if (staffPhotoPreviewUrl) {
+        URL.revokeObjectURL(staffPhotoPreviewUrl);
+      }
+      setStaffPhotoPreviewUrl('');
+      setPendingStaffPhotoFile(null);
+      setEditingStaff({ ...editingStaff, image: '' });
+      setStaffPhotoFileName('');
+      showSuccess('Staff photo removed. Save to apply the change.');
+    }
+  };
+
+  const handleAlumniPhotoRemove = () => {
+    if (!editingAlumni) return;
+
+    if (pendingAlumniPhotoFile || alumniPhotoPreviewUrl) {
+      if (alumniPhotoPreviewUrl) {
+        URL.revokeObjectURL(alumniPhotoPreviewUrl);
+      }
+      setAlumniPhotoPreviewUrl('');
+      setPendingAlumniPhotoFile(null);
+      setAlumniPhotoFileName('');
+      return;
+    }
+
+    if (editingAlumni.image) {
+      if (alumniPhotoPreviewUrl) {
+        URL.revokeObjectURL(alumniPhotoPreviewUrl);
+      }
+      setAlumniPhotoPreviewUrl('');
+      setPendingAlumniPhotoFile(null);
+      setEditingAlumni({ ...editingAlumni, image: '' });
+      setAlumniPhotoFileName('');
+      showSuccess('Alumni photo removed. Save to apply the change.');
+    }
+  };
+
+  const handleGalleryPhotoSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const files = input.files;
+    if (!editingGallery || !files || files.length === 0) {
+      input.value = '';
+      return;
+    }
+
+    const acceptedFiles: File[] = [];
+    const newPreviews: string[] = [];
+    const newNames: string[] = [];
+    let skipped = false;
+
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        skipped = true;
+        return;
+      }
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        skipped = true;
+        return;
+      }
+      acceptedFiles.push(file);
+      newPreviews.push(URL.createObjectURL(file));
+      newNames.push(file.name);
+    });
+
+    if (skipped) {
+      showError('Some files were skipped because they were not valid images under 5 MB.');
+    }
+
+    if (!acceptedFiles.length) {
+      input.value = '';
+      return;
+    }
+
+    setPendingGalleryPhotoFiles((prev) => [...prev, ...acceptedFiles]);
+    setGalleryPhotoPreviewUrls((prev) => [...prev, ...newPreviews]);
+    setGalleryPhotoFileNames((prev) => [...prev, ...newNames]);
+    input.value = '';
+  };
+
+  const removePendingGalleryPhoto = (index: number) => {
+    setPendingGalleryPhotoFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+    setGalleryPhotoFileNames((prev) => prev.filter((_, nameIndex) => nameIndex !== index));
+    setGalleryPhotoPreviewUrls((prev) => {
+      const next = [...prev];
+      const removed = next.splice(index, 1);
+      if (removed[0]) {
+        URL.revokeObjectURL(removed[0]);
+      }
+      return next;
+    });
+  };
+
+  const removeExistingGalleryPhoto = (index: number) => {
+    setEditingGallery((prev) => {
+      if (!prev) return prev;
+      const nextImages = (prev.images || []).filter((_, imageIndex) => imageIndex !== index);
+      return { ...prev, images: nextImages };
+    });
   };
 
   const renderHomeAccordionSummary = (
@@ -403,6 +663,7 @@ export function SchoolAdminPanel() {
     subtitle: 'welcomeSubTitle',
     principalName: 'principalName',
     principalMessage: 'principalMessage',
+    principalPhoto: 'principalPhoto',
     yearEstablished: 'yearEstablished',
     students: 'students',
     successRate: 'successRate',
@@ -546,7 +807,7 @@ export function SchoolAdminPanel() {
     const value = getFieldValue('home', key);
     if (!value) return [];
     if (key === 'principalMessage') {
-      const truncated = value.length > 240 ? `${value.slice(0, 240)}…` : value;
+      const truncated = value.length > 240 ? `${value.slice(0, 240)}...` : value;
       return truncated
         .split(/\r?\n/)
         .map((line) => line.trim())
@@ -662,10 +923,11 @@ export function SchoolAdminPanel() {
     home: typeof homeData,
     milestones: JourneyMilestone[]
   ) => ({
-    welcomeTitle: home?.welcomeTitle || '',
-    welcomeSubTitle: home?.welcomeSubTitle || '',
+    welcomeTitle: home?.heroSection?.welcomeTitle || home?.welcomeTitle || '',
+    welcomeSubTitle: home?.heroSection?.welcomeSubtitle || home?.welcomeSubTitle || '',
     principalName: home?.principalName || '',
     principalMessage: home?.principalMessage || '',
+    principalPhotoUrl: home?.principalPhoto || '',
     yearEstablished: home?.yearEstablished || '',
     students: home?.students || '',
     successRate: home?.successRate || '',
@@ -812,6 +1074,10 @@ export function SchoolAdminPanel() {
 
         if (section === 'home' && key === 'principalPhoto') {
           const fileLabel = principalPhotoFileName;
+          const currentPhotoUrl = homeData?.principalPhoto;
+          const sanitizedUrl = currentPhotoUrl
+            ? currentPhotoUrl.replace(/^https?:\/\//i, '').replace(/\?.*$/, '')
+            : '';
 
           return (
             <Paper
@@ -843,39 +1109,84 @@ export function SchoolAdminPanel() {
               </Box>
 
               <Stack spacing={2} sx={{ py: 1 }}>
+                {currentPhotoUrl ? (
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1.5}
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  >
+                    <Box
+                      component="img"
+                      src={currentPhotoUrl}
+                      alt="Principal portrait"
+                      sx={{
+                        width: 96,
+                        height: 96,
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
+                      }}
+                    />
+                    <Stack spacing={0.5}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        Current photo
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {sanitizedUrl}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        component="a"
+                        href={currentPhotoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ px: 0, alignSelf: 'flex-start' }}
+                      >
+                        Open full size
+                      </Button>
+                    </Stack>
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No photo saved yet. Upload one to highlight the principal on the home page.
+                  </Typography>
+                )}
+
                 <Stack
                   direction={{ xs: 'column', sm: 'row' }}
                   spacing={1.5}
-                  alignItems="flex-start"
+                  alignItems="center"
+                  alignSelf="flex-start"
                 >
                   <Button
                     variant="outlined"
                     component="label"
                     startIcon={<CloudUpload />}
                     sx={{ fontWeight: 600 }}
+                    disabled={principalPhotoUploading}
                   >
-                    Choose Image
+                    {principalPhotoUploading ? 'Uploading...' : 'Choose Image'}
                     <input
                       hidden
                       type="file"
                       accept="image/*"
                       onChange={handlePrincipalPhotoSelect}
+                      disabled={principalPhotoUploading}
                     />
                   </Button>
-                  {fileLabel && (
-                    <Typography variant="body2" color="text.secondary">
-                      Selected file: {fileLabel}
-                    </Typography>
+                  {principalPhotoUploading && (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <CircularProgress size={18} />
+                      <Typography variant="body2" color="text.secondary">
+                        Uploading {fileLabel || 'image'}...
+                      </Typography>
+                    </Stack>
                   )}
                 </Stack>
-                {!fileLabel && (
-                  <Typography variant="body2" color="text.secondary">
-                    No file selected yet.
-                  </Typography>
-                )}
+
                 <Typography variant="caption" color="text.secondary">
-                  Image uploads will be enabled in a future update. Selecting a file here only
-                  displays the file name for reference.
+                  Upload a clear PNG or JPG portrait up to 5 MB.
                 </Typography>
               </Stack>
             </Paper>
@@ -1010,6 +1321,7 @@ export function SchoolAdminPanel() {
       welcomeSubTitle: homePage.welcomeSubtitle || schoolData.welcomeSubtitle || '',
       principalName: principalSection.name || homePage.principalName || '',
       principalMessage: principalSection.message || homePage.principalMessage || '',
+      principalPhoto: principalSection.image || homePage.principalPhoto || '',
       yearEstablished: statisticsSection.yearEstablished || schoolData.yearEstablished || '',
       students: statisticsSection.studentsCount || schoolData.studentsCount || '',
       successRate: statisticsSection.successRate || schoolData.successRate || '',
@@ -1117,7 +1429,7 @@ export function SchoolAdminPanel() {
         experience: staff.experience || '',
         email: staff.email || '',
         phone: staff.phone || '',
-        imageUrl: staff.imageUrl || staff.image || '',
+        image: staff.image || staff.imageUrl || '',
         schoolId: staff.schoolId || schoolData.id,
       }))
     );
@@ -1130,7 +1442,7 @@ export function SchoolAdminPanel() {
         company: String(alumni.company || '').trim(),
         currentPosition: String(alumni.currentPosition || '').trim(),
         graduationYear: String(alumni.graduationYear || '').trim(),
-        imageUrl: String(alumni.imageUrl || alumni.image || '').trim(),
+        image: String(alumni.image || alumni.imageUrl || '').trim(),
         industry: String(alumni.industry || '').trim() || 'Other',
         location: String(alumni.location || '').trim(),
         linkedinUrl: String(alumni.linkedinUrl || alumni.linkedIn || '').trim(),
@@ -1140,62 +1452,125 @@ export function SchoolAdminPanel() {
     const galleryPage = pages.galleryPage || {};
     const galleryItems: GalleryImage[] = [];
 
-    const looksLikeGalleryItem = (value: any): boolean => {
-      if (!value) return false;
-      if (typeof value === 'string') return true;
-      if (typeof value !== 'object') return false;
-      return ['imageUrl', 'url', 'image', 'src'].some((key) => Boolean(value[key]));
-    };
+  const looksLikeGalleryItem = (value: any): boolean => {
+    if (!value) return false;
+    if (typeof value === 'string') return true;
+    if (typeof value !== 'object') return false;
+    if (Array.isArray(value.images)) return true;
+    const possible = value.images || value.image || value.imageUrl || value.url || value.src;
+    if (Array.isArray(possible)) return true;
+    return ['imageUrl', 'url', 'image', 'src'].some((key) => Boolean(value[key]));
+  };
 
-    const normalizeImage = (image: any, fallbackPrefix = 'gallery', fallbackCategory = defaultGalleryCategory) => {
-      if (!image) return;
-      if (Array.isArray(image)) {
-        image.forEach((item) => normalizeImage(item, fallbackPrefix, fallbackCategory));
-        return;
+  const toArray = (value: any): any[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'object') return Object.values(value);
+    return [];
+  };
+
+  const extractImagesArray = (value: any): string[] => {
+    const candidates = toArray(value);
+    if (!candidates.length && typeof value === 'string') {
+      return value.trim() ? [value.trim()] : [];
+    }
+    if (!candidates.length && typeof value === 'object') {
+      const nested = value?.image || value?.imageUrl || value?.url || value?.src;
+      if (typeof nested === 'string') {
+        return nested.trim() ? [nested.trim()] : [];
       }
+      return extractImagesArray(nested);
+    }
+    return candidates
+      .map((item) =>
+        typeof item === 'string'
+          ? item
+          : item?.image || item?.imageUrl || item?.url || item?.src || ''
+      )
+      .filter((url) => typeof url === 'string' && url.trim().length > 0);
+  };
 
-      const imageUrl =
-        typeof image === 'string'
-          ? image
-          : image?.imageUrl || image?.url || image?.image || image?.src || '';
-      if (!imageUrl) return;
+  const normalizeImage = (
+    image: any,
+    fallbackPrefix = 'gallery',
+    fallbackCategory = defaultGalleryCategory
+  ) => {
+    if (!image) return;
 
-      const rawCategory =
-        typeof image === 'object'
-          ? image?.category || image?.section || image?.group || fallbackCategory
-          : fallbackCategory;
-      const resolvedCategory = resolveGalleryCategoryLabel(rawCategory, fallbackCategory);
-      const titlePrefix = resolvedCategory;
+    if (Array.isArray(image)) {
+      image.forEach((item) => normalizeImage(item, fallbackPrefix, fallbackCategory));
+      return;
+    }
+
+    if (typeof image === 'object' && Array.isArray(image.images)) {
+      const resolvedCategory = resolveGalleryCategoryLabel(
+        image.category || fallbackCategory,
+        fallbackCategory
+      );
+      const normalizedImages = extractImagesArray(image.images);
+      if (!normalizedImages.length) return;
 
       galleryItems.push({
-        id:
-          (typeof image === 'object' && (image.id || image.key || image.slug)) ||
-          `${fallbackPrefix}-${galleryItems.length + 1}`,
-        title:
-          (typeof image === 'object' && (image.title || image.name)) ||
-          `${titlePrefix} ${galleryItems.length + 1}`,
+        id: image.id || image.key || image.slug || `${fallbackPrefix}-${galleryItems.length + 1}`,
+        title: image.title || image.name || `${resolvedCategory} ${galleryItems.length + 1}`,
         category: resolvedCategory,
-        description: (typeof image === 'object' ? image.description : '') || '',
-        date: (typeof image === 'object' ? image.date : '') || '',
-        imageUrl,
+        description: image.description || '',
+        date: image.date || '',
+        images: normalizedImages,
       });
-    };
+      return;
+    }
+
+    const imageSource =
+      typeof image === 'string'
+        ? image
+        : image?.imageUrl || image?.url || image?.image || image?.src || '';
+    if (!imageSource) return;
+
+    const rawCategory =
+      typeof image === 'object'
+        ? image?.category || image?.section || image?.group || fallbackCategory
+        : fallbackCategory;
+    const resolvedCategory = resolveGalleryCategoryLabel(rawCategory, fallbackCategory);
+    const titlePrefix = resolvedCategory;
+
+    galleryItems.push({
+      id:
+        (typeof image === 'object' && (image.id || image.key || image.slug)) ||
+        `${fallbackPrefix}-${galleryItems.length + 1}`,
+      title:
+        (typeof image === 'object' && (image.title || image.name)) ||
+        `${titlePrefix} ${galleryItems.length + 1}`,
+      category: resolvedCategory,
+      description: (typeof image === 'object' ? image.description : '') || '',
+      date: (typeof image === 'object' ? image.date : '') || '',
+      images: [imageSource],
+    });
+  };
 
     if (Array.isArray(galleryPage)) {
-      galleryPage.forEach((image: any) => normalizeImage(image));
+      galleryPage.forEach((entry: any) => normalizeImage(entry));
+    } else {
+      toArray(galleryPage).forEach((entry: any) => {
+        if (looksLikeGalleryItem(entry)) {
+          normalizeImage(entry);
+        }
+      });
     }
 
-    if (Array.isArray(galleryPage.galleryImages)) {
-      galleryPage.galleryImages.forEach((image: any) => normalizeImage(image, 'gallery', 'Gallery'));
-    }
+    toArray(galleryPage?.galleryImages).forEach((entry: any) =>
+      normalizeImage(entry, 'gallery', 'Gallery')
+    );
 
     Object.entries(galleryPage).forEach(([sectionKey, sectionValue]) => {
       if (sectionKey === 'galleryImages' || sectionKey === 'lastUpdated') return;
       const section = sectionValue as any;
 
-      if (Array.isArray(section?.images)) {
-        const sectionTitle = section.title || sectionKey;
-        section.images.forEach((image: any) => normalizeImage(image, sectionKey, sectionTitle));
+      const imagesValue = section?.images;
+      const sectionImages = extractImagesArray(imagesValue);
+      if (sectionImages.length) {
+        const sectionTitle = section?.title || sectionKey;
+        normalizeImage({ ...section, images: sectionImages }, sectionKey, sectionTitle);
         return;
       }
 
@@ -1204,9 +1579,7 @@ export function SchoolAdminPanel() {
         return;
       }
 
-      if (Array.isArray(section)) {
-        section.forEach((image: any) => normalizeImage(image, sectionKey, sectionKey));
-      }
+      toArray(section).forEach((entry: any) => normalizeImage(entry, sectionKey, sectionKey));
     });
 
     // Deduplicate by id to prevent duplicates when multiple paths contain same item
@@ -1244,18 +1617,19 @@ export function SchoolAdminPanel() {
     const rawAnnouncements = announcementsFromPage.length ? announcementsFromPage : announcementsFromHome;
 
     const normalizedAnnouncements: Announcement[] = rawAnnouncements.map((announcement: any, index: number) => {
-      const categories = normalizeAnnouncementCategoryList([announcement.categories, announcement.category]);
-      const primaryCategory = categories[0] || '';
-      const normalizedCategories = primaryCategory ? [primaryCategory] : [];
+      const primaryCategory =
+      normalizeAnnouncementCategoryList([announcement.category])[0] || '';
       return {
         id: announcement.id || `announcement-${index + 1}`,
         title: announcement.title || '',
         description: announcement.description || '',
         date: announcement.date || '',
         category: primaryCategory,
-        categories: normalizedCategories,
         priority: (announcement.priority || 'medium').toLowerCase(),
         type: (announcement.type || 'announcement').toLowerCase(),
+        isPinned: announcement.isPinned === true,
+        isUrgent: announcement.isUrgent === true,
+        audience: announcement.audience || '',
       };
     });
 
@@ -1550,7 +1924,36 @@ export function SchoolAdminPanel() {
     }
   };
 
+  const resetStaffPhotoSelection = () => {
+    if (staffPhotoPreviewUrl) {
+      URL.revokeObjectURL(staffPhotoPreviewUrl);
+    }
+    setStaffPhotoPreviewUrl('');
+    setStaffPhotoFileName('');
+    setPendingStaffPhotoFile(null);
+    setStaffPhotoUploading(false);
+  };
+
+  const resetAlumniPhotoSelection = () => {
+    if (alumniPhotoPreviewUrl) {
+      URL.revokeObjectURL(alumniPhotoPreviewUrl);
+    }
+    setAlumniPhotoPreviewUrl('');
+    setAlumniPhotoFileName('');
+    setPendingAlumniPhotoFile(null);
+    setAlumniPhotoUploading(false);
+  };
+
+  const resetGalleryPhotoSelection = () => {
+    galleryPhotoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setGalleryPhotoPreviewUrls([]);
+    setGalleryPhotoFileNames([]);
+    setPendingGalleryPhotoFiles([]);
+    setGalleryPhotoUploading(false);
+  };
+
   const openAddStaff = () => {
+    resetStaffPhotoSelection();
     setEditingStaff({
       id: '',
       name: '',
@@ -1561,41 +1964,73 @@ export function SchoolAdminPanel() {
       experience: '',
       email: '',
       phone: '',
-      imageUrl: '',
+      image: '',
       schoolId: schoolInfo?.id || schoolId || '',
     });
     setStaffDialog(true);
   };
 
   const openEditStaff = (staff: StaffMember) => {
+    resetStaffPhotoSelection();
     setEditingStaff({ ...staff });
     setStaffDialog(true);
   };
 
+  const closeStaffDialog = () => {
+    setStaffDialog(false);
+    setEditingStaff(null);
+    resetStaffPhotoSelection();
+  };
+
   const saveStaffMember = async () => {
     if (!editingStaff) return;
-    const staffEntry: StaffMember = {
-      ...editingStaff,
-      id: editingStaff.id || `staff-${Date.now()}`,
-      schoolId: editingStaff.schoolId || schoolInfo?.id || schoolId || '',
-    };
-    const updatedList = editingStaff.id
-      ? staffMembers.map((s) => (s.id === editingStaff.id ? staffEntry : s))
-      : [...staffMembers, staffEntry];
+
+    setIsSaving(true);
+
     const targetSchoolId = schoolId || 'educonnect';
+    let image = (editingStaff.image || '').trim();
+
     try {
-      setIsSaving(true);
+      if (pendingStaffPhotoFile) {
+        setStaffPhotoUploading(true);
+        const folder = `schools/${targetSchoolId}`;
+        const { secureUrl } = await uploadImageToCloudinary(pendingStaffPhotoFile, {
+          folder,
+        });
+        image = secureUrl;
+      } else if (!image) {
+        image = '';
+      }
+
+      const staffEntry: StaffMember = {
+        id: editingStaff.id || `staff-${Date.now()}`,
+        name: (editingStaff.name || '').trim(),
+        department: (editingStaff.department || '').trim(),
+        position: (editingStaff.position || '').trim(),
+        education: (editingStaff.education || '').trim(),
+        specializations: (editingStaff.specializations || '').trim(),
+        experience: (editingStaff.experience || '').trim(),
+        email: (editingStaff.email || '').trim(),
+        phone: (editingStaff.phone || '').trim(),
+        image,
+        schoolId: editingStaff.schoolId || schoolInfo?.id || schoolId || '',
+      };
+      const updatedList = editingStaff.id
+        ? staffMembers.map((s) => (s.id === editingStaff.id ? staffEntry : s))
+        : [...staffMembers, staffEntry];
+
       await updateStaffPageContent(targetSchoolId, updatedList);
-      setStaffDialog(false);
-      setEditingStaff(null);
       setStaffMembers(updatedList);
+      closeStaffDialog();
       await refreshSchoolData();
       showSuccess('Staff member saved successfully!');
+
     } catch (error) {
       console.error('Failed to save staff member:', error);
       showError('Failed to save staff member. Please try again.');
       await refreshSchoolData();
     } finally {
+      setStaffPhotoUploading(false);
       setIsSaving(false);
     }
   };
@@ -1620,13 +2055,14 @@ export function SchoolAdminPanel() {
   };
 
   const openAddAlumni = () => {
+    resetAlumniPhotoSelection();
     setEditingAlumni({
       id: '',
       name: '',
       company: '',
       currentPosition: '',
       graduationYear: '',
-      imageUrl: '',
+      image: '',
       industry: 'Other',
       location: '',
       linkedinUrl: '',
@@ -1635,19 +2071,42 @@ export function SchoolAdminPanel() {
   };
 
   const openEditAlumni = (alumni: AlumniMember) => {
+    resetAlumniPhotoSelection();
     setEditingAlumni({ ...alumni });
     setAlumniDialog(true);
   };
 
+  const closeAlumniDialog = () => {
+    setAlumniDialog(false);
+    setEditingAlumni(null);
+    resetAlumniPhotoSelection();
+  };
+
   const saveAlumniMember = async () => {
     if (!editingAlumni) return;
+
+    setIsSaving(true);
+
+    const targetSchoolId = schoolId || 'educonnect';
+    let image = (editingAlumni.image || '').trim();
+
+    try {
+      if (pendingAlumniPhotoFile) {
+        setAlumniPhotoUploading(true);
+        const folder = `schools/${targetSchoolId}`;
+        const { secureUrl } = await uploadImageToCloudinary(pendingAlumniPhotoFile, { folder });
+        image = secureUrl;
+      } else if (!image) {
+        image = '';
+      }
+
     const alumniEntry: AlumniMember = {
       id: editingAlumni.id || `alumni-${Date.now()}`,
       name: (editingAlumni.name || '').trim(),
       company: (editingAlumni.company || '').trim(),
       currentPosition: (editingAlumni.currentPosition || '').trim(),
       graduationYear: (editingAlumni.graduationYear || '').trim(),
-      imageUrl: (editingAlumni.imageUrl || '').trim(),
+      image,
       industry: (editingAlumni.industry || '').trim() || 'Other',
       location: (editingAlumni.location || '').trim(),
       linkedinUrl: (editingAlumni.linkedinUrl || '').trim(),
@@ -1656,13 +2115,9 @@ export function SchoolAdminPanel() {
       ? alumniMembers.map((a) => (a.id === editingAlumni.id ? alumniEntry : a))
       : [...alumniMembers, alumniEntry];
 
-    const targetSchoolId = schoolId || 'educonnect';
-    try {
-      setIsSaving(true);
       await updateAlumniPageContent(targetSchoolId, updatedList);
-      setAlumniDialog(false);
-      setEditingAlumni(null);
       setAlumniMembers(updatedList);
+      closeAlumniDialog();
       await refreshSchoolData();
       showSuccess('Alumni entry saved successfully!');
     } catch (error) {
@@ -1670,6 +2125,7 @@ export function SchoolAdminPanel() {
       showError('Failed to save alumni entry. Please try again.');
       await refreshSchoolData();
     } finally {
+      setAlumniPhotoUploading(false);
       setIsSaving(false);
     }
   };
@@ -1694,48 +2150,79 @@ export function SchoolAdminPanel() {
   };
 
   const openAddGalleryImage = () => {
+    resetGalleryPhotoSelection();
     setEditingGallery({
       id: '',
       title: '',
       category: GALLERY_CATEGORY_OPTIONS[0].value,
       description: '',
       date: '',
-      imageUrl: '',
+      images: [],
     });
     setGalleryDialog(true);
   };
 
   const openEditGalleryImage = (image: GalleryImage) => {
+    resetGalleryPhotoSelection();
+    const normalizedImages = Array.isArray(image.images)
+      ? image.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+      : [];
     setEditingGallery({
       ...image,
+      images: normalizedImages,
       category: resolveGalleryCategoryLabel(image.category),
     });
     setGalleryDialog(true);
   };
 
+  const closeGalleryDialog = () => {
+    setGalleryDialog(false);
+    setEditingGallery(null);
+    resetGalleryPhotoSelection();
+  };
+
   const saveGalleryImage = async () => {
     if (!editingGallery) return;
-    const resolvedCategory = resolveGalleryCategoryLabel(editingGallery.category);
-    const galleryEntry: GalleryImage = {
-      ...editingGallery,
-      id: editingGallery.id || `gallery-${Date.now()}`,
-      category: resolvedCategory,
-    };
-    const updatedList = editingGallery.id
-      ? galleryImages.map((image) => (image.id === editingGallery.id ? galleryEntry : image))
-      : [...galleryImages, galleryEntry];
-    const normalizedList = updatedList.map((image) => ({
-      ...image,
-      category: resolveGalleryCategoryLabel(image.category),
-    }));
+
+    setIsSaving(true);
 
     const targetSchoolId = schoolId || 'educonnect';
+    const existingImages = Array.isArray(editingGallery.images)
+      ? editingGallery.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+      : [];
+    let images = [...existingImages];
+
     try {
-      setIsSaving(true);
+      if (pendingGalleryPhotoFiles.length > 0) {
+        setGalleryPhotoUploading(true);
+        const folder = `schools/${targetSchoolId}`;
+        for (const file of pendingGalleryPhotoFiles) {
+          const { secureUrl } = await uploadImageToCloudinary(file, { folder });
+          images.push(secureUrl);
+        }
+      }
+
+      const resolvedCategory = resolveGalleryCategoryLabel(editingGallery.category);
+      const galleryEntry: GalleryImage = {
+        ...editingGallery,
+        id: editingGallery.id || `gallery-${Date.now()}`,
+        category: resolvedCategory,
+        images,
+      };
+      const updatedList = editingGallery.id
+        ? galleryImages.map((image) => (image.id === editingGallery.id ? galleryEntry : image))
+        : [...galleryImages, galleryEntry];
+      const normalizedList = updatedList.map((image) => ({
+        ...image,
+        category: resolveGalleryCategoryLabel(image.category),
+        images: Array.isArray(image.images)
+          ? image.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+          : [],
+      }));
+
       await updateGalleryPageContent(targetSchoolId, normalizedList);
-      setGalleryDialog(false);
-      setEditingGallery(null);
       setGalleryImages(normalizedList);
+      closeGalleryDialog();
       await refreshSchoolData();
       showSuccess('Gallery item saved successfully!');
     } catch (error) {
@@ -1743,6 +2230,7 @@ export function SchoolAdminPanel() {
       showError('Failed to save gallery item. Please try again.');
       await refreshSchoolData();
     } finally {
+      setGalleryPhotoUploading(false);
       setIsSaving(false);
     }
   };
@@ -1773,22 +2261,20 @@ export function SchoolAdminPanel() {
       description: '',
       date: '',
       category: '',
-      categories: [],
       priority: 'medium',
       type: 'announcement',
+      audience: '',
+      isPinned: false,
+      isUrgent: false,
     });
     setAnnouncementDialog(true);
   };
 
   const openEditAnnouncement = (announcement: Announcement) => {
-    const categories = normalizeAnnouncementCategoryList([announcement.categories, announcement.category]);
-    const primaryCategory = categories[0] || '';
-    const normalizedCategories = primaryCategory ? [primaryCategory] : [];
 
     setEditingAnnouncement({
       ...announcement,
-      category: primaryCategory,
-      categories: normalizedCategories,
+      category: announcement.category || '',
       priority: (announcement.priority || 'medium').toLowerCase(),
       type: (announcement.type || 'announcement').toLowerCase(),
     });
@@ -1799,15 +2285,12 @@ export function SchoolAdminPanel() {
     if (!editingAnnouncement) return;
     const categories = normalizeAnnouncementCategoryList([
       editingAnnouncement.category,
-      editingAnnouncement.categories,
     ]);
     const primaryCategory = categories[0] || '';
-    const normalizedCategories = primaryCategory ? [primaryCategory] : [];
     const announcementEntry: Announcement = {
       ...editingAnnouncement,
       id: editingAnnouncement.id || `announcement-${Date.now()}`,
       category: primaryCategory,
-      categories: normalizedCategories,
       priority: (editingAnnouncement.priority || 'medium').toLowerCase(),
       type: (editingAnnouncement.type || 'announcement').toLowerCase(),
     };
@@ -2639,15 +3122,25 @@ export function SchoolAdminPanel() {
             {/* Announcements Page */}
             {activePage === 'announcements' && (
               <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                {/* Header Section */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 3,
+                  }}
+                >
                   <Box>
-                    <Typography variant="h4" gutterBottom>Announcements</Typography>
+                    <Typography variant="h4" gutterBottom>
+                      Announcements
+                    </Typography>
                     <Typography variant="body1" color="text.secondary">
                       Manage school announcements and notices
                     </Typography>
                   </Box>
-                  <Button 
-                    variant="contained" 
+                  <Button
+                    variant="contained"
                     onClick={openAddAnnouncement}
                     disabled={isSaving}
                     startIcon={<Plus />}
@@ -2656,85 +3149,77 @@ export function SchoolAdminPanel() {
                   </Button>
                 </Box>
 
+                {/* Table Section */}
                 <TableContainer component={Paper}>
                   <Table>
                     <TableHead>
                       <TableRow>
                         <TableCell sx={tableHeaderSx}>Title</TableCell>
                         <TableCell sx={tableHeaderSx}>Category</TableCell>
+                        <TableCell sx={tableHeaderSx}>Audience</TableCell>
                         <TableCell sx={tableHeaderSx}>Date</TableCell>
-                        <TableCell sx={tableHeaderSx}>Description</TableCell>
                         <TableCell sx={tableHeaderSx}>Priority</TableCell>
-                        <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>Actions</TableCell>
+                        <TableCell sx={tableHeaderSx}>Pinned</TableCell>
+                        <TableCell sx={tableHeaderSx}>Urgent</TableCell>
+                        <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>
+                          Actions
+                        </TableCell>
                       </TableRow>
                     </TableHead>
+
                     <TableBody>
+                      {/* No announcements */}
                       {announcements.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6}>
-                            <Typography variant="body2" color="text.secondary" align="center">
+                          <TableCell colSpan={8}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              align="center"
+                            >
                               No announcements found. Use "Add Announcement" to create one.
                             </Typography>
                           </TableCell>
                         </TableRow>
                       )}
+
+                      {/* Announcements List */}
                       {announcements.map((announcement) => (
                         <TableRow key={announcement.id}>
+                          {/* Title */}
                           <TableCell>{announcement.title}</TableCell>
+
+                          {/* Category */}
                           <TableCell>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {(announcement.categories?.length
-                                ? announcement.categories
-                                : announcement.category
-                                ? [announcement.category]
-                                : []
-                              ).map((category) => (
-                                <Chip
-                                  key={category}
-                                  sx={{ fontWeight: 600 }}
-                                  label={formatAnnouncementCategoryLabel(category)}
-                                  size="small"
-                                />
-                              ))}
-                              {!announcement.categories?.length && !announcement.category && (
-                                <Chip sx={{ fontWeight: 600 }} label="Uncategorized" size="small" />
-                              )}
-                            </Box>
+                            <Chip
+                              label={
+                                announcement.category
+                                  ? formatAnnouncementCategoryLabel(announcement.category)
+                                  : 'Uncategorized'
+                              }
+                              size="small"
+                              sx={{ fontWeight: 600 }}
+                            />
                           </TableCell>
-                          <TableCell>{announcement.date}</TableCell>
-                          <TableCell sx={{ maxWidth: 320 }}>
-                            <Box
-                              sx={{
-                                maxHeight: 48,
-                                overflow: 'hidden',
-                                pr: 1,
-                                transition: 'max-height 0.2s ease',
-                                '&:hover': {
-                                  maxHeight: 200,
-                                  overflowY: 'auto',
-                                  '& .description-text': {
-                                    display: 'block',
-                                    WebkitLineClamp: 'unset',
-                                  },
-                                },
-                              }}
-                            >
-                              <Typography
-                                variant="body2"
-                                className="description-text"
-                                sx={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'normal',
-                                }}
-                              >
-                                {announcement.description || '—'}
-                              </Typography>
-                            </Box>
+
+                          {/* Audience */}
+                          <TableCell>
+                            <Chip
+                              label={
+                                announcement.audience
+                                  ? announcement.audience.charAt(0).toUpperCase() +
+                                    announcement.audience.slice(1)
+                                  : 'All'
+                              }
+                              size="small"
+                              color="info"
+                            />
                           </TableCell>
+
+                          {/* Date */}
+                          <TableCell>{announcement.date || '—'}</TableCell>
+
+                          {/* Priority */}
                           <TableCell>
                             {(() => {
                               const priority = (announcement.priority || '').toLowerCase();
@@ -2749,16 +3234,38 @@ export function SchoolAdminPanel() {
                                 : 'Low';
                               return (
                                 <Chip
-                                  sx={{ fontWeight: 600 }}
                                   label={priorityLabel}
                                   size="small"
                                   color={chipColor}
+                                  sx={{ fontWeight: 600 }}
                                 />
                               );
                             })()}
                           </TableCell>
+
+                          {/* isPinned */}
+                          <TableCell>
+                            {announcement.isPinned ? (
+                              <Chip label="Pinned" color="success" size="small" />
+                            ) : (
+                              <Chip label="No" size="small" variant="outlined" />
+                            )}
+                          </TableCell>
+
+                          {/* isUrgent */}
+                          <TableCell>
+                            {announcement.isUrgent ? (
+                              <Chip label="Urgent" color="error" size="small" />
+                            ) : (
+                              <Chip label="No" size="small" variant="outlined" />
+                            )}
+                          </TableCell>
+
+                          {/* Actions */}
                           <TableCell align="right">
-                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                            <Box
+                              sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}
+                            >
                               <IconButton
                                 size="small"
                                 disabled={isSaving}
@@ -2973,10 +3480,7 @@ export function SchoolAdminPanel() {
       {/* Staff Dialog */}
       <Dialog
         open={staffDialog}
-        onClose={() => {
-          setStaffDialog(false);
-          setEditingStaff(null);
-        }}
+        onClose={closeStaffDialog}
         maxWidth="md"
         fullWidth
       >
@@ -3046,30 +3550,97 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingStaff({ ...editingStaff, specializations: e.target.value })}
                 placeholder="Mathematics, Algebra"
               />
-              <TextField
-                fullWidth
-                label="Profile Image URL"
-                value={editingStaff.imageUrl}
-                onChange={(e) => setEditingStaff({ ...editingStaff, imageUrl: e.target.value })}
-                placeholder="https://example.com/photo.jpg"
-              />
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Profile Photo
+                </Typography>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Avatar
+                    src={staffPhotoPreviewUrl || editingStaff.image || undefined}
+                    alt={editingStaff.name || 'Staff photo'}
+                    sx={{
+                      width: 96,
+                      height: 96,
+                      fontSize: 32,
+                      bgcolor: 'primary.main',
+                    }}
+                  >
+                    {!staffPhotoPreviewUrl &&
+                      !editingStaff.image &&
+                      editingStaff.name
+                      ? editingStaff.name.charAt(0).toUpperCase()
+                      : undefined}
+                  </Avatar>
+                  <Stack spacing={1.5} alignItems={{ xs: 'flex-start', sm: 'flex-start' }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    >
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CloudUpload />}
+                        sx={{ fontWeight: 600 }}
+                        disabled={staffPhotoChooseDisabled}
+                      >
+                        Choose Image
+                        <input
+                          hidden
+                          type="file"
+                          accept="image/*"
+                          onChange={handleStaffPhotoSelect}
+                          disabled={staffPhotoChooseDisabled}
+                        />
+                      </Button>
+                      {(pendingStaffPhotoFile || editingStaff.image) && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={handleStaffPhotoRemove}
+                          disabled={staffPhotoRemoveDisabled}
+                          sx={{ alignSelf: 'flex-start', px: 0 }}
+                        >
+                          Remove photo
+                        </Button>
+                      )}
+                    </Stack>
+                    {staffPhotoFileName ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Selected file: {staffPhotoFileName}. The image uploads when you save.
+                      </Typography>
+                    ) : hasExistingStaffPhoto ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Existing photo in use. Click remove to replace it.
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No photo selected yet.
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary">
+                      Upload a clear PNG or JPG portrait up to 5 MB. The image is stored in Cloudinary
+                      and the secure URL saves with the staff profile when you click Save.
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Stack>
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setStaffDialog(false);
-              setEditingStaff(null);
-            }}
-            disabled={isSaving}
-          >
+          <Button onClick={closeStaffDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={saveStaffMember}
-            disabled={isSaving}
+            disabled={isSaving || staffPhotoUploading}
             startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
             {isSaving ? 'Saving...' : editingStaff?.id ? 'Update' : 'Add'}
@@ -3080,10 +3651,7 @@ export function SchoolAdminPanel() {
       {/* Alumni Dialog */}
       <Dialog
         open={alumniDialog}
-        onClose={() => {
-          setAlumniDialog(false);
-          setEditingAlumni(null);
-        }}
+        onClose={closeAlumniDialog}
         maxWidth="md"
         fullWidth
       >
@@ -3146,30 +3714,97 @@ export function SchoolAdminPanel() {
                   placeholder="https://linkedin.com/in/example"
                 />
               </Box>
-              <TextField
-                fullWidth
-                label="Profile Image URL"
-                value={editingAlumni.imageUrl}
-                onChange={(e) => setEditingAlumni({ ...editingAlumni, imageUrl: e.target.value })}
-                placeholder="https://example.com/photo.jpg"
-              />
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Profile Photo
+                </Typography>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Avatar
+                    src={alumniPhotoPreviewUrl || editingAlumni.image || undefined}
+                    alt={editingAlumni.name || 'Alumni photo'}
+                    sx={{
+                      width: 96,
+                      height: 96,
+                      fontSize: 32,
+                      bgcolor: 'primary.main',
+                    }}
+                  >
+                    {!alumniPhotoPreviewUrl &&
+                      !editingAlumni.image &&
+                      editingAlumni.name
+                      ? editingAlumni.name.charAt(0).toUpperCase()
+                      : undefined}
+                  </Avatar>
+                  <Stack spacing={1.5} alignItems={{ xs: 'flex-start', sm: 'flex-start' }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    >
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CloudUpload />}
+                        sx={{ fontWeight: 600 }}
+                        disabled={alumniPhotoChooseDisabled}
+                      >
+                        Choose Image
+                        <input
+                          hidden
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAlumniPhotoSelect}
+                          disabled={alumniPhotoChooseDisabled}
+                        />
+                      </Button>
+                      {(pendingAlumniPhotoFile || editingAlumni.image) && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={handleAlumniPhotoRemove}
+                          disabled={alumniPhotoRemoveDisabled}
+                          sx={{ alignSelf: 'flex-start', px: 0 }}
+                        >
+                          Remove photo
+                        </Button>
+                      )}
+                    </Stack>
+                    {alumniPhotoFileName ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Selected file: {alumniPhotoFileName}. The image uploads when you save.
+                      </Typography>
+                    ) : hasExistingAlumniPhoto ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Existing photo in use. Click remove to replace it.
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No photo selected yet.
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary">
+                      Upload a clear PNG or JPG portrait up to 5 MB. The image is stored in Cloudinary
+                      and the secure URL saves with the alumni profile when you click Save.
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Stack>
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setAlumniDialog(false);
-              setEditingAlumni(null);
-            }}
-            disabled={isSaving}
-          >
+          <Button onClick={closeAlumniDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={saveAlumniMember}
-            disabled={isSaving}
+            disabled={isSaving || alumniPhotoUploading}
             startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
             {isSaving ? 'Saving...' : editingAlumni?.id ? 'Update' : 'Add'}
@@ -3180,10 +3815,7 @@ export function SchoolAdminPanel() {
       {/* Gallery Dialog */}
       <Dialog
         open={galleryDialog}
-        onClose={() => {
-          setGalleryDialog(false);
-          setEditingGallery(null);
-        }}
+        onClose={closeGalleryDialog}
         maxWidth="md"
         fullWidth
       >
@@ -3227,13 +3859,140 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingGallery({ ...editingGallery, date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
               />
-              <TextField
-                fullWidth
-                label="Image URL"
-                value={editingGallery.imageUrl}
-                onChange={(e) => setEditingGallery({ ...editingGallery, imageUrl: e.target.value })}
-                placeholder="https://example.com/image.jpg"
-              />
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Existing Images
+                  </Typography>
+                  {hasExistingGalleryPhoto ? (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {(editingGallery.images || []).map((url, index) => (
+                        <Stack
+                          key={`gallery-existing-${index}`}
+                          spacing={0.5}
+                          alignItems="center"
+                          sx={{ width: 160 }}
+                        >
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 110,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              bgcolor: 'rgba(255,255,255,0.04)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Box
+                              component="img"
+                              src={url}
+                              alt={`${editingGallery.title || 'Gallery image'} ${index + 1}`}
+                              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </Box>
+                          <Button
+                            size="small"
+                            variant="text"
+                            color="error"
+                            onClick={() => removeExistingGalleryPhoto(index)}
+                            disabled={galleryPhotoRemoveDisabled}
+                            sx={{ px: 0 }}
+                          >
+                            Remove
+                          </Button>
+                        </Stack>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No images saved yet. Upload one or more images to populate this gallery entry.
+                    </Typography>
+                  )}
+                </Box>
+
+                {galleryPhotoPreviewUrls.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                      Pending Uploads
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {galleryPhotoPreviewUrls.map((previewUrl, index) => (
+                        <Stack
+                          key={`gallery-pending-${index}`}
+                          spacing={0.5}
+                          alignItems="center"
+                          sx={{ width: 160 }}
+                        >
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 110,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              bgcolor: 'rgba(255,255,255,0.04)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Box
+                              component="img"
+                              src={previewUrl}
+                              alt={`Pending gallery image ${index + 1}`}
+                              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {galleryPhotoFileNames[index]}
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="text"
+                            color="error"
+                            onClick={() => removePendingGalleryPhoto(index)}
+                            disabled={galleryPhotoRemoveDisabled}
+                            sx={{ px: 0 }}
+                          >
+                            Remove pending
+                          </Button>
+                        </Stack>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ fontWeight: 600 }}
+                    disabled={galleryPhotoChooseDisabled}
+                  >
+                    Add Images
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleGalleryPhotoSelect}
+                      disabled={galleryPhotoChooseDisabled}
+                    />
+                  </Button>
+                  <Typography variant="caption" color="text.secondary">
+                    Upload clear PNG or JPG files up to 5 MB each. Files are stored in Cloudinary and the secure URLs save
+                    with this gallery item when you click Save.
+                  </Typography>
+                </Stack>
+              </Stack>
               <TextField
                 fullWidth
                 label="Description"
@@ -3247,19 +4006,13 @@ export function SchoolAdminPanel() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setGalleryDialog(false);
-              setEditingGallery(null);
-            }}
-            disabled={isSaving}
-          >
+          <Button onClick={closeGalleryDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={saveGalleryImage}
-            disabled={isSaving}
+            disabled={isSaving || galleryPhotoUploading}
             startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
             {isSaving ? 'Saving...' : editingGallery?.id ? 'Update' : 'Add'}
@@ -3277,33 +4030,47 @@ export function SchoolAdminPanel() {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>{editingAnnouncement?.id ? 'Edit Announcement' : 'Add Announcement'}</DialogTitle>
+        <DialogTitle>
+          {editingAnnouncement?.id ? 'Edit Announcement' : 'Add Announcement'}
+        </DialogTitle>
+
         <DialogContent>
           {editingAnnouncement && (
             <Stack spacing={2} sx={{ mt: 1 }}>
+              {/* Title */}
               <TextField
                 fullWidth
                 label="Title"
                 value={editingAnnouncement.title}
-                onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })}
+                onChange={(e) =>
+                  setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })
+                }
                 placeholder="Announcement title"
               />
+
+              {/* Description */}
               <TextField
                 fullWidth
                 label="Description"
                 multiline
                 rows={3}
                 value={editingAnnouncement.description}
-                onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, description: e.target.value })}
+                onChange={(e) =>
+                  setEditingAnnouncement({ ...editingAnnouncement, description: e.target.value })
+                }
                 placeholder="Announcement details"
               />
+
+              {/* Date + Category */}
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
                 <TextField
                   fullWidth
                   label="Date"
                   type="date"
                   value={editingAnnouncement.date}
-                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, date: e.target.value })}
+                  onChange={(e) =>
+                    setEditingAnnouncement({ ...editingAnnouncement, date: e.target.value })
+                  }
                   InputLabelProps={{ shrink: true }}
                 />
                 <FormControl fullWidth>
@@ -3319,7 +4086,6 @@ export function SchoolAdminPanel() {
                       setEditingAnnouncement({
                         ...editingAnnouncement,
                         category: primaryCategory,
-                        categories: primaryCategory ? [primaryCategory] : [],
                       });
                     }}
                   >
@@ -3334,6 +4100,8 @@ export function SchoolAdminPanel() {
                   </Select>
                 </FormControl>
               </Box>
+
+              {/* Priority */}
               <FormControl fullWidth>
                 <InputLabel id="announcement-priority-label">Priority</InputLabel>
                 <Select
@@ -3352,6 +4120,8 @@ export function SchoolAdminPanel() {
                   <MenuItem value="low">Low</MenuItem>
                 </Select>
               </FormControl>
+
+              {/* Type */}
               <FormControl fullWidth>
                 <InputLabel id="announcement-type-label">Type</InputLabel>
                 <Select
@@ -3370,9 +4140,68 @@ export function SchoolAdminPanel() {
                   <MenuItem value="news">News</MenuItem>
                 </Select>
               </FormControl>
+
+              <Divider sx={{ my: 1 }} />
+
+              {/* Audience */}
+              <FormControl fullWidth>
+                <InputLabel id="announcement-audience-label">Audience</InputLabel>
+                <Select
+                  labelId="announcement-audience-label"
+                  label="Audience"
+                  value={editingAnnouncement.audience || ''}
+                  onChange={(e) =>
+                    setEditingAnnouncement({
+                      ...editingAnnouncement,
+                      audience: e.target.value as string,
+                    })
+                  }
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="students">Students</MenuItem>
+                  <MenuItem value="teachers">Teachers</MenuItem>
+                  <MenuItem value="parents">Parents</MenuItem>
+                  <MenuItem value="staff">Staff</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Pinned + Urgent Switches */}
+              <Box sx={{ display: 'flex', gap: 3, mt: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!editingAnnouncement.isPinned}
+                      onChange={(e) =>
+                        setEditingAnnouncement({
+                          ...editingAnnouncement,
+                          isPinned: e.target.checked,
+                        })
+                      }
+                    />
+                  }
+                  label="Pin to Top"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      color="error"
+                      checked={!!editingAnnouncement.isUrgent}
+                      onChange={(e) =>
+                        setEditingAnnouncement({
+                          ...editingAnnouncement,
+                          isUrgent: e.target.checked,
+                        })
+                      }
+                    />
+                  }
+                  label="Mark as Urgent"
+                />
+              </Box>
             </Stack>
           )}
         </DialogContent>
+
         <DialogActions>
           <Button
             onClick={() => {
@@ -3393,6 +4222,7 @@ export function SchoolAdminPanel() {
           </Button>
         </DialogActions>
       </Dialog>
+
 
       {/* Snackbar for notifications */}
       <Snackbar
