@@ -210,6 +210,8 @@ interface Announcement {
   isPinned: boolean;
   isUrgent: boolean;
   audience: string
+  author: string;
+  tags: string[];
 }
 
 interface GalleryImage {
@@ -277,6 +279,7 @@ export function SchoolAdminPanel() {
   const [editingAlumni, setEditingAlumni] = useState<AlumniMember | null>(null);
   const [editingGallery, setEditingGallery] = useState<GalleryImage | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [tagInput, setTagInput] = useState<string>('');
   const [editingJourney, setEditingJourney] = useState<JourneyMilestone | null>(null);
 
   // Data states
@@ -1629,6 +1632,8 @@ export function SchoolAdminPanel() {
         isPinned: announcement.isPinned === true,
         isUrgent: announcement.isUrgent === true,
         audience: announcement.audience || '',
+        author: announcement.author || '',
+        tags: announcement.tags || [],
       };
     });
 
@@ -2265,8 +2270,11 @@ export function SchoolAdminPanel() {
       audience: '',
       isPinned: false,
       isUrgent: false,
+      author: '',
+      tags: [],
     });
     setAnnouncementDialog(true);
+    setTagInput('');
   };
 
   const openEditAnnouncement = (announcement: Announcement) => {
@@ -2277,6 +2285,7 @@ export function SchoolAdminPanel() {
       priority: (announcement.priority || 'medium').toLowerCase(),
       type: (announcement.type || 'announcement').toLowerCase(),
     });
+    setTagInput((announcement.tags || []).join(', '));
     setAnnouncementDialog(true);
   };
 
@@ -3160,6 +3169,8 @@ export function SchoolAdminPanel() {
                         <TableCell sx={tableHeaderSx}>Priority</TableCell>
                         <TableCell sx={tableHeaderSx}>Pinned</TableCell>
                         <TableCell sx={tableHeaderSx}>Urgent</TableCell>
+                        <TableCell sx={tableHeaderSx}>Author</TableCell>
+                        <TableCell sx={tableHeaderSx}>Tags</TableCell>
                         <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>
                           Actions
                         </TableCell>
@@ -3257,6 +3268,40 @@ export function SchoolAdminPanel() {
                               <Chip label="Urgent" color="error" size="small" />
                             ) : (
                               <Chip label="No" size="small" variant="outlined" />
+                            )}
+                          </TableCell>
+
+                          {/* Author */}
+                          <TableCell>
+                            {announcement.author ? (
+                              <Typography variant="body2" fontWeight={600}>
+                                {announcement.author}
+                              </Typography>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                —
+                              </Typography>
+                            )}
+                          </TableCell>
+
+                          {/* Tags */}
+                          <TableCell>
+                            {announcement.tags && announcement.tags.length > 0 ? (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {announcement.tags.map((tag, idx) => (
+                                  <Chip
+                                    key={idx}
+                                    label={tag}
+                                    size="small"
+                                    color="secondary"
+                                    variant="outlined"
+                                  />
+                                ))}
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                —
+                              </Typography>
                             )}
                           </TableCell>
 
@@ -4196,6 +4241,42 @@ export function SchoolAdminPanel() {
                   }
                   label="Mark as Urgent"
                 />
+
+                {/* Author */}
+                <TextField
+                  fullWidth
+                  label="Author"
+                  value={editingAnnouncement.author || ''}
+                  onChange={(e) =>
+                    setEditingAnnouncement({
+                      ...editingAnnouncement,
+                      author: e.target.value,
+                    })
+                  }
+                  placeholder="Name of the person posting this announcement"
+                />
+
+                {/* Tags */}
+                <TextField
+                  fullWidth
+                  label="Tags"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onBlur={() => {
+                    const tagList = tagInput
+                      .split(',')
+                      .map((tag) => tag.trim())
+                      .filter((tag) => tag.length > 0);
+                    setEditingAnnouncement({
+                      ...editingAnnouncement,
+                      tags: tagList,
+                    });
+                  }}
+                  placeholder="Enter tags separated by commas (e.g. Exam, Holiday, Notice)"
+                  helperText="Use commas to separate multiple tags"
+                />
+
+
               </Box>
             </Stack>
           )}
@@ -4237,4 +4318,3 @@ export function SchoolAdminPanel() {
     </>
   );
 }
-
