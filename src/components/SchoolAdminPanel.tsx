@@ -163,6 +163,24 @@ const normalizeAchievementSectionKey = (rawKey: string | undefined): string => {
   return key;
 };
 
+const normalizeHomeHeroImages = (raw: any): string[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter((item) => item.length > 0);
+  }
+  if (typeof raw === 'object') {
+    return Object.values(raw)
+      .map((item) => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter((item) => item.length > 0);
+  }
+  if (typeof raw === 'string') {
+    return raw.trim() ? [raw.trim()] : [];
+  }
+  return [];
+};
+
 interface Achievement {
   id: string;
   title: string;
@@ -295,6 +313,8 @@ export function SchoolAdminPanel() {
   const [contactData, setContactData] = useState<any>(null);
   const [principalPhotoFileName, setPrincipalPhotoFileName] = useState<string>('');
   const [principalPhotoUploading, setPrincipalPhotoUploading] = useState<boolean>(false);
+  const [homeHeroImagesSaving, setHomeHeroImagesSaving] = useState<boolean>(false);
+  const [homeHeroUploadStatus, setHomeHeroUploadStatus] = useState<string>('');
   const [staffPhotoFileName, setStaffPhotoFileName] = useState<string>('');
   const [pendingStaffPhotoFile, setPendingStaffPhotoFile] = useState<File | null>(null);
   const [staffPhotoPreviewUrl, setStaffPhotoPreviewUrl] = useState<string>('');
@@ -394,11 +414,11 @@ export function SchoolAdminPanel() {
       return;
     }
 
-    if (!homeData) {
-      showError('Home data is unavailable. Please refresh and try again.');
-      input.value = '';
-      return;
-    }
+  if (!homeData) {
+    showError('Home data is unavailable. Please refresh and try again.');
+    input.value = '';
+    return;
+  }
 
     const previousPhoto = homeData.principalPhoto || '';
 
@@ -433,6 +453,94 @@ export function SchoolAdminPanel() {
       setPrincipalPhotoUploading(false);
       setPrincipalPhotoFileName('');
       input.value = '';
+    }
+  };
+
+  const handleHomeHeroImagesSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const files = Array.from(input.files || []);
+
+    if (!homeData || files.length === 0) {
+      input.value = '';
+      return;
+    }
+
+    const invalidFile = files.find(
+      (file) => !file.type.startsWith('image/') || file.size > MAX_IMAGE_UPLOAD_BYTES
+    );
+    if (invalidFile) {
+      const reason = !invalidFile.type.startsWith('image/')
+        ? 'Please choose valid image files (PNG or JPG).'
+        : 'One or more images are larger than 5 MB.';
+      showError(reason);
+      input.value = '';
+      return;
+    }
+
+    const targetSchoolId = schoolId || 'educonnect';
+    const previousImages = Array.isArray(homeData.heroImages) ? homeData.heroImages : [];
+
+    try {
+      setHomeHeroImagesSaving(true);
+      setHomeHeroUploadStatus(
+        files.length > 1 ? `Uploading ${files.length} images...` : `Uploading ${files[0].name}...`
+      );
+
+      const folder = `schools/${targetSchoolId}/home`;
+      const uploadedUrls: string[] = [];
+
+      for (const file of files) {
+        const { secureUrl } = await uploadImageToCloudinary(file, { folder });
+        uploadedUrls.push(secureUrl);
+      }
+
+      const updatedImages = [...previousImages, ...uploadedUrls];
+      const updatedHome = { ...homeData, heroImages: updatedImages };
+      setHomeData(updatedHome);
+
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(updatedHome, journeyMilestones)
+      );
+      await refreshSchoolData();
+      showSuccess(files.length > 1 ? 'Home images uploaded!' : 'Home image uploaded!');
+    } catch (error) {
+      console.error('Failed to upload home hero images:', error);
+      showError('Failed to upload home images. Please try again.');
+    } finally {
+      setHomeHeroImagesSaving(false);
+      setHomeHeroUploadStatus('');
+      input.value = '';
+    }
+  };
+
+  const handleRemoveHomeHeroImage = async (imageUrl: string) => {
+    if (!homeData) return;
+
+    const targetSchoolId = schoolId || 'educonnect';
+    const previousImages = Array.isArray(homeData.heroImages) ? homeData.heroImages : [];
+    const updatedImages = previousImages.filter((url: string) => url !== imageUrl);
+    const updatedHome = { ...homeData, heroImages: updatedImages };
+    setHomeData(updatedHome);
+
+    try {
+      setHomeHeroImagesSaving(true);
+      setHomeHeroUploadStatus('Removing image...');
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(updatedHome, journeyMilestones)
+      );
+      await refreshSchoolData();
+      showSuccess('Home image removed.');
+    } catch (error) {
+      console.error('Failed to remove home image:', error);
+      setHomeData((prev: any) =>
+        prev ? { ...prev, heroImages: previousImages } : prev
+      );
+      showError('Failed to remove home image. Please try again.');
+    } finally {
+      setHomeHeroImagesSaving(false);
+      setHomeHeroUploadStatus('');
     }
   };
 
@@ -754,6 +862,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       principalName: "Add the principal's name",
       principalMessage: "Add a principal message",
       principalPhoto: 'No principal photo uploaded yet',
+      homeHeroImages: 'No hero images uploaded yet',
       yearEstablished: 'Add the founding year',
       students: 'Add total enrolled students',
       successRate: 'Add success rate percentage',
@@ -997,6 +1106,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     principalName: home?.principalName || '',
     principalMessage: home?.principalMessage || '',
     principalPhotoUrl: home?.principalPhoto || '',
+    heroImages: normalizeHomeHeroImages(home?.heroImages),
     yearEstablished: home?.yearEstablished || '',
     students: home?.students || '',
     successRate: home?.successRate || '',
@@ -1144,9 +1254,6 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
         if (section === 'home' && key === 'principalPhoto') {
           const fileLabel = principalPhotoFileName;
           const currentPhotoUrl = homeData?.principalPhoto;
-          const sanitizedUrl = currentPhotoUrl
-            ? currentPhotoUrl.replace(/^https?:\/\//i, '').replace(/\?.*$/, '')
-            : '';
 
           return (
             <Paper
@@ -1199,9 +1306,6 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
                     <Stack spacing={0.5}>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         Current photo
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {sanitizedUrl}
                       </Typography>
                       <Button
                         size="small"
@@ -1256,6 +1360,174 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
 
                 <Typography variant="caption" color="text.secondary">
                   Upload a clear PNG or JPG portrait up to 5 MB.
+                </Typography>
+              </Stack>
+            </Paper>
+          );
+        }
+
+        if (section === 'home' && key === 'homeHeroImages') {
+          const heroImages = Array.isArray(homeData?.heroImages) ? homeData.heroImages : [];
+
+          return (
+            <Paper
+              key={`${section}-${key}`}
+              variant="outlined"
+              sx={{
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.5,
+                borderColor: 'rgba(255,255,255,0.2)',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {icon}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {title}
+                  </Typography>
+                </Box>
+                {heroImages.length > 0 && (
+                  <Chip
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    label={formatCountLabel(heroImages.length, 'image')}
+                    sx={{ fontWeight: 600 }}
+                  />
+                )}
+              </Box>
+
+              <Stack spacing={2}>
+                {heroImages.length > 0 ? (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: 'repeat(3, minmax(0, 1fr))',
+                        sm: 'repeat(4, minmax(0, 1fr))',
+                      },
+                      gap: 1,
+                    }}
+                  >
+                    {heroImages.map((url: string, index: number) => (
+                      <Box
+                        key={`${url}-${index}`}
+                        sx={{
+                          position: 'relative',
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                          border: '1px solid rgba(255,255,255,0.18)',
+                          boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={url}
+                          alt={`Home hero ${index + 1}`}
+                          sx={{
+                            width: '100%',
+                            height: { xs: 70, sm: 80 },
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            px: 1,
+                            py: 0.5,
+                            bgcolor: 'rgba(0,0,0,0.55)',
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            Image {index + 1}
+                          </Typography>
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <Button
+                              size="small"
+                              variant="text"
+                              component="a"
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ color: '#fff', textTransform: 'none', px: 0.5 }}
+                            >
+                              View
+                            </Button>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleRemoveHomeHeroImage(url)}
+                              disabled={homeHeroImagesSaving || isSaving}
+                              sx={{ bgcolor: 'rgba(255,255,255,0.1)' }}
+                            >
+                              <Trash2 fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Add hero images to create a rotating banner on the public home page.
+                  </Typography>
+                )}
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ fontWeight: 600 }}
+                    disabled={homeHeroImagesSaving}
+                  >
+                    {homeHeroImagesSaving && homeHeroUploadStatus
+                      ? 'Saving...'
+                      : 'Add Home Images'}
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleHomeHeroImagesSelect}
+                      disabled={homeHeroImagesSaving}
+                    />
+                  </Button>
+
+                  {homeHeroImagesSaving && homeHeroUploadStatus && (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <CircularProgress size={18} />
+                      <Typography variant="body2" color="text.secondary">
+                        {homeHeroUploadStatus}
+                      </Typography>
+                    </Stack>
+                  )}
+                </Stack>
+
+                <Typography variant="caption" color="text.secondary">
+                  Upload multiple PNG or JPG files up to 5 MB each. These images appear as a
+                  scrolling hero gallery on the public home page.
                 </Typography>
               </Stack>
             </Paper>
@@ -1384,6 +1656,9 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     const homePage = pages.homePage || {};
     const principalSection = homePage.principalSection || {};
     const statisticsSection = homePage.statisticsSection || {};
+    const heroImages = normalizeHomeHeroImages(
+      homePage.heroSection?.heroImages || homePage.heroImages || principalSection.heroImages
+    );
 
     setHomeData({
       welcomeTitle: homePage.welcomeTitle || schoolData.welcomeTitle || '',
@@ -1394,6 +1669,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       yearEstablished: statisticsSection.yearEstablished || schoolData.yearEstablished || '',
       students: statisticsSection.studentsCount || schoolData.studentsCount || '',
       successRate: statisticsSection.successRate || schoolData.successRate || '',
+      heroImages,
     });
 
     setPrincipalPhotoFileName('');
@@ -2618,6 +2894,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
                 { key: 'principalName', title: 'Principal Name', icon: <School fontSize='small' />, lines: getHomeDisplayLines('principalName') },
                 { key: 'principalMessage', title: "Principal's Message", icon: <Mail fontSize='small' />, lines: getHomeDisplayLines('principalMessage') },
                 { key: 'principalPhoto', title: 'Principal Photo', icon: <PhotoCamera fontSize='small' />, lines: [] },
+                { key: 'homeHeroImages', title: 'Home Images', icon: <ImageIcon fontSize='small' />, lines: [] },
               ];
 
               const homeMetricsItems = [

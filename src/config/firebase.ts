@@ -408,6 +408,7 @@ export interface AdminHomePagePayload {
   principalName: string;
   principalMessage: string;
   principalPhotoUrl?: string;
+  heroImages?: string[];
   yearEstablished: string;
   students: string;
   successRate: string;
@@ -433,6 +434,7 @@ export async function updateHomePageContent(identifier: string, payload: AdminHo
       heroSection: {
         welcomeTitle: payload.welcomeTitle,
         welcomeSubtitle: payload.welcomeSubTitle,
+        heroImages: (payload.heroImages || []).filter((url) => typeof url === 'string' && url.trim().length > 0),
       },
       principalSection: {
         name: payload.principalName,
