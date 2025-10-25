@@ -39,7 +39,6 @@ interface Announcement {
   isPinned: boolean;
   isUrgent: boolean;
   author: string;
-  tags: string[];
 }
 
 export function AnnouncementsPage() {
@@ -128,8 +127,7 @@ export function AnnouncementsPage() {
     const matchesAudience = selectedAudience === 'all' || announcement.audience === selectedAudience || announcement.audience === 'all';
     const matchesSearch = searchQuery === '' || 
       announcement.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      announcement.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      announcement.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      announcement.content.toLowerCase().includes(searchQuery.toLowerCase());
     
     return matchesCategory && matchesAudience && matchesSearch;
   });
@@ -237,13 +235,6 @@ export function AnnouncementsPage() {
               {announcement.author}
             </Typography>
           </Box>
-          {announcement.tags.length > 0 && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 'auto' }}>
-              {announcement.tags.map(tag => (
-                <Chip key={tag} label={tag} size="small" variant="outlined" />
-              ))}
-            </Box>
-          )}
         </CardContent>
       </Card>
     );
