@@ -82,6 +82,7 @@ import {
   Star,
   TrendingUp,
   WorkspacePremium,
+  PlayCircleOutline,
 } from '@mui/icons-material';
 import {
   ANNOUNCEMENT_CATEGORY_OPTIONS,
@@ -181,6 +182,47 @@ const normalizeHomeHeroImages = (raw: any): string[] => {
   return [];
 };
 
+const extractVideoUrl = (value: any): string => {
+  if (!value) return '';
+  if (Array.isArray(value)) {
+    const first = value.find((item) => typeof item === 'string' && item.trim().length > 0);
+    return typeof first === 'string' ? first.trim() : '';
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'object') {
+    return extractVideoUrl(
+      value.videoUrl || value.videoUrls || value.video || value.url || value.link || value.src
+    );
+  }
+  return '';
+};
+
+const isValidYouTubeUrl = (url: string): boolean => {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes('youtube.com')) {
+      if (
+        parsed.pathname.startsWith('/embed/') ||
+        parsed.pathname.startsWith('/shorts/') ||
+        parsed.pathname.startsWith('/live/')
+      ) {
+        return true;
+      }
+      return Boolean(parsed.searchParams.get('v')) || parsed.pathname.startsWith('/watch');
+    }
+    if (host === 'youtu.be') {
+      return parsed.pathname.length > 1;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 interface Achievement {
   id: string;
   title: string;
@@ -241,6 +283,8 @@ interface GalleryImage {
   description: string;
   date: string;
   images: string[];
+  videoUrl?: string;
+  type?: string;
 }
 
 interface JourneyMilestone {
@@ -1798,15 +1842,16 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     const galleryPage = pages.galleryPage || {};
     const galleryItems: GalleryImage[] = [];
 
-  const looksLikeGalleryItem = (value: any): boolean => {
-    if (!value) return false;
-    if (typeof value === 'string') return true;
-    if (typeof value !== 'object') return false;
-    if (Array.isArray(value.images)) return true;
-    const possible = value.images || value.image || value.imageUrl || value.url || value.src;
-    if (Array.isArray(possible)) return true;
-    return ['imageUrl', 'url', 'image', 'src'].some((key) => Boolean(value[key]));
-  };
+const looksLikeGalleryItem = (value: any): boolean => {
+  if (!value) return false;
+  if (typeof value === 'string') return true;
+  if (typeof value !== 'object') return false;
+  if (Array.isArray(value.images)) return true;
+  const possible = value.images || value.image || value.imageUrl || value.url || value.src;
+  if (Array.isArray(possible)) return true;
+  if (['videoUrl', 'video', 'videoUrls'].some((key) => Boolean(value[key]))) return true;
+  return ['imageUrl', 'url', 'image', 'src'].some((key) => Boolean(value[key]));
+};
 
   const toArray = (value: any): any[] => {
     if (!value) return [];
@@ -1854,7 +1899,8 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
         fallbackCategory
       );
       const normalizedImages = extractImagesArray(image.images);
-      if (!normalizedImages.length) return;
+      const videoUrl = extractVideoUrl(image.videoUrl || image.videoUrls || image.video);
+      if (!normalizedImages.length && !videoUrl) return;
 
       galleryItems.push({
         id: image.id || image.key || image.slug || `${fallbackPrefix}-${galleryItems.length + 1}`,
@@ -1863,6 +1909,8 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
         description: image.description || '',
         date: image.date || '',
         images: normalizedImages,
+        videoUrl,
+        type: videoUrl ? 'video' : 'image',
       });
       return;
     }
@@ -1871,7 +1919,11 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       typeof image === 'string'
         ? image
         : image?.imageUrl || image?.url || image?.image || image?.src || '';
-    if (!imageSource) return;
+    const videoUrlCandidate =
+      typeof image === 'object'
+        ? extractVideoUrl(image.videoUrl || image.videoUrls || image.video)
+        : '';
+    if (!imageSource && !videoUrlCandidate) return;
 
     const rawCategory =
       typeof image === 'object'
@@ -1890,7 +1942,9 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       category: resolvedCategory,
       description: (typeof image === 'object' ? image.description : '') || '',
       date: (typeof image === 'object' ? image.date : '') || '',
-      images: [imageSource],
+      images: imageSource ? [imageSource] : [],
+      videoUrl: videoUrlCandidate,
+      type: videoUrlCandidate ? 'video' : 'image',
     });
   };
 
@@ -2549,6 +2603,8 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       description: '',
       date: '',
       images: [],
+      videoUrl: '',
+      type: 'image',
     });
     setGalleryDialog(true);
   };
@@ -2562,6 +2618,8 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       ...image,
       images: normalizedImages,
       category: resolveGalleryCategoryLabel(image.category),
+      videoUrl: image.videoUrl || '',
+      type: image.videoUrl ? 'video' : image.type || 'image',
     });
     setGalleryDialog(true);
   };
@@ -2582,6 +2640,12 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       ? editingGallery.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
       : [];
     let images = [...existingImages];
+    const trimmedVideoUrl = (editingGallery.videoUrl || '').trim();
+    if (trimmedVideoUrl && !isValidYouTubeUrl(trimmedVideoUrl)) {
+      showError('Please enter a valid YouTube video link (e.g., https://youtu.be/...).');
+      setIsSaving(false);
+      return;
+    }
 
     try {
       if (pendingGalleryPhotoFiles.length > 0) {
@@ -2599,6 +2663,8 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
         id: editingGallery.id || `gallery-${Date.now()}`,
         category: resolvedCategory,
         images,
+        videoUrl: trimmedVideoUrl,
+        type: trimmedVideoUrl ? 'video' : 'image',
       };
       const updatedList = editingGallery.id
         ? galleryImages.map((image) => (image.id === editingGallery.id ? galleryEntry : image))
@@ -2609,6 +2675,8 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
         images: Array.isArray(image.images)
           ? image.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
           : [],
+        videoUrl: (image.videoUrl || '').trim() || '',
+        type: (image.videoUrl || '').trim() ? 'video' : 'image',
       }));
 
       await updateGalleryPageContent(targetSchoolId, normalizedList);
@@ -3446,7 +3514,27 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
                       )}
                       {galleryImages.map((image) => (
                         <TableRow key={image.id}>
-                          <TableCell>{image.title}</TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {image.title}
+                              </Typography>
+                              {image.videoUrl && (
+                                <Chip
+                                  size="small"
+                                  color="secondary"
+                                  variant="outlined"
+                                  icon={<PlayCircleOutline fontSize="small" />}
+                                  label="Video"
+                                  component="a"
+                                  href={image.videoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  clickable
+                                />
+                              )}
+                            </Stack>
+                          </TableCell>
                           <TableCell>
                             <Chip
                               sx={{ fontWeight: 600 }}
@@ -4513,6 +4601,17 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
                   </Typography>
                 </Stack>
               </Stack>
+              <TextField
+                fullWidth
+                label="YouTube Video URL"
+                type="url"
+                value={editingGallery.videoUrl || ''}
+                onChange={(e) =>
+                  setEditingGallery({ ...editingGallery, videoUrl: e.target.value })
+                }
+                placeholder="https://youtu.be/your-video"
+                helperText="Optional. Paste a YouTube link to feature alongside the images."
+              />
               <TextField
                 fullWidth
                 label="Description"

@@ -637,19 +637,30 @@ export async function updateGalleryPageContent(identifier: string, galleryItems:
     // Convert identifier to collection ID format
     const collectionId = identifier.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_]/g, '');
 
-    const normalizedGallery = (galleryItems || []).map((item: any, index: number) => ({
-      id: item.id || `gallery-${index + 1}`,
-      title: item.title || '',
-      category: item.category || '',
-      type: item.type || 'image',
-      description: item.description || '',
-      date: item.date || '',
-      images: Array.isArray(item.images)
+    const normalizedGallery = (galleryItems || []).map((item: any, index: number) => {
+      const images = Array.isArray(item.images)
         ? item.images.filter((url: string) => typeof url === 'string' && url.trim().length > 0)
         : item.image
         ? [item.image]
-        : [],
-    }));
+        : [];
+      const rawVideo = Array.isArray(item.videoUrl)
+        ? item.videoUrl.find((url: string) => typeof url === 'string' && url.trim().length > 0)
+        : typeof item.videoUrl === 'string'
+        ? item.videoUrl
+        : '';
+      const videoUrl = rawVideo ? rawVideo.trim() : '';
+
+      return {
+        id: item.id || `gallery-${index + 1}`,
+        title: item.title || '',
+        category: item.category || '',
+        type: item.type || (videoUrl ? 'video' : 'image'),
+        description: item.description || '',
+        date: item.date || '',
+        images,
+        videoUrl: videoUrl ? [videoUrl] : [],
+      };
+    });
 
     // Update galleryPage document directly
     const galleryPageDocRef = doc(db, collectionId, 'galleryPage');
