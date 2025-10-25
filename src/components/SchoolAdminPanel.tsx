@@ -171,6 +171,8 @@ interface Achievement {
   level: string;
   sectionKey?: string;
   sectionTitle?: string;
+  image: string;
+  schoolId?: string;
 }
 
 interface StaffMember {
@@ -297,6 +299,10 @@ export function SchoolAdminPanel() {
   const [pendingStaffPhotoFile, setPendingStaffPhotoFile] = useState<File | null>(null);
   const [staffPhotoPreviewUrl, setStaffPhotoPreviewUrl] = useState<string>('');
   const [staffPhotoUploading, setStaffPhotoUploading] = useState<boolean>(false);
+  const [achievementPhotoFileName, setAchievementPhotoFileName] = useState<string>('');
+  const [pendingAchievementPhotoFile, setPendingAchievementPhotoFile] = useState<File | null>(null);
+  const [achievementPhotoPreviewUrl, setAchievementPhotoPreviewUrl] = useState<string>('');
+  const [achievementPhotoUploading, setAchievementPhotoUploading] = useState<boolean>(false);
   const [alumniPhotoFileName, setAlumniPhotoFileName] = useState<string>('');
   const [pendingAlumniPhotoFile, setPendingAlumniPhotoFile] = useState<File | null>(null);
   const [alumniPhotoPreviewUrl, setAlumniPhotoPreviewUrl] = useState<string>('');
@@ -328,6 +334,13 @@ export function SchoolAdminPanel() {
   const hasExistingGalleryPhoto = Boolean(editingGallery?.images && editingGallery.images.length > 0);
   const galleryPhotoChooseDisabled = isSaving || galleryPhotoUploading;
   const galleryPhotoRemoveDisabled = galleryPhotoUploading || isSaving;
+  const hasPendingAchievementPhotoSelection = Boolean(pendingAchievementPhotoFile || achievementPhotoPreviewUrl);
+  const hasExistingAchievementPhoto = Boolean(editingAchievement?.image);
+  const achievementPhotoChooseDisabled =
+    isSaving || achievementPhotoUploading || (hasExistingAchievementPhoto && !hasPendingAchievementPhotoSelection);
+  const achievementPhotoRemoveDisabled =
+    achievementPhotoUploading || isSaving || (!hasExistingAchievementPhoto && !hasPendingAchievementPhotoSelection);
+  
 
   const getAchievementSectionLabel = useCallback(
     (key: string) => {
@@ -452,6 +465,35 @@ export function SchoolAdminPanel() {
   input.value = '';
 };
 
+const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !editingAchievement) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showError('Please choose a valid image file (PNG or JPG).');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showError('Image is too large. Please upload a file smaller than 5 MB.');
+      input.value = '';
+      return;
+    }
+
+  if (achievementPhotoPreviewUrl) {
+    URL.revokeObjectURL(achievementPhotoPreviewUrl);
+  }
+
+  setAchievementPhotoFileName(file.name);
+  setPendingAchievementPhotoFile(file);
+    setAchievementPhotoPreviewUrl(URL.createObjectURL(file));
+  input.value = '';
+};
+
   const handleAlumniPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const file = input.files?.[0];
@@ -503,6 +545,31 @@ export function SchoolAdminPanel() {
       setEditingStaff({ ...editingStaff, image: '' });
       setStaffPhotoFileName('');
       showSuccess('Staff photo removed. Save to apply the change.');
+    }
+  };
+
+  const handleAchievementPhotoRemove = () => {
+    if (!editingAchievement) return;
+
+    if (pendingAchievementPhotoFile || achievementPhotoPreviewUrl) {
+      if (achievementPhotoPreviewUrl) {
+        URL.revokeObjectURL(achievementPhotoPreviewUrl);
+      }
+      setAchievementPhotoPreviewUrl('');
+      setPendingAchievementPhotoFile(null);
+      setAchievementPhotoFileName('');
+      return;
+    }
+
+    if (editingAchievement.image) {
+      if (achievementPhotoPreviewUrl) {
+        URL.revokeObjectURL(achievementPhotoPreviewUrl);
+      }
+      setAchievementPhotoPreviewUrl('');
+      setPendingAchievementPhotoFile(null);
+      setEditingAchievement({ ...editingAchievement, image: '' });
+      setAchievementPhotoFileName('');
+      showSuccess('Achievement photo removed. Save to apply the change.');
     }
   };
 
@@ -1403,6 +1470,7 @@ export function SchoolAdminPanel() {
         level: normalizedLevel,
         sectionKey: normalizedSectionKey,
         sectionTitle,
+        image: item.image || '',
       };
     });
 
@@ -1727,6 +1795,7 @@ export function SchoolAdminPanel() {
         level: normalizedLevel,
         sectionKey: normalizedSectionKey,
         sectionTitle: getAchievementSectionLabel(normalizedSectionKey),
+        image: item.image || '',
       };
     });
   };
@@ -1857,6 +1926,7 @@ export function SchoolAdminPanel() {
 
   // Achievement handlers
   const openAddAchievement = () => {
+    resetAchievementPhotoSelection();
     setEditingAchievement({
       id: '',
       title: '',
@@ -1865,38 +1935,68 @@ export function SchoolAdminPanel() {
       level: 'national',
       sectionKey: 'general',
       sectionTitle: getAchievementSectionLabel('general'),
+      image: '',
     });
     setAchievementDialog(true);
   };
 
   const openEditAchievement = (achievement: Achievement) => {
+    resetAchievementPhotoSelection();
     setEditingAchievement({ ...achievement });
     setAchievementDialog(true);
   };
 
+  const closeAchievementDialog = () => {
+    setAchievementDialog(false);
+    setEditingAchievement(null);
+    resetAchievementPhotoSelection();
+  };
+
   const saveAchievement = async () => {
     if (!editingAchievement) return;
-    const sectionKey = editingAchievement.sectionKey || 'general';
-    const normalizedSectionKey = normalizeAchievementSectionKey(sectionKey);
-    const normalizedLevel = (editingAchievement.level || 'others').toString().toLowerCase();
-    const sectionTitle = getAchievementSectionLabel(normalizedSectionKey);
-    const achievementEntry: Achievement = {
-      ...editingAchievement,
-      sectionKey: normalizedSectionKey,
-      level: normalizedLevel,
-      sectionTitle,
-    };
-    const updatedList = editingAchievement.id
-      ? achievements.map((a: Achievement) => (a.id === editingAchievement.id ? achievementEntry : a))
-      : [...achievements, { ...achievementEntry, id: Date.now().toString() }];
+
+    setIsSaving(true);
+
     const targetSchoolId = schoolId || 'educonnect';
+    let image = (editingAchievement.image || '').trim();
+
     try {
-      setIsSaving(true);
+      if (pendingAchievementPhotoFile) {
+        setAchievementPhotoUploading(true);
+        const folder = `schools/${targetSchoolId}/achievements`;
+        const { secureUrl } = await uploadImageToCloudinary(pendingAchievementPhotoFile, {
+          folder,
+        });
+        image = secureUrl;
+      } else if (!image) {
+        image = '';
+      }
+
+      const normalizedSectionKey = normalizeAchievementSectionKey(editingAchievement.sectionKey || 'general');
+      const normalizedLevel = (editingAchievement.level || 'others').toString().toLowerCase();
+      const sectionTitle = getAchievementSectionLabel(normalizedSectionKey);
+
+      const achievementEntry: Achievement = {
+        ...editingAchievement,
+        id: editingAchievement.id || `achievement-${Date.now()}`,
+        title: (editingAchievement.title || '').trim(),
+        description: (editingAchievement.description || '').trim(),
+        date: (editingAchievement.date || '').trim(),
+        sectionKey: normalizedSectionKey,
+        sectionTitle,
+        level: normalizedLevel,
+        image,
+        schoolId: editingAchievement.schoolId || schoolInfo?.id || schoolId || '',
+      };
+
+      const updatedList = editingAchievement.id
+        ? achievements.map((a: Achievement) => (a.id === editingAchievement.id ? achievementEntry : a))
+        : [...achievements, achievementEntry];
+
       const payload = buildAchievementsPayload(updatedList);
       await updateAchievementsPageContent(targetSchoolId, payload);
-      setAchievementDialog(false);
-      setEditingAchievement(null);
       setAchievements(updatedList);
+      closeAchievementDialog();
       await refreshSchoolData();
       showSuccess('Achievement saved successfully!');
     } catch (error) {
@@ -1904,6 +2004,7 @@ export function SchoolAdminPanel() {
       showError('Failed to save achievement. Please try again.');
       await refreshSchoolData();
     } finally {
+      setAchievementPhotoUploading(false);
       setIsSaving(false);
     }
   };
@@ -1926,6 +2027,16 @@ export function SchoolAdminPanel() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const resetAchievementPhotoSelection = () => {
+    if (achievementPhotoPreviewUrl) {
+      URL.revokeObjectURL(achievementPhotoPreviewUrl);
+    }
+    setAchievementPhotoPreviewUrl('');
+    setAchievementPhotoFileName('');
+    setPendingAchievementPhotoFile(null);
+    setAchievementPhotoUploading(false);
   };
 
   const resetStaffPhotoSelection = () => {
@@ -3426,7 +3537,12 @@ export function SchoolAdminPanel() {
       {/* Achievement Dialog */}
       <Dialog 
         open={achievementDialog} 
-        onClose={() => setAchievementDialog(false)}
+        onClose={(_, reason) => {
+          if (isSaving && (reason === 'backdropClick' || reason === 'escapeKeyDown')) {
+            return;
+          }
+          closeAchievementDialog();
+        }}
         maxWidth="md"
         fullWidth
       >
@@ -3503,11 +3619,96 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingAchievement({ ...editingAchievement, date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
               />
+
+               {/* Image Upload Section */}
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Achievement Image
+                </Typography>
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Avatar
+                    src={achievementPhotoPreviewUrl || editingAchievement.image || undefined}
+                    alt={editingAchievement.title || 'Achievement image'}
+                    sx={{
+                      width: 96,
+                      height: 96,
+                      fontSize: 32,
+                      bgcolor: 'primary.main',
+                    }}
+                  >
+                    {!achievementPhotoPreviewUrl &&
+                      !editingAchievement.image &&
+                      editingAchievement.title
+                      ? editingAchievement.title.charAt(0).toUpperCase()
+                      : undefined}
+                  </Avatar>
+
+                  <Stack spacing={1.5} alignItems={{ xs: 'flex-start', sm: 'flex-start' }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    >
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CloudUpload />}
+                        sx={{ fontWeight: 600 }}
+                        disabled={achievementPhotoChooseDisabled}
+                      >
+                        Choose Image
+                        <input
+                          hidden
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAchievementPhotoSelect}
+                          disabled={achievementPhotoChooseDisabled}
+                        />
+                      </Button>
+
+                      {(pendingAchievementPhotoFile || editingAchievement.image) && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={handleAchievementPhotoRemove}
+                          disabled={achievementPhotoRemoveDisabled}
+                          sx={{ alignSelf: 'flex-start', px: 0 }}
+                        >
+                          Remove photo
+                        </Button>
+                      )}
+                  </Stack>
+
+                  {achievementPhotoFileName ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Selected file: {achievementPhotoFileName}. The image uploads when you save.
+                  </Typography>
+                ) : hasExistingAchievementPhoto ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Existing image in use. Click remove to replace it.
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No image selected yet.
+                  </Typography>
+                )}
+                    <Typography variant="caption" color="text.secondary">
+                    Upload a clear PNG or JPG up to 5 MB.
+                  </Typography>
+                </Stack>
+              </Stack>
             </Stack>
+          </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAchievementDialog(false)} disabled={isSaving}>
+          <Button onClick={closeAchievementDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button
@@ -3668,8 +3869,7 @@ export function SchoolAdminPanel() {
                       </Typography>
                     )}
                     <Typography variant="caption" color="text.secondary">
-                      Upload a clear PNG or JPG portrait up to 5 MB. The image is stored in Cloudinary
-                      and the secure URL saves with the staff profile when you click Save.
+                      Upload a clear PNG or JPG portrait up to 5 MB.
                     </Typography>
                   </Stack>
                 </Stack>
@@ -3832,8 +4032,7 @@ export function SchoolAdminPanel() {
                       </Typography>
                     )}
                     <Typography variant="caption" color="text.secondary">
-                      Upload a clear PNG or JPG portrait up to 5 MB. The image is stored in Cloudinary
-                      and the secure URL saves with the alumni profile when you click Save.
+                      Upload a clear PNG or JPG portrait up to 5 MB.
                     </Typography>
                   </Stack>
                 </Stack>
