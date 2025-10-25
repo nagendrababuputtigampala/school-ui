@@ -82,6 +82,7 @@ import {
   Star,
   TrendingUp,
   WorkspacePremium,
+  PlayCircleOutline,
 } from '@mui/icons-material';
 import {
   ANNOUNCEMENT_CATEGORY_OPTIONS,
@@ -163,6 +164,65 @@ const normalizeAchievementSectionKey = (rawKey: string | undefined): string => {
   return key;
 };
 
+const normalizeHomeHeroImages = (raw: any): string[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter((item) => item.length > 0);
+  }
+  if (typeof raw === 'object') {
+    return Object.values(raw)
+      .map((item) => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter((item) => item.length > 0);
+  }
+  if (typeof raw === 'string') {
+    return raw.trim() ? [raw.trim()] : [];
+  }
+  return [];
+};
+
+const extractVideoUrl = (value: any): string => {
+  if (!value) return '';
+  if (Array.isArray(value)) {
+    const first = value.find((item) => typeof item === 'string' && item.trim().length > 0);
+    return typeof first === 'string' ? first.trim() : '';
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'object') {
+    return extractVideoUrl(
+      value.videoUrl || value.videoUrls || value.video || value.url || value.link || value.src
+    );
+  }
+  return '';
+};
+
+const isValidYouTubeUrl = (url: string): boolean => {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes('youtube.com')) {
+      if (
+        parsed.pathname.startsWith('/embed/') ||
+        parsed.pathname.startsWith('/shorts/') ||
+        parsed.pathname.startsWith('/live/')
+      ) {
+        return true;
+      }
+      return Boolean(parsed.searchParams.get('v')) || parsed.pathname.startsWith('/watch');
+    }
+    if (host === 'youtu.be') {
+      return parsed.pathname.length > 1;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 interface Achievement {
   id: string;
   title: string;
@@ -171,6 +231,8 @@ interface Achievement {
   level: string;
   sectionKey?: string;
   sectionTitle?: string;
+  image: string;
+  schoolId?: string;
 }
 
 interface StaffMember {
@@ -210,6 +272,8 @@ interface Announcement {
   isPinned: boolean;
   isUrgent: boolean;
   audience: string
+  author: string;
+  tags: string[];
 }
 
 interface GalleryImage {
@@ -219,6 +283,8 @@ interface GalleryImage {
   description: string;
   date: string;
   images: string[];
+  videoUrl?: string;
+  type?: string;
 }
 
 interface JourneyMilestone {
@@ -277,6 +343,7 @@ export function SchoolAdminPanel() {
   const [editingAlumni, setEditingAlumni] = useState<AlumniMember | null>(null);
   const [editingGallery, setEditingGallery] = useState<GalleryImage | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [tagInput, setTagInput] = useState<string>('');
   const [editingJourney, setEditingJourney] = useState<JourneyMilestone | null>(null);
 
   // Data states
@@ -290,10 +357,16 @@ export function SchoolAdminPanel() {
   const [contactData, setContactData] = useState<any>(null);
   const [principalPhotoFileName, setPrincipalPhotoFileName] = useState<string>('');
   const [principalPhotoUploading, setPrincipalPhotoUploading] = useState<boolean>(false);
+  const [homeHeroImagesSaving, setHomeHeroImagesSaving] = useState<boolean>(false);
+  const [homeHeroUploadStatus, setHomeHeroUploadStatus] = useState<string>('');
   const [staffPhotoFileName, setStaffPhotoFileName] = useState<string>('');
   const [pendingStaffPhotoFile, setPendingStaffPhotoFile] = useState<File | null>(null);
   const [staffPhotoPreviewUrl, setStaffPhotoPreviewUrl] = useState<string>('');
   const [staffPhotoUploading, setStaffPhotoUploading] = useState<boolean>(false);
+  const [achievementPhotoFileName, setAchievementPhotoFileName] = useState<string>('');
+  const [pendingAchievementPhotoFile, setPendingAchievementPhotoFile] = useState<File | null>(null);
+  const [achievementPhotoPreviewUrl, setAchievementPhotoPreviewUrl] = useState<string>('');
+  const [achievementPhotoUploading, setAchievementPhotoUploading] = useState<boolean>(false);
   const [alumniPhotoFileName, setAlumniPhotoFileName] = useState<string>('');
   const [pendingAlumniPhotoFile, setPendingAlumniPhotoFile] = useState<File | null>(null);
   const [alumniPhotoPreviewUrl, setAlumniPhotoPreviewUrl] = useState<string>('');
@@ -325,6 +398,13 @@ export function SchoolAdminPanel() {
   const hasExistingGalleryPhoto = Boolean(editingGallery?.images && editingGallery.images.length > 0);
   const galleryPhotoChooseDisabled = isSaving || galleryPhotoUploading;
   const galleryPhotoRemoveDisabled = galleryPhotoUploading || isSaving;
+  const hasPendingAchievementPhotoSelection = Boolean(pendingAchievementPhotoFile || achievementPhotoPreviewUrl);
+  const hasExistingAchievementPhoto = Boolean(editingAchievement?.image);
+  const achievementPhotoChooseDisabled =
+    isSaving || achievementPhotoUploading || (hasExistingAchievementPhoto && !hasPendingAchievementPhotoSelection);
+  const achievementPhotoRemoveDisabled =
+    achievementPhotoUploading || isSaving || (!hasExistingAchievementPhoto && !hasPendingAchievementPhotoSelection);
+  
 
   const getAchievementSectionLabel = useCallback(
     (key: string) => {
@@ -378,11 +458,11 @@ export function SchoolAdminPanel() {
       return;
     }
 
-    if (!homeData) {
-      showError('Home data is unavailable. Please refresh and try again.');
-      input.value = '';
-      return;
-    }
+  if (!homeData) {
+    showError('Home data is unavailable. Please refresh and try again.');
+    input.value = '';
+    return;
+  }
 
     const previousPhoto = homeData.principalPhoto || '';
 
@@ -420,6 +500,94 @@ export function SchoolAdminPanel() {
     }
   };
 
+  const handleHomeHeroImagesSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const files = Array.from(input.files || []);
+
+    if (!homeData || files.length === 0) {
+      input.value = '';
+      return;
+    }
+
+    const invalidFile = files.find(
+      (file) => !file.type.startsWith('image/') || file.size > MAX_IMAGE_UPLOAD_BYTES
+    );
+    if (invalidFile) {
+      const reason = !invalidFile.type.startsWith('image/')
+        ? 'Please choose valid image files (PNG or JPG).'
+        : 'One or more images are larger than 5 MB.';
+      showError(reason);
+      input.value = '';
+      return;
+    }
+
+    const targetSchoolId = schoolId || 'educonnect';
+    const previousImages = Array.isArray(homeData.heroImages) ? homeData.heroImages : [];
+
+    try {
+      setHomeHeroImagesSaving(true);
+      setHomeHeroUploadStatus(
+        files.length > 1 ? `Uploading ${files.length} images...` : `Uploading ${files[0].name}...`
+      );
+
+      const folder = `schools/${targetSchoolId}/home`;
+      const uploadedUrls: string[] = [];
+
+      for (const file of files) {
+        const { secureUrl } = await uploadImageToCloudinary(file, { folder });
+        uploadedUrls.push(secureUrl);
+      }
+
+      const updatedImages = [...previousImages, ...uploadedUrls];
+      const updatedHome = { ...homeData, heroImages: updatedImages };
+      setHomeData(updatedHome);
+
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(updatedHome, journeyMilestones)
+      );
+      await refreshSchoolData();
+      showSuccess(files.length > 1 ? 'Home images uploaded!' : 'Home image uploaded!');
+    } catch (error) {
+      console.error('Failed to upload home hero images:', error);
+      showError('Failed to upload home images. Please try again.');
+    } finally {
+      setHomeHeroImagesSaving(false);
+      setHomeHeroUploadStatus('');
+      input.value = '';
+    }
+  };
+
+  const handleRemoveHomeHeroImage = async (imageUrl: string) => {
+    if (!homeData) return;
+
+    const targetSchoolId = schoolId || 'educonnect';
+    const previousImages = Array.isArray(homeData.heroImages) ? homeData.heroImages : [];
+    const updatedImages = previousImages.filter((url: string) => url !== imageUrl);
+    const updatedHome = { ...homeData, heroImages: updatedImages };
+    setHomeData(updatedHome);
+
+    try {
+      setHomeHeroImagesSaving(true);
+      setHomeHeroUploadStatus('Removing image...');
+      await updateHomePageContent(
+        targetSchoolId,
+        buildHomePagePayload(updatedHome, journeyMilestones)
+      );
+      await refreshSchoolData();
+      showSuccess('Home image removed.');
+    } catch (error) {
+      console.error('Failed to remove home image:', error);
+      setHomeData((prev: any) =>
+        prev ? { ...prev, heroImages: previousImages } : prev
+      );
+      showError('Failed to remove home image. Please try again.');
+    } finally {
+      setHomeHeroImagesSaving(false);
+      setHomeHeroUploadStatus('');
+    }
+  };
+
   const handleStaffPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const file = input.files?.[0];
@@ -446,6 +614,35 @@ export function SchoolAdminPanel() {
   setStaffPhotoFileName(file.name);
   setPendingStaffPhotoFile(file);
     setStaffPhotoPreviewUrl(URL.createObjectURL(file));
+  input.value = '';
+};
+
+const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || !editingAchievement) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showError('Please choose a valid image file (PNG or JPG).');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showError('Image is too large. Please upload a file smaller than 5 MB.');
+      input.value = '';
+      return;
+    }
+
+  if (achievementPhotoPreviewUrl) {
+    URL.revokeObjectURL(achievementPhotoPreviewUrl);
+  }
+
+  setAchievementPhotoFileName(file.name);
+  setPendingAchievementPhotoFile(file);
+    setAchievementPhotoPreviewUrl(URL.createObjectURL(file));
   input.value = '';
 };
 
@@ -500,6 +697,31 @@ export function SchoolAdminPanel() {
       setEditingStaff({ ...editingStaff, image: '' });
       setStaffPhotoFileName('');
       showSuccess('Staff photo removed. Save to apply the change.');
+    }
+  };
+
+  const handleAchievementPhotoRemove = () => {
+    if (!editingAchievement) return;
+
+    if (pendingAchievementPhotoFile || achievementPhotoPreviewUrl) {
+      if (achievementPhotoPreviewUrl) {
+        URL.revokeObjectURL(achievementPhotoPreviewUrl);
+      }
+      setAchievementPhotoPreviewUrl('');
+      setPendingAchievementPhotoFile(null);
+      setAchievementPhotoFileName('');
+      return;
+    }
+
+    if (editingAchievement.image) {
+      if (achievementPhotoPreviewUrl) {
+        URL.revokeObjectURL(achievementPhotoPreviewUrl);
+      }
+      setAchievementPhotoPreviewUrl('');
+      setPendingAchievementPhotoFile(null);
+      setEditingAchievement({ ...editingAchievement, image: '' });
+      setAchievementPhotoFileName('');
+      showSuccess('Achievement photo removed. Save to apply the change.');
     }
   };
 
@@ -684,6 +906,7 @@ export function SchoolAdminPanel() {
       principalName: "Add the principal's name",
       principalMessage: "Add a principal message",
       principalPhoto: 'No principal photo uploaded yet',
+      homeHeroImages: 'No hero images uploaded yet',
       yearEstablished: 'Add the founding year',
       students: 'Add total enrolled students',
       successRate: 'Add success rate percentage',
@@ -927,6 +1150,7 @@ export function SchoolAdminPanel() {
     principalName: home?.principalName || '',
     principalMessage: home?.principalMessage || '',
     principalPhotoUrl: home?.principalPhoto || '',
+    heroImages: normalizeHomeHeroImages(home?.heroImages),
     yearEstablished: home?.yearEstablished || '',
     students: home?.students || '',
     successRate: home?.successRate || '',
@@ -1074,9 +1298,6 @@ export function SchoolAdminPanel() {
         if (section === 'home' && key === 'principalPhoto') {
           const fileLabel = principalPhotoFileName;
           const currentPhotoUrl = homeData?.principalPhoto;
-          const sanitizedUrl = currentPhotoUrl
-            ? currentPhotoUrl.replace(/^https?:\/\//i, '').replace(/\?.*$/, '')
-            : '';
 
           return (
             <Paper
@@ -1129,9 +1350,6 @@ export function SchoolAdminPanel() {
                     <Stack spacing={0.5}>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         Current photo
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {sanitizedUrl}
                       </Typography>
                       <Button
                         size="small"
@@ -1186,6 +1404,174 @@ export function SchoolAdminPanel() {
 
                 <Typography variant="caption" color="text.secondary">
                   Upload a clear PNG or JPG portrait up to 5 MB.
+                </Typography>
+              </Stack>
+            </Paper>
+          );
+        }
+
+        if (section === 'home' && key === 'homeHeroImages') {
+          const heroImages = Array.isArray(homeData?.heroImages) ? homeData.heroImages : [];
+
+          return (
+            <Paper
+              key={`${section}-${key}`}
+              variant="outlined"
+              sx={{
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.5,
+                borderColor: 'rgba(255,255,255,0.2)',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {icon}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {title}
+                  </Typography>
+                </Box>
+                {heroImages.length > 0 && (
+                  <Chip
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    label={formatCountLabel(heroImages.length, 'image')}
+                    sx={{ fontWeight: 600 }}
+                  />
+                )}
+              </Box>
+
+              <Stack spacing={2}>
+                {heroImages.length > 0 ? (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: 'repeat(3, minmax(0, 1fr))',
+                        sm: 'repeat(4, minmax(0, 1fr))',
+                      },
+                      gap: 1,
+                    }}
+                  >
+                    {heroImages.map((url: string, index: number) => (
+                      <Box
+                        key={`${url}-${index}`}
+                        sx={{
+                          position: 'relative',
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                          border: '1px solid rgba(255,255,255,0.18)',
+                          boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={url}
+                          alt={`Home hero ${index + 1}`}
+                          sx={{
+                            width: '100%',
+                            height: { xs: 70, sm: 80 },
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            px: 1,
+                            py: 0.5,
+                            bgcolor: 'rgba(0,0,0,0.55)',
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            Image {index + 1}
+                          </Typography>
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <Button
+                              size="small"
+                              variant="text"
+                              component="a"
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ color: '#fff', textTransform: 'none', px: 0.5 }}
+                            >
+                              View
+                            </Button>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleRemoveHomeHeroImage(url)}
+                              disabled={homeHeroImagesSaving || isSaving}
+                              sx={{ bgcolor: 'rgba(255,255,255,0.1)' }}
+                            >
+                              <Trash2 fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Add hero images to create a rotating banner on the public home page.
+                  </Typography>
+                )}
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ fontWeight: 600 }}
+                    disabled={homeHeroImagesSaving}
+                  >
+                    {homeHeroImagesSaving && homeHeroUploadStatus
+                      ? 'Saving...'
+                      : 'Add Home Images'}
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleHomeHeroImagesSelect}
+                      disabled={homeHeroImagesSaving}
+                    />
+                  </Button>
+
+                  {homeHeroImagesSaving && homeHeroUploadStatus && (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <CircularProgress size={18} />
+                      <Typography variant="body2" color="text.secondary">
+                        {homeHeroUploadStatus}
+                      </Typography>
+                    </Stack>
+                  )}
+                </Stack>
+
+                <Typography variant="caption" color="text.secondary">
+                  Upload multiple PNG or JPG files up to 5 MB each. These images appear as a
+                  scrolling hero gallery on the public home page.
                 </Typography>
               </Stack>
             </Paper>
@@ -1314,6 +1700,9 @@ export function SchoolAdminPanel() {
     const homePage = pages.homePage || {};
     const principalSection = homePage.principalSection || {};
     const statisticsSection = homePage.statisticsSection || {};
+    const heroImages = normalizeHomeHeroImages(
+      homePage.heroSection?.heroImages || homePage.heroImages || principalSection.heroImages
+    );
 
     setHomeData({
       welcomeTitle: homePage.welcomeTitle || schoolData.welcomeTitle || '',
@@ -1324,6 +1713,7 @@ export function SchoolAdminPanel() {
       yearEstablished: statisticsSection.yearEstablished || schoolData.yearEstablished || '',
       students: statisticsSection.studentsCount || schoolData.studentsCount || '',
       successRate: statisticsSection.successRate || schoolData.successRate || '',
+      heroImages,
     });
 
     setPrincipalPhotoFileName('');
@@ -1400,6 +1790,7 @@ export function SchoolAdminPanel() {
         level: normalizedLevel,
         sectionKey: normalizedSectionKey,
         sectionTitle,
+        image: item.image || '',
       };
     });
 
@@ -1451,15 +1842,16 @@ export function SchoolAdminPanel() {
     const galleryPage = pages.galleryPage || {};
     const galleryItems: GalleryImage[] = [];
 
-  const looksLikeGalleryItem = (value: any): boolean => {
-    if (!value) return false;
-    if (typeof value === 'string') return true;
-    if (typeof value !== 'object') return false;
-    if (Array.isArray(value.images)) return true;
-    const possible = value.images || value.image || value.imageUrl || value.url || value.src;
-    if (Array.isArray(possible)) return true;
-    return ['imageUrl', 'url', 'image', 'src'].some((key) => Boolean(value[key]));
-  };
+const looksLikeGalleryItem = (value: any): boolean => {
+  if (!value) return false;
+  if (typeof value === 'string') return true;
+  if (typeof value !== 'object') return false;
+  if (Array.isArray(value.images)) return true;
+  const possible = value.images || value.image || value.imageUrl || value.url || value.src;
+  if (Array.isArray(possible)) return true;
+  if (['videoUrl', 'video', 'videoUrls'].some((key) => Boolean(value[key]))) return true;
+  return ['imageUrl', 'url', 'image', 'src'].some((key) => Boolean(value[key]));
+};
 
   const toArray = (value: any): any[] => {
     if (!value) return [];
@@ -1507,7 +1899,8 @@ export function SchoolAdminPanel() {
         fallbackCategory
       );
       const normalizedImages = extractImagesArray(image.images);
-      if (!normalizedImages.length) return;
+      const videoUrl = extractVideoUrl(image.videoUrl || image.videoUrls || image.video);
+      if (!normalizedImages.length && !videoUrl) return;
 
       galleryItems.push({
         id: image.id || image.key || image.slug || `${fallbackPrefix}-${galleryItems.length + 1}`,
@@ -1516,6 +1909,8 @@ export function SchoolAdminPanel() {
         description: image.description || '',
         date: image.date || '',
         images: normalizedImages,
+        videoUrl,
+        type: videoUrl ? 'video' : 'image',
       });
       return;
     }
@@ -1524,7 +1919,11 @@ export function SchoolAdminPanel() {
       typeof image === 'string'
         ? image
         : image?.imageUrl || image?.url || image?.image || image?.src || '';
-    if (!imageSource) return;
+    const videoUrlCandidate =
+      typeof image === 'object'
+        ? extractVideoUrl(image.videoUrl || image.videoUrls || image.video)
+        : '';
+    if (!imageSource && !videoUrlCandidate) return;
 
     const rawCategory =
       typeof image === 'object'
@@ -1543,7 +1942,9 @@ export function SchoolAdminPanel() {
       category: resolvedCategory,
       description: (typeof image === 'object' ? image.description : '') || '',
       date: (typeof image === 'object' ? image.date : '') || '',
-      images: [imageSource],
+      images: imageSource ? [imageSource] : [],
+      videoUrl: videoUrlCandidate,
+      type: videoUrlCandidate ? 'video' : 'image',
     });
   };
 
@@ -1629,6 +2030,8 @@ export function SchoolAdminPanel() {
         isPinned: announcement.isPinned === true,
         isUrgent: announcement.isUrgent === true,
         audience: announcement.audience || '',
+        author: announcement.author || '',
+        tags: announcement.tags || [],
       };
     });
 
@@ -1722,6 +2125,7 @@ export function SchoolAdminPanel() {
         level: normalizedLevel,
         sectionKey: normalizedSectionKey,
         sectionTitle: getAchievementSectionLabel(normalizedSectionKey),
+        image: item.image || '',
       };
     });
   };
@@ -1852,6 +2256,7 @@ export function SchoolAdminPanel() {
 
   // Achievement handlers
   const openAddAchievement = () => {
+    resetAchievementPhotoSelection();
     setEditingAchievement({
       id: '',
       title: '',
@@ -1860,38 +2265,68 @@ export function SchoolAdminPanel() {
       level: 'national',
       sectionKey: 'general',
       sectionTitle: getAchievementSectionLabel('general'),
+      image: '',
     });
     setAchievementDialog(true);
   };
 
   const openEditAchievement = (achievement: Achievement) => {
+    resetAchievementPhotoSelection();
     setEditingAchievement({ ...achievement });
     setAchievementDialog(true);
   };
 
+  const closeAchievementDialog = () => {
+    setAchievementDialog(false);
+    setEditingAchievement(null);
+    resetAchievementPhotoSelection();
+  };
+
   const saveAchievement = async () => {
     if (!editingAchievement) return;
-    const sectionKey = editingAchievement.sectionKey || 'general';
-    const normalizedSectionKey = normalizeAchievementSectionKey(sectionKey);
-    const normalizedLevel = (editingAchievement.level || 'others').toString().toLowerCase();
-    const sectionTitle = getAchievementSectionLabel(normalizedSectionKey);
-    const achievementEntry: Achievement = {
-      ...editingAchievement,
-      sectionKey: normalizedSectionKey,
-      level: normalizedLevel,
-      sectionTitle,
-    };
-    const updatedList = editingAchievement.id
-      ? achievements.map((a: Achievement) => (a.id === editingAchievement.id ? achievementEntry : a))
-      : [...achievements, { ...achievementEntry, id: Date.now().toString() }];
+
+    setIsSaving(true);
+
     const targetSchoolId = schoolId || 'educonnect';
+    let image = (editingAchievement.image || '').trim();
+
     try {
-      setIsSaving(true);
+      if (pendingAchievementPhotoFile) {
+        setAchievementPhotoUploading(true);
+        const folder = `schools/${targetSchoolId}/achievements`;
+        const { secureUrl } = await uploadImageToCloudinary(pendingAchievementPhotoFile, {
+          folder,
+        });
+        image = secureUrl;
+      } else if (!image) {
+        image = '';
+      }
+
+      const normalizedSectionKey = normalizeAchievementSectionKey(editingAchievement.sectionKey || 'general');
+      const normalizedLevel = (editingAchievement.level || 'others').toString().toLowerCase();
+      const sectionTitle = getAchievementSectionLabel(normalizedSectionKey);
+
+      const achievementEntry: Achievement = {
+        ...editingAchievement,
+        id: editingAchievement.id || `achievement-${Date.now()}`,
+        title: (editingAchievement.title || '').trim(),
+        description: (editingAchievement.description || '').trim(),
+        date: (editingAchievement.date || '').trim(),
+        sectionKey: normalizedSectionKey,
+        sectionTitle,
+        level: normalizedLevel,
+        image,
+        schoolId: editingAchievement.schoolId || schoolInfo?.id || schoolId || '',
+      };
+
+      const updatedList = editingAchievement.id
+        ? achievements.map((a: Achievement) => (a.id === editingAchievement.id ? achievementEntry : a))
+        : [...achievements, achievementEntry];
+
       const payload = buildAchievementsPayload(updatedList);
       await updateAchievementsPageContent(targetSchoolId, payload);
-      setAchievementDialog(false);
-      setEditingAchievement(null);
       setAchievements(updatedList);
+      closeAchievementDialog();
       await refreshSchoolData();
       showSuccess('Achievement saved successfully!');
     } catch (error) {
@@ -1899,6 +2334,7 @@ export function SchoolAdminPanel() {
       showError('Failed to save achievement. Please try again.');
       await refreshSchoolData();
     } finally {
+      setAchievementPhotoUploading(false);
       setIsSaving(false);
     }
   };
@@ -1921,6 +2357,16 @@ export function SchoolAdminPanel() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const resetAchievementPhotoSelection = () => {
+    if (achievementPhotoPreviewUrl) {
+      URL.revokeObjectURL(achievementPhotoPreviewUrl);
+    }
+    setAchievementPhotoPreviewUrl('');
+    setAchievementPhotoFileName('');
+    setPendingAchievementPhotoFile(null);
+    setAchievementPhotoUploading(false);
   };
 
   const resetStaffPhotoSelection = () => {
@@ -2157,6 +2603,8 @@ export function SchoolAdminPanel() {
       description: '',
       date: '',
       images: [],
+      videoUrl: '',
+      type: 'image',
     });
     setGalleryDialog(true);
   };
@@ -2170,6 +2618,8 @@ export function SchoolAdminPanel() {
       ...image,
       images: normalizedImages,
       category: resolveGalleryCategoryLabel(image.category),
+      videoUrl: image.videoUrl || '',
+      type: image.videoUrl ? 'video' : image.type || 'image',
     });
     setGalleryDialog(true);
   };
@@ -2190,6 +2640,12 @@ export function SchoolAdminPanel() {
       ? editingGallery.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
       : [];
     let images = [...existingImages];
+    const trimmedVideoUrl = (editingGallery.videoUrl || '').trim();
+    if (trimmedVideoUrl && !isValidYouTubeUrl(trimmedVideoUrl)) {
+      showError('Please enter a valid YouTube video link (e.g., https://youtu.be/...).');
+      setIsSaving(false);
+      return;
+    }
 
     try {
       if (pendingGalleryPhotoFiles.length > 0) {
@@ -2207,6 +2663,8 @@ export function SchoolAdminPanel() {
         id: editingGallery.id || `gallery-${Date.now()}`,
         category: resolvedCategory,
         images,
+        videoUrl: trimmedVideoUrl,
+        type: trimmedVideoUrl ? 'video' : 'image',
       };
       const updatedList = editingGallery.id
         ? galleryImages.map((image) => (image.id === editingGallery.id ? galleryEntry : image))
@@ -2217,6 +2675,8 @@ export function SchoolAdminPanel() {
         images: Array.isArray(image.images)
           ? image.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
           : [],
+        videoUrl: (image.videoUrl || '').trim() || '',
+        type: (image.videoUrl || '').trim() ? 'video' : 'image',
       }));
 
       await updateGalleryPageContent(targetSchoolId, normalizedList);
@@ -2265,8 +2725,11 @@ export function SchoolAdminPanel() {
       audience: '',
       isPinned: false,
       isUrgent: false,
+      author: '',
+      tags: [],
     });
     setAnnouncementDialog(true);
+    setTagInput('');
   };
 
   const openEditAnnouncement = (announcement: Announcement) => {
@@ -2277,6 +2740,7 @@ export function SchoolAdminPanel() {
       priority: (announcement.priority || 'medium').toLowerCase(),
       type: (announcement.type || 'announcement').toLowerCase(),
     });
+    setTagInput((announcement.tags || []).join(', '));
     setAnnouncementDialog(true);
   };
 
@@ -2498,6 +2962,7 @@ export function SchoolAdminPanel() {
                 { key: 'principalName', title: 'Principal Name', icon: <School fontSize='small' />, lines: getHomeDisplayLines('principalName') },
                 { key: 'principalMessage', title: "Principal's Message", icon: <Mail fontSize='small' />, lines: getHomeDisplayLines('principalMessage') },
                 { key: 'principalPhoto', title: 'Principal Photo', icon: <PhotoCamera fontSize='small' />, lines: [] },
+                { key: 'homeHeroImages', title: 'Home Images', icon: <ImageIcon fontSize='small' />, lines: [] },
               ];
 
               const homeMetricsItems = [
@@ -3049,7 +3514,27 @@ export function SchoolAdminPanel() {
                       )}
                       {galleryImages.map((image) => (
                         <TableRow key={image.id}>
-                          <TableCell>{image.title}</TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {image.title}
+                              </Typography>
+                              {image.videoUrl && (
+                                <Chip
+                                  size="small"
+                                  color="secondary"
+                                  variant="outlined"
+                                  icon={<PlayCircleOutline fontSize="small" />}
+                                  label="Video"
+                                  component="a"
+                                  href={image.videoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  clickable
+                                />
+                              )}
+                            </Stack>
+                          </TableCell>
                           <TableCell>
                             <Chip
                               sx={{ fontWeight: 600 }}
@@ -3160,6 +3645,8 @@ export function SchoolAdminPanel() {
                         <TableCell sx={tableHeaderSx}>Priority</TableCell>
                         <TableCell sx={tableHeaderSx}>Pinned</TableCell>
                         <TableCell sx={tableHeaderSx}>Urgent</TableCell>
+                        <TableCell sx={tableHeaderSx}>Author</TableCell>
+                        <TableCell sx={tableHeaderSx}>Tags</TableCell>
                         <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>
                           Actions
                         </TableCell>
@@ -3257,6 +3744,40 @@ export function SchoolAdminPanel() {
                               <Chip label="Urgent" color="error" size="small" />
                             ) : (
                               <Chip label="No" size="small" variant="outlined" />
+                            )}
+                          </TableCell>
+
+                          {/* Author */}
+                          <TableCell>
+                            {announcement.author ? (
+                              <Typography variant="body2" fontWeight={600}>
+                                {announcement.author}
+                              </Typography>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                —
+                              </Typography>
+                            )}
+                          </TableCell>
+
+                          {/* Tags */}
+                          <TableCell>
+                            {announcement.tags && announcement.tags.length > 0 ? (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {announcement.tags.map((tag, idx) => (
+                                  <Chip
+                                    key={idx}
+                                    label={tag}
+                                    size="small"
+                                    color="secondary"
+                                    variant="outlined"
+                                  />
+                                ))}
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                —
+                              </Typography>
                             )}
                           </TableCell>
 
@@ -3381,7 +3902,12 @@ export function SchoolAdminPanel() {
       {/* Achievement Dialog */}
       <Dialog 
         open={achievementDialog} 
-        onClose={() => setAchievementDialog(false)}
+        onClose={(_, reason) => {
+          if (isSaving && (reason === 'backdropClick' || reason === 'escapeKeyDown')) {
+            return;
+          }
+          closeAchievementDialog();
+        }}
         maxWidth="md"
         fullWidth
       >
@@ -3458,11 +3984,96 @@ export function SchoolAdminPanel() {
                 onChange={(e) => setEditingAchievement({ ...editingAchievement, date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
               />
+
+               {/* Image Upload Section */}
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Achievement Image
+                </Typography>
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                >
+                  <Avatar
+                    src={achievementPhotoPreviewUrl || editingAchievement.image || undefined}
+                    alt={editingAchievement.title || 'Achievement image'}
+                    sx={{
+                      width: 96,
+                      height: 96,
+                      fontSize: 32,
+                      bgcolor: 'primary.main',
+                    }}
+                  >
+                    {!achievementPhotoPreviewUrl &&
+                      !editingAchievement.image &&
+                      editingAchievement.title
+                      ? editingAchievement.title.charAt(0).toUpperCase()
+                      : undefined}
+                  </Avatar>
+
+                  <Stack spacing={1.5} alignItems={{ xs: 'flex-start', sm: 'flex-start' }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    >
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CloudUpload />}
+                        sx={{ fontWeight: 600 }}
+                        disabled={achievementPhotoChooseDisabled}
+                      >
+                        Choose Image
+                        <input
+                          hidden
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAchievementPhotoSelect}
+                          disabled={achievementPhotoChooseDisabled}
+                        />
+                      </Button>
+
+                      {(pendingAchievementPhotoFile || editingAchievement.image) && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={handleAchievementPhotoRemove}
+                          disabled={achievementPhotoRemoveDisabled}
+                          sx={{ alignSelf: 'flex-start', px: 0 }}
+                        >
+                          Remove photo
+                        </Button>
+                      )}
+                  </Stack>
+
+                  {achievementPhotoFileName ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Selected file: {achievementPhotoFileName}. The image uploads when you save.
+                  </Typography>
+                ) : hasExistingAchievementPhoto ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Existing image in use. Click remove to replace it.
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No image selected yet.
+                  </Typography>
+                )}
+                    <Typography variant="caption" color="text.secondary">
+                    Upload a clear PNG or JPG up to 5 MB.
+                  </Typography>
+                </Stack>
+              </Stack>
             </Stack>
+          </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAchievementDialog(false)} disabled={isSaving}>
+          <Button onClick={closeAchievementDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button
@@ -3623,8 +4234,7 @@ export function SchoolAdminPanel() {
                       </Typography>
                     )}
                     <Typography variant="caption" color="text.secondary">
-                      Upload a clear PNG or JPG portrait up to 5 MB. The image is stored in Cloudinary
-                      and the secure URL saves with the staff profile when you click Save.
+                      Upload a clear PNG or JPG portrait up to 5 MB.
                     </Typography>
                   </Stack>
                 </Stack>
@@ -3787,8 +4397,7 @@ export function SchoolAdminPanel() {
                       </Typography>
                     )}
                     <Typography variant="caption" color="text.secondary">
-                      Upload a clear PNG or JPG portrait up to 5 MB. The image is stored in Cloudinary
-                      and the secure URL saves with the alumni profile when you click Save.
+                      Upload a clear PNG or JPG portrait up to 5 MB.
                     </Typography>
                   </Stack>
                 </Stack>
@@ -3994,6 +4603,17 @@ export function SchoolAdminPanel() {
               </Stack>
               <TextField
                 fullWidth
+                label="YouTube Video URL"
+                type="url"
+                value={editingGallery.videoUrl || ''}
+                onChange={(e) =>
+                  setEditingGallery({ ...editingGallery, videoUrl: e.target.value })
+                }
+                placeholder="https://youtu.be/your-video"
+                helperText="Optional. Paste a YouTube link to feature alongside the images."
+              />
+              <TextField
+                fullWidth
                 label="Description"
                 multiline
                 rows={3}
@@ -4196,6 +4816,42 @@ export function SchoolAdminPanel() {
                   }
                   label="Mark as Urgent"
                 />
+
+                {/* Author */}
+                <TextField
+                  fullWidth
+                  label="Author"
+                  value={editingAnnouncement.author || ''}
+                  onChange={(e) =>
+                    setEditingAnnouncement({
+                      ...editingAnnouncement,
+                      author: e.target.value,
+                    })
+                  }
+                  placeholder="Name of the person posting this announcement"
+                />
+
+                {/* Tags */}
+                <TextField
+                  fullWidth
+                  label="Tags"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onBlur={() => {
+                    const tagList = tagInput
+                      .split(',')
+                      .map((tag) => tag.trim())
+                      .filter((tag) => tag.length > 0);
+                    setEditingAnnouncement({
+                      ...editingAnnouncement,
+                      tags: tagList,
+                    });
+                  }}
+                  placeholder="Enter tags separated by commas (e.g. Exam, Holiday, Notice)"
+                  helperText="Use commas to separate multiple tags"
+                />
+
+
               </Box>
             </Stack>
           )}
@@ -4237,4 +4893,3 @@ export function SchoolAdminPanel() {
     </>
   );
 }
-
