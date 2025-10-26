@@ -12,17 +12,27 @@ import {
   ListItemButton,
   ListItemText,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Avatar,
+  Menu,
+  MenuItem,
 } from '@mui/material';
-import { Menu as MenuIcon, Close as CloseIcon } from '@mui/icons-material';
+import { 
+  Menu as MenuIcon, 
+  Close as CloseIcon,
+  AccountCircle,
+  Login as LoginIcon,
+  Logout as LogoutIcon,
+} from '@mui/icons-material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { SchoolData } from '../config/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SimpleNavProps {
   schoolData?: SchoolData;
 }
 
-const navigationItems = [
+const baseNavigationItems = [
   { id: 'home', label: 'Home' },
   { id: 'achievements', label: 'Achievements' },
   { id: 'staff', label: 'Staff Directory' },
@@ -30,16 +40,22 @@ const navigationItems = [
   { id: 'gallery', label: 'Gallery' },
   { id: 'announcements', label: 'Announcements' },
   { id: 'contact', label: 'Contact' },
-  { id: 'admin', label: 'Admin' },
 ];
 
 export function SimpleNav({ schoolData }: SimpleNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { schoolId } = useParams<{ schoolId: string }>();
+  const { user, logout } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // Add admin to navigation items only if user is authenticated
+  const navigationItems = user 
+    ? [...baseNavigationItems, { id: 'admin', label: 'Admin' }]
+    : baseNavigationItems;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -48,10 +64,33 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
   const handleNavigation = (page: string) => {
     const path = page === 'home' ? '' : page;
     navigate(`/school/${schoolId}/${path}`);
-    setMobileOpen(false); // Close mobile drawer after navigation
+    if (isMobile) {
+      setMobileOpen(false);
+    }
   };
 
-  // Determine active navigation item based on current path
+  const handleLogin = () => {
+    navigate('/login');
+  };
+
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      handleUserMenuClose();
+      // Navigate back to home after logout
+      navigate(`/school/${schoolId}/home`);
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };  // Determine active navigation item based on current path
   const getActiveItem = () => {
     const pathSegments = location.pathname.split('/');
     const currentPage = pathSegments[pathSegments.length - 1];
@@ -118,6 +157,85 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
             </ListItemButton>
           </ListItem>
         ))}
+        
+        {/* Authentication section for mobile */}
+        <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+          {user ? (
+            <>
+              <ListItem disablePadding>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    px: 2,
+                    py: 1.5,
+                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                    mx: 1,
+                    borderRadius: 1,
+                  }}
+                >
+                  <Avatar
+                    sx={{
+                      bgcolor: 'primary.main',
+                      width: 36,
+                      height: 36,
+                    }}
+                  >
+                    {user.email?.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                      {user.email}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Administrator
+                    </Typography>
+                  </Box>
+                </Box>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton 
+                  onClick={handleLogout} 
+                  sx={{ 
+                    py: 1.5, 
+                    px: 2,
+                    mx: 1,
+                    mt: 1,
+                    borderRadius: 1,
+                    color: 'error.main',
+                    '&:hover': {
+                      backgroundColor: 'error.lighter',
+                    }
+                  }}
+                >
+                  <LogoutIcon sx={{ mr: 2 }} />
+                  <ListItemText primary="Logout" />
+                </ListItemButton>
+              </ListItem>
+            </>
+          ) : (
+            <ListItem disablePadding>
+              <ListItemButton 
+                onClick={handleLogin} 
+                sx={{ 
+                  py: 1.5, 
+                  px: 2,
+                  mx: 1,
+                  borderRadius: 1,
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'primary.dark',
+                  }
+                }}
+              >
+                <LoginIcon sx={{ mr: 2 }} />
+                <ListItemText primary="Login" />
+              </ListItemButton>
+            </ListItem>
+          )}
+        </Box>
       </List>
     </Box>
   );
@@ -169,7 +287,7 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
 
         {/* Desktop Navigation */}
         {!isMobile && (
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             {navigationItems.map((item) => {
               const isActive = activeItem === item.id;
               return (
@@ -204,6 +322,112 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
                 </Button>
               );
             })}
+
+            {/* Authentication UI for Desktop */}
+            <Box sx={{ ml: 2 }}>
+              {user ? (
+                <>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      cursor: 'pointer',
+                      padding: '4px 12px',
+                      borderRadius: 2,
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                      },
+                      transition: 'background-color 0.2s',
+                    }}
+                    onClick={handleUserMenuOpen}
+                  >
+                    <Avatar
+                      sx={{
+                        bgcolor: 'rgba(255,255,255,0.3)',
+                        color: 'white',
+                        width: 28,
+                        height: 28,
+                        fontSize: '0.9rem',
+                      }}
+                    >
+                      {user.email?.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Typography variant="body2" sx={{ color: 'white', fontWeight: 500, display: { xs: 'none', lg: 'block' } }}>
+                      {user.email?.split('@')[0]}
+                    </Typography>
+                    <AccountCircle sx={{ color: 'rgba(255,255,255,0.8)' }} />
+                  </Box>
+                  <Menu
+                    anchorEl={userMenuAnchor}
+                    open={Boolean(userMenuAnchor)}
+                    onClose={handleUserMenuClose}
+                    PaperProps={{
+                      sx: {
+                        mt: 1,
+                        minWidth: 220,
+                        borderRadius: 2,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                      }
+                    }}
+                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                  >
+                    <MenuItem disabled sx={{ opacity: 1, cursor: 'default' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
+                        <Avatar
+                          sx={{
+                            bgcolor: 'primary.main',
+                            width: 40,
+                            height: 40,
+                          }}
+                        >
+                          {user.email?.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                            {user.email}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Administrator
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem 
+                      onClick={handleLogout}
+                      sx={{
+                        color: 'error.main',
+                        '&:hover': {
+                          backgroundColor: 'error.lighter',
+                        }
+                      }}
+                    >
+                      <LogoutIcon sx={{ mr: 2 }} />
+                      Logout
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                <Button
+                  color="inherit"
+                  onClick={handleLogin}
+                  startIcon={<LoginIcon />}
+                  sx={{
+                    color: 'white',
+                    borderColor: 'rgba(255,255,255,0.5)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      borderColor: 'white',
+                    },
+                  }}
+                  variant="outlined"
+                >
+                  Login
+                </Button>
+              )}
+            </Box>
           </Box>
         )}
 

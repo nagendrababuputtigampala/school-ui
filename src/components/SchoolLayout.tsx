@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { Box, CircularProgress, Alert, Container } from '@mui/material';
 import { useSchool } from '../contexts/SchoolContext';
+import { ProtectedRoute } from './ProtectedRoute';
 import { SimpleNav } from './SimpleNav';
 import { Footer } from './Footer';
 import { ScrollToTop } from './ScrollToTop';
@@ -64,7 +65,11 @@ export function SchoolLayout() {
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/contact" element={<ContactPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminPage />
+            </ProtectedRoute>
+          } />
         </Routes>
       </Box>
       
