@@ -378,58 +378,6 @@ export function AchievementsPage() {
             </Typography>
           </Paper>
         )}
-
-        {/* Recognition Levels */}
-        <Paper sx={{ p: { xs: 3, md: 4 }, mb: { xs: 5, md: 6 }, backgroundColor: 'grey.50' }}>
-          <Typography 
-            variant="h4" 
-            component="h2" 
-            textAlign="center" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
-          >
-            Recognition Levels
-          </Typography>
-          <Typography
-            variant="body1"
-            textAlign="center"
-            color="text.secondary"
-            paragraph
-            sx={{ mb: { xs: 3, md: 4 }, maxWidth: '600px', mx: 'auto', fontSize: { xs: '0.95rem', md: '1rem' }, px: { xs: 1.5, md: 0 } }}
-          >
-            Our achievements span across multiple levels of recognition, from local competitions 
-            to international honors.
-          </Typography>
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              gap: { xs: 1, sm: 1.5, md: 2 }, 
-              justifyContent: 'center' 
-            }}
-          >
-            {levels.map((level) => {
-              const IconComponent = level.icon;
-              const count = achievements.filter((a) => a.level === level.id).length;
-              return (
-                <Chip
-                  key={level.id}
-                  label={`${level.label} (${count})`}
-                  icon={<IconComponent />}
-                  sx={{
-                    backgroundColor: level.color,
-                    color: 'white',
-                    fontWeight: 'bold',
-                    px: { xs: 1.5, md: 2 },
-                    py: { xs: 0.75, md: 1 },
-                    fontSize: { xs: '0.7rem', md: '0.75rem' },
-                    '& .MuiChip-icon': { color: 'white', fontSize: { xs: '0.9rem', md: '1rem' } },
-                  }}
-                />
-              );
-            })}
-          </Box>
-        </Paper>
       </Box>
       </Container>
     </Box>
