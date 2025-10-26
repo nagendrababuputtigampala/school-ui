@@ -1,0 +1,41 @@
+name: Conditional Branch Deletion
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  delete_branch:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete branch if matches pattern or user opt-in
+        uses: peter-evans/delete-branch@v3
+        with:
+          # GitHub token to allow deletion
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Branch to delete
+          branch: ${{ github.event.pull_request.head.ref }}
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+      - name: Conditional deletion logic
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          TITLE="${{ github.event.pull_request.title }}"
+          echo "Checking branch $BRANCH"
+
+          # Example 1: Delete only feature or bugfix branches
+          if [[ "$BRANCH" =~ ^feature/ || "$BRANCH" =~ ^bugfix/ ]]; then
+            echo "✅ Branch matches allowed pattern, deleting..."
+            gh api \
+              -X DELETE \
+              repos/${{ github.repository }}/git/refs/heads/$BRANCH
+          fi
+
+          # Example 2: Optional deletion if PR title includes [delete]
+          if [[ "$TITLE" == *"[delete]"* ]]; then
+            echo "🧹 User requested deletion via PR title."
+            gh api \
+              -X DELETE \
+              repos/${{ github.repository }}/git/refs/heads/$BRANCH
+          fi
