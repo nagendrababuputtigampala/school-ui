@@ -24,9 +24,11 @@ import {
   AccountCircle,
   Login as LoginIcon,
   Logout as LogoutIcon,
+  Security as SecurityIcon,
 } from '@mui/icons-material';
 import { fetchSchoolData } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 interface AppBarProps {
   currentPage: string;
@@ -51,6 +53,7 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
   const [schoolName, setSchoolName] = useState('EduConnect');
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -96,6 +99,11 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const handleChangePassword = () => {
+    setChangePasswordOpen(true);
+    handleUserMenuClose();
   };  // Load site name and logo from Firestore on mount
   useEffect(() => {
     if (!schoolId) return;
@@ -203,6 +211,24 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
                     </Typography>
                   </Box>
                 </Box>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton 
+                  onClick={handleChangePassword} 
+                  sx={{ 
+                    py: 1.5, 
+                    px: 2,
+                    mx: 1,
+                    mt: 1,
+                    borderRadius: 1,
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    }
+                  }}
+                >
+                  <SecurityIcon sx={{ mr: 2 }} />
+                  <ListItemText primary="Change Password" />
+                </ListItemButton>
               </ListItem>
               <ListItem disablePadding>
                 <ListItemButton 
@@ -401,6 +427,17 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
                       </Box>
                     </MenuItem>
                     <MenuItem 
+                      onClick={handleChangePassword}
+                      sx={{
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                        }
+                      }}
+                    >
+                      <SecurityIcon sx={{ mr: 2 }} />
+                      Change Password
+                    </MenuItem>
+                    <MenuItem 
                       onClick={handleLogout}
                       sx={{
                         color: 'error.main',
@@ -462,6 +499,12 @@ export function AppBar({ currentPage, onNavigate }: AppBarProps) {
       >
         {drawer}
       </Drawer>
+
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </>
   );
 }
