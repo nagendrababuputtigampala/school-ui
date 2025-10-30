@@ -23,10 +23,12 @@ import {
   AccountCircle,
   Login as LoginIcon,
   Logout as LogoutIcon,
+  Security as SecurityIcon,
 } from '@mui/icons-material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { SchoolData } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 interface SimpleNavProps {
   schoolData?: SchoolData;
@@ -51,6 +53,7 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   // Add admin to navigation items only if user is authenticated
   const navigationItems = user 
@@ -90,6 +93,11 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const handleChangePassword = () => {
+    setChangePasswordOpen(true);
+    handleUserMenuClose();
   };  // Determine active navigation item based on current path
   const getActiveItem = () => {
     const pathSegments = location.pathname.split('/');
@@ -193,6 +201,24 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
                     </Typography>
                   </Box>
                 </Box>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton 
+                  onClick={handleChangePassword} 
+                  sx={{ 
+                    py: 1.5, 
+                    px: 2,
+                    mx: 1,
+                    mt: 1,
+                    borderRadius: 1,
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    }
+                  }}
+                >
+                  <SecurityIcon sx={{ mr: 2 }} />
+                  <ListItemText primary="Change Password" />
+                </ListItemButton>
               </ListItem>
               <ListItem disablePadding>
                 <ListItemButton 
@@ -396,6 +422,17 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
                       </Box>
                     </MenuItem>
                     <MenuItem 
+                      onClick={handleChangePassword}
+                      sx={{
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                        }
+                      }}
+                    >
+                      <SecurityIcon sx={{ mr: 2 }} />
+                      Change Password
+                    </MenuItem>
+                    <MenuItem 
                       onClick={handleLogout}
                       sx={{
                         color: 'error.main',
@@ -457,6 +494,12 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
     >
       {drawer}
     </Drawer>
+
+    {/* Change Password Dialog */}
+    <ChangePasswordDialog
+      open={changePasswordOpen}
+      onClose={() => setChangePasswordOpen(false)}
+    />
   </>
   );
 }

@@ -11,6 +11,10 @@ import {
   InputAdornment,
   IconButton,
   Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Email,
@@ -18,8 +22,9 @@ import {
   Visibility,
   VisibilityOff,
   Login as LoginIcon,
+  LockReset,
 } from '@mui/icons-material';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
 
@@ -29,6 +34,11 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -74,6 +84,53 @@ export function LoginPage() {
 
   const handleTogglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+
+  const handleForgotPassword = () => {
+    setResetEmail(email); // Pre-fill with login email if available
+    setResetDialogOpen(true);
+    setResetError('');
+    setResetSuccess(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetEmail.trim()) {
+      setResetError('Please enter your email address.');
+      return;
+    }
+
+    setResetLoading(true);
+    setResetError('');
+
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetSuccess(true);
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          setResetError('No account found with this email address.');
+          break;
+        case 'auth/invalid-email':
+          setResetError('Please enter a valid email address.');
+          break;
+        case 'auth/too-many-requests':
+          setResetError('Too many requests. Please try again later.');
+          break;
+        default:
+          setResetError('Failed to send reset email. Please try again.');
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleCloseResetDialog = () => {
+    setResetDialogOpen(false);
+    setResetEmail('');
+    setResetError('');
+    setResetSuccess(false);
   };
 
   return (
@@ -224,6 +281,26 @@ export function LoginPage() {
               )}
             </Button>
 
+            {/* Forgot Password Link */}
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                onClick={handleForgotPassword}
+                sx={{
+                  color: 'primary.main',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    textDecoration: 'underline',
+                  },
+                }}
+              >
+                Forgot Password?
+              </Link>
+            </Box>
+
             <Box sx={{ textAlign: 'center', mt: 3 }}>
               <Link
                 component={RouterLink}
@@ -243,6 +320,127 @@ export function LoginPage() {
           </Box>
         </Paper>
       </Container>
+
+      {/* Password Reset Dialog */}
+      <Dialog
+        open={resetDialogOpen}
+        onClose={handleCloseResetDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1,
+          }
+        }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+          <LockReset
+            sx={{
+              fontSize: 48,
+              color: 'primary.main',
+              mb: 1,
+            }}
+          />
+          <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
+            Reset Password
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {resetSuccess 
+              ? "Check your email for reset instructions"
+              : "Enter your email address and we'll send you a link to reset your password"
+            }
+          </Typography>
+        </DialogTitle>
+
+        <DialogContent sx={{ pb: 1 }}>
+          {resetSuccess ? (
+            <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+              Password reset email sent successfully! Check your inbox and follow the instructions to reset your password.
+            </Alert>
+          ) : (
+            <>
+              {resetError && (
+                <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                  {resetError}
+                </Alert>
+              )}
+
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="reset-email"
+                label="Email Address"
+                name="reset-email"
+                autoComplete="email"
+                autoFocus
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                disabled={resetLoading}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Email color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              />
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          {resetSuccess ? (
+            <Button
+              onClick={handleCloseResetDialog}
+              variant="contained"
+              fullWidth
+              sx={{
+                py: 1.5,
+                borderRadius: 2,
+                fontWeight: 600,
+              }}
+            >
+              Close
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={handleCloseResetDialog}
+                disabled={resetLoading}
+                sx={{ mr: 1 }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleResetPassword}
+                variant="contained"
+                disabled={resetLoading || !resetEmail.trim()}
+                sx={{
+                  py: 1.5,
+                  px: 3,
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  minWidth: 120,
+                }}
+              >
+                {resetLoading ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  'Send Reset Email'
+                )}
+              </Button>
+            </>
+          )}
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
