@@ -66,7 +66,7 @@ export function SchoolLayout() {
           <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/admin" element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSchoolAccess={true}>
               <AdminPage />
             </ProtectedRoute>
           } />

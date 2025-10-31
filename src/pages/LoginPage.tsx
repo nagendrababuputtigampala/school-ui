@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -27,6 +27,7 @@ import {
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -41,9 +42,25 @@ export function LoginPage() {
   const [resetSuccess, setResetSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { getUserPrimarySchool, user, userProfile, loading: authLoading } = useAuth();
 
-  // Get the intended destination or default to educonnect admin
-  const from = (location.state as any)?.from?.pathname || '/school/educonnect/admin';
+  // Handle navigation after successful login and profile loading
+  useEffect(() => {
+    if (user && userProfile && !authLoading && loading) {
+      const primarySchool = getUserPrimarySchool();
+      
+      if (primarySchool) {
+        // Navigate to the user's primary school admin panel
+        navigate(`/school/${primarySchool}/admin`, { replace: true });
+      } else {
+        // Fallback to intended destination or default
+        const from = (location.state as any)?.from?.pathname || '/school/educonnect/admin';
+        navigate(from, { replace: true });
+      }
+      
+      setLoading(false);
+    }
+  }, [user, userProfile, authLoading, loading, getUserPrimarySchool, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +69,10 @@ export function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Navigate to intended destination or admin panel after successful login
-      navigate(from, { replace: true });
+      
+      // The AuthContext will handle loading the user profile
+      // Navigation will happen in the useEffect when profile is loaded
+      
     } catch (error: any) {
       console.error('Login error:', error);
       
@@ -77,7 +96,6 @@ export function LoginPage() {
         default:
           setError('Failed to sign in. Please check your credentials and try again.');
       }
-    } finally {
       setLoading(false);
     }
   };
