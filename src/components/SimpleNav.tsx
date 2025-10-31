@@ -21,7 +21,6 @@ import {
   Menu as MenuIcon, 
   Close as CloseIcon,
   AccountCircle,
-  Login as LoginIcon,
   Logout as LogoutIcon,
   Security as SecurityIcon,
 } from '@mui/icons-material';
@@ -70,10 +69,6 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
     if (isMobile) {
       setMobileOpen(false);
     }
-  };
-
-  const handleLogin = () => {
-    navigate('/login');
   };
 
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -240,27 +235,7 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
                 </ListItemButton>
               </ListItem>
             </>
-          ) : (
-            <ListItem disablePadding>
-              <ListItemButton 
-                onClick={handleLogin} 
-                sx={{ 
-                  py: 1.5, 
-                  px: 2,
-                  mx: 1,
-                  borderRadius: 1,
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  }
-                }}
-              >
-                <LoginIcon sx={{ mr: 2 }} />
-                <ListItemText primary="Login" />
-              </ListItemButton>
-            </ListItem>
-          )}
+          ) : null}
         </Box>
       </List>
     </Box>
@@ -446,24 +421,7 @@ export function SimpleNav({ schoolData }: SimpleNavProps) {
                     </MenuItem>
                   </Menu>
                 </>
-              ) : (
-                <Button
-                  color="inherit"
-                  onClick={handleLogin}
-                  startIcon={<LoginIcon />}
-                  sx={{
-                    color: 'white',
-                    borderColor: 'rgba(255,255,255,0.5)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                      borderColor: 'white',
-                    },
-                  }}
-                  variant="outlined"
-                >
-                  Login
-                </Button>
-              )}
+              ) : null}
             </Box>
           </Box>
         )}

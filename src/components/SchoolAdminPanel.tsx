@@ -11,6 +11,8 @@ import {
   updateAnnouncementsPageContent,
 } from '../config/firebase';
 import { uploadImageToCloudinary } from '../config/cloudinary';
+import { useAuth } from '../contexts/AuthContext';
+import { UserManagement } from './UserManagement';
 import {
   Card,
   CardContent,
@@ -83,6 +85,7 @@ import {
   TrendingUp,
   WorkspacePremium,
   PlayCircleOutline,
+  SupervisorAccount,
 } from '@mui/icons-material';
 import {
   ANNOUNCEMENT_CATEGORY_OPTIONS,
@@ -128,7 +131,7 @@ const resolveGalleryCategoryLabel = (value?: string, fallback?: string): string 
 const getGalleryCategoryLabel = (value?: string) =>
   resolveGalleryCategoryLabel(value, defaultGalleryCategory);
 
-type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact';
+type PageType = 'home' | 'achievements' | 'staff' | 'alumni' | 'gallery' | 'announcements' | 'contact' | 'users';
 
 const ACHIEVEMENT_SECTION_ORDER = [
   { key: 'general', title: 'General' },
@@ -322,6 +325,9 @@ const sortJourneyMilestones = (items: JourneyMilestone[]) =>
   });
 
 export function SchoolAdminPanel() {
+  // Auth context for user permissions
+  const { userProfile } = useAuth();
+  
   // Store school info for sidebar header
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
   const [dirtyPage, setDirtyPage] = useState<'home' | 'contact' | 'both' | null>(null);
@@ -2822,7 +2828,8 @@ const looksLikeGalleryItem = (value: any): boolean => {
     { id: 'alumni', label: 'Alumni', icon: GraduationCap },
     { id: 'gallery', label: 'Gallery', icon: ImageIcon },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
-    { id: 'contact', label: 'Contact Us', icon: Mail }
+    { id: 'contact', label: 'Contact Us', icon: Mail },
+    ...(userProfile?.role === 'super-admin' ? [{ id: 'users', label: 'User Management', icon: SupervisorAccount }] : [])
   ];
 
   return (
@@ -3835,6 +3842,24 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 </Card>
               );
             })()}
+
+            {/* User Management Page (Super Admin Only) */}
+            {activePage === 'users' && userProfile?.role === 'super-admin' && (
+              <Card>
+                <CardHeader
+                  title={<Typography variant="h5">User Management</Typography>}
+                  subheader="Manage user access and permissions for all schools"
+                />
+                <CardContent>
+                  <UserManagement 
+                    availableSchools={[
+                      { id: schoolId || 'educonnect', name: schoolInfo?.name || 'School' },
+                      // Add more schools here when supporting multiple schools
+                    ]} 
+                  />
+                </CardContent>
+              </Card>
+            )}
       </Box>
     </Box>
   </Box>
