@@ -921,7 +921,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
 
   const inlineHelperText: Record<'contact' | 'home', Record<string, string>> = {
     contact: {
-      address: "Enter the school's mailing address.",
+      address: "Enter the school's mailing address. (Required)",
       phone: 'Include country or area code. Separate numbers with commas.',
       email: 'Provide a valid contact email address.',
       hours: 'Enter one schedule per line.',
@@ -930,9 +930,9 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       instagram: 'Paste the full Instagram profile URL.',
     },
     home: {
-      title: 'Shown as the main heading on the home page.',
-      subtitle: 'Displayed beneath the welcome title.',
-      principalName: 'Shown in the principal highlight section.',
+      title: 'Shown as the main heading on the home page. (Required)',
+      subtitle: 'Displayed beneath the welcome title. (Required)',
+      principalName: 'Shown in the principal highlight section. (Required)',
       principalMessage: 'Share a short greeting from the principal (max 500 characters).',
       principalPhoto: 'Upload a friendly portrait of the principal (PNG or JPG).',
       yearEstablished: 'Use a four-digit year (e.g., 1998).',
@@ -940,6 +940,20 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       successRate: 'Enter a percentage between 0 and 100.',
     },
   };
+
+  const inlineRequiredMessages: Record<'contact' | 'home', Partial<Record<string, string>>> = {
+    contact: {
+      address: 'School address is required.',
+    },
+    home: {
+      title: 'Welcome title is required.',
+      subtitle: 'Welcome subtitle is required.',
+      principalName: 'Principal name is required.',
+    },
+  };
+
+  const isInlineFieldRequired = (section: 'home' | 'contact', key: string) =>
+    Boolean(inlineRequiredMessages[section]?.[key]);
 
   type LevelStyle = { label: string; color: string; icon: typeof Public };
   const levelStyles: Record<string, LevelStyle> = {
@@ -1067,8 +1081,14 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     key: string,
     value: string
   ): string | null => {
+    const trimmedValue = value.trim();
+    const requiredMessage = inlineRequiredMessages[section]?.[key];
+    if (requiredMessage && !trimmedValue) {
+      return requiredMessage;
+    }
+
     if (section === 'contact') {
-      if (!value) return null;
+      if (!trimmedValue) return null;
       if (key === 'phone' || key === 'whatsapp') {
         const phoneRegex = /^[\d+\-()\s]+$/;
         const invalid = value
@@ -1088,9 +1108,11 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
         return invalid ? 'Enter a valid email address.' : null;
       }
       if (key === 'facebook' || key === 'instagram') {
-        if (!value) return null;
+        if (!trimmedValue) return null;
         const urlRegex = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/i;
-        return urlRegex.test(value) ? null : 'Enter a valid URL (include https:// if possible).';
+        return urlRegex.test(trimmedValue)
+          ? null
+          : 'Enter a valid URL (include https:// if possible).';
       }
       return null;
     }
@@ -1098,32 +1120,30 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     // Home section validation
     switch (key) {
       case 'title':
-        return value ? null : 'Welcome title is required.';
+      case 'subtitle':
       case 'principalName':
-        return value ? null : 'Principal name is required.';
+        return null;
       case 'principalMessage':
         return value.length > 500 ? 'Maximum 500 characters allowed.' : null;
       case 'yearEstablished':
-        if (!value) return null;
-        if (!/^\d{4}$/.test(value)) return 'Use a four-digit year (>= 1800).';
-        const year = Number(value);
+        if (!trimmedValue) return null;
+        if (!/^\d{4}$/.test(trimmedValue)) return 'Use a four-digit year (>= 1800).';
+        const year = Number(trimmedValue);
         const currentYear = new Date().getFullYear();
         if (year < 1800 || year > currentYear) return 'Enter a valid year.';
         return null;
       case 'students':
-        if (!value) return null;
-        return /^[\d+\s,]+$/.test(value) ? null : 'Use digits or "+" only.';
+        if (!trimmedValue) return null;
+        return /^[\d+\s,]+$/.test(trimmedValue) ? null : 'Use digits or "+" only.';
       case 'successRate': {
-        if (!value) return null;
-        const cleaned = value.replace('%', '').trim();
+        if (!trimmedValue) return null;
+        const cleaned = trimmedValue.replace('%', '').trim();
         const numeric = Number(cleaned);
         if (Number.isNaN(numeric) || numeric < 0 || numeric > 100) {
           return 'Enter a value between 0 and 100.';
         }
         return null;
       }
-      case 'subtitle':
-        return null;
       default:
         return null;
     }
@@ -1630,6 +1650,8 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
                   multiline={isMultiline}
                   minRows={isMultiline ? 3 : undefined}
                   value={editingValue}
+                  error={Boolean(inlineError)}
+                  required={isInlineFieldRequired(section, key)}
                   onChange={(e) => {
                     const nextValue =
                       section === 'home' && key === 'principalMessage'
@@ -2291,6 +2313,15 @@ const looksLikeGalleryItem = (value: any): boolean => {
   const saveAchievement = async () => {
     if (!editingAchievement) return;
 
+    const trimmedTitle = (editingAchievement.title || '').trim();
+    const trimmedDescription = (editingAchievement.description || '').trim();
+    const trimmedDate = (editingAchievement.date || '').trim();
+
+    if (!trimmedTitle || !trimmedDescription || !trimmedDate) {
+      showError('Achievement title, description, and date are required.');
+      return;
+    }
+
     setIsSaving(true);
 
     const targetSchoolId = schoolId || 'educonnect';
@@ -2315,9 +2346,9 @@ const looksLikeGalleryItem = (value: any): boolean => {
       const achievementEntry: Achievement = {
         ...editingAchievement,
         id: editingAchievement.id || `achievement-${Date.now()}`,
-        title: (editingAchievement.title || '').trim(),
-        description: (editingAchievement.description || '').trim(),
-        date: (editingAchievement.date || '').trim(),
+        title: trimmedTitle,
+        description: trimmedDescription,
+        date: trimmedDate,
         sectionKey: normalizedSectionKey,
         sectionTitle,
         level: normalizedLevel,
@@ -2436,6 +2467,43 @@ const looksLikeGalleryItem = (value: any): boolean => {
   const saveStaffMember = async () => {
     if (!editingStaff) return;
 
+    const trimmedName = (editingStaff.name || '').trim();
+    const trimmedDepartment = (editingStaff.department || '').trim();
+    const trimmedPosition = (editingStaff.position || '').trim();
+    const trimmedEducation = (editingStaff.education || '').trim();
+    const trimmedExperience = (editingStaff.experience || '').trim();
+    const trimmedSpecializations = (editingStaff.specializations || '').trim();
+    const trimmedEmail = (editingStaff.email || '').trim();
+    const trimmedPhone = (editingStaff.phone || '').trim();
+
+    if (
+      !trimmedName ||
+      !trimmedDepartment ||
+      !trimmedPosition ||
+      !trimmedEducation ||
+      !trimmedExperience ||
+      !trimmedSpecializations
+    ) {
+      showError('Name, department, position, education, experience, and specializations are required for staff members.');
+      return;
+    }
+
+    if (trimmedEmail) {
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        showError('Enter a valid staff email address.');
+        return;
+      }
+    }
+
+    if (trimmedPhone) {
+      const phoneRegex = /^[\d+\-()\s]+$/;
+      if (!phoneRegex.test(trimmedPhone)) {
+        showError('Use numbers and + - ( ) spaces only for staff phone numbers.');
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     const targetSchoolId = schoolId || 'educonnect';
@@ -2455,14 +2523,14 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
       const staffEntry: StaffMember = {
         id: editingStaff.id || `staff-${Date.now()}`,
-        name: (editingStaff.name || '').trim(),
-        department: (editingStaff.department || '').trim(),
-        position: (editingStaff.position || '').trim(),
-        education: (editingStaff.education || '').trim(),
-        specializations: (editingStaff.specializations || '').trim(),
-        experience: (editingStaff.experience || '').trim(),
-        email: (editingStaff.email || '').trim(),
-        phone: (editingStaff.phone || '').trim(),
+        name: trimmedName,
+        department: trimmedDepartment,
+        position: trimmedPosition,
+        education: trimmedEducation,
+        specializations: trimmedSpecializations,
+        experience: trimmedExperience,
+        email: trimmedEmail,
+        phone: trimmedPhone,
         image,
         schoolId: editingStaff.schoolId || schoolInfo?.id || schoolId || '',
       };
@@ -2536,6 +2604,29 @@ const looksLikeGalleryItem = (value: any): boolean => {
   const saveAlumniMember = async () => {
     if (!editingAlumni) return;
 
+    const trimmedName = (editingAlumni.name || '').trim();
+    const trimmedCompany = (editingAlumni.company || '').trim();
+    const trimmedPosition = (editingAlumni.currentPosition || '').trim();
+    const trimmedGraduationYear = (editingAlumni.graduationYear || '').trim();
+    const trimmedLinkedIn = (editingAlumni.linkedinUrl || '').trim();
+    const trimmedIndustry = (editingAlumni.industry || '').trim();
+    const trimmedLocation = (editingAlumni.location || '').trim();
+
+    if (!trimmedName || !trimmedGraduationYear) {
+      showError('Name and graduation year are required for alumni entries.');
+      return;
+    }
+
+    if (!/^\d{4}$/.test(trimmedGraduationYear)) {
+      showError('Enter a four-digit graduation year for alumni entries.');
+      return;
+    }
+
+    if (trimmedLinkedIn && !/^https?:\/\//i.test(trimmedLinkedIn)) {
+      showError('Enter a valid LinkedIn URL (include https://).');
+      return;
+    }
+
     setIsSaving(true);
 
     const targetSchoolId = schoolId || 'educonnect';
@@ -2551,20 +2642,20 @@ const looksLikeGalleryItem = (value: any): boolean => {
         image = '';
       }
 
-    const alumniEntry: AlumniMember = {
-      id: editingAlumni.id || `alumni-${Date.now()}`,
-      name: (editingAlumni.name || '').trim(),
-      company: (editingAlumni.company || '').trim(),
-      currentPosition: (editingAlumni.currentPosition || '').trim(),
-      graduationYear: (editingAlumni.graduationYear || '').trim(),
-      image,
-      industry: (editingAlumni.industry || '').trim() || 'Other',
-      location: (editingAlumni.location || '').trim(),
-      linkedinUrl: (editingAlumni.linkedinUrl || '').trim(),
-    };
-    const updatedList = editingAlumni.id
-      ? alumniMembers.map((a) => (a.id === editingAlumni.id ? alumniEntry : a))
-      : [...alumniMembers, alumniEntry];
+      const alumniEntry: AlumniMember = {
+        id: editingAlumni.id || `alumni-${Date.now()}`,
+        name: trimmedName,
+        company: trimmedCompany,
+        currentPosition: trimmedPosition,
+        graduationYear: trimmedGraduationYear,
+        image,
+        industry: trimmedIndustry || 'Other',
+        location: trimmedLocation,
+        linkedinUrl: trimmedLinkedIn,
+      };
+      const updatedList = editingAlumni.id
+        ? alumniMembers.map((a) => (a.id === editingAlumni.id ? alumniEntry : a))
+        : [...alumniMembers, alumniEntry];
 
       await updateAlumniPageContent(targetSchoolId, updatedList);
       setAlumniMembers(updatedList);
@@ -2639,19 +2730,27 @@ const looksLikeGalleryItem = (value: any): boolean => {
   const saveGalleryImage = async () => {
     if (!editingGallery) return;
 
-    setIsSaving(true);
-
-    const targetSchoolId = schoolId || 'educonnect';
+    const trimmedTitle = (editingGallery.title || '').trim();
+    const trimmedDescription = (editingGallery.description || '').trim();
     const existingImages = Array.isArray(editingGallery.images)
       ? editingGallery.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
       : [];
-    let images = [...existingImages];
     const trimmedVideoUrl = (editingGallery.videoUrl || '').trim();
-    if (trimmedVideoUrl && !isValidYouTubeUrl(trimmedVideoUrl)) {
-      showError('Please enter a valid YouTube video link (e.g., https://youtu.be/...).');
-      setIsSaving(false);
+
+    if (!trimmedTitle || !trimmedDescription) {
+      showError('Gallery title and description are required.');
       return;
     }
+
+    if (trimmedVideoUrl && !isValidYouTubeUrl(trimmedVideoUrl)) {
+      showError('Please enter a valid YouTube video link (e.g., https://youtu.be/...).');
+      return;
+    }
+
+    setIsSaving(true);
+
+    const targetSchoolId = schoolId || 'educonnect';
+    let images = [...existingImages];
 
     try {
       if (pendingGalleryPhotoFiles.length > 0) {
@@ -2667,6 +2766,8 @@ const looksLikeGalleryItem = (value: any): boolean => {
       const galleryEntry: GalleryImage = {
         ...editingGallery,
         id: editingGallery.id || `gallery-${Date.now()}`,
+        title: trimmedTitle,
+        description: trimmedDescription,
         category: resolvedCategory,
         images,
         videoUrl: trimmedVideoUrl,
@@ -2678,6 +2779,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
       const normalizedList = updatedList.map((image) => ({
         ...image,
         category: resolveGalleryCategoryLabel(image.category),
+        description: (image.description || '').trim(),
         images: Array.isArray(image.images)
           ? image.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
           : [],
@@ -2752,6 +2854,16 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
   const saveAnnouncement = async () => {
     if (!editingAnnouncement) return;
+
+    const trimmedTitle = (editingAnnouncement.title || '').trim();
+    const trimmedDescription = (editingAnnouncement.description || '').trim();
+    const trimmedDate = (editingAnnouncement.date || '').trim();
+
+    if (!trimmedTitle || !trimmedDescription) {
+      showError('Announcement title and content are required.');
+      return;
+    }
+
     const categories = normalizeAnnouncementCategoryList([
       editingAnnouncement.category,
     ]);
@@ -2759,6 +2871,9 @@ const looksLikeGalleryItem = (value: any): boolean => {
     const announcementEntry: Announcement = {
       ...editingAnnouncement,
       id: editingAnnouncement.id || `announcement-${Date.now()}`,
+      title: trimmedTitle,
+      description: trimmedDescription,
+      date: trimmedDate,
       category: primaryCategory,
       priority: (editingAnnouncement.priority || 'medium').toLowerCase(),
       type: (editingAnnouncement.type || 'announcement').toLowerCase(),
@@ -3946,6 +4061,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 <TextField
                   fullWidth
                   label="Title"
+                  required
                   value={editingAchievement.title}
                   onChange={(e) => setEditingAchievement({ ...editingAchievement, title: e.target.value })}
                   placeholder="Achievement title"
@@ -3997,6 +4113,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="Description"
                 multiline
                 rows={3}
+                required
                 value={editingAchievement.description}
                 onChange={(e) => setEditingAchievement({ ...editingAchievement, description: e.target.value })}
                 placeholder="Describe the achievement"
@@ -4005,6 +4122,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 fullWidth
                 label="Date"
                 type="date"
+                required
                 value={editingAchievement.date}
                 onChange={(e) => setEditingAchievement({ ...editingAchievement, date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
@@ -4126,6 +4244,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
               <TextField
                 fullWidth
                 label="Name"
+                required
                 value={editingStaff.name}
                 onChange={(e) => setEditingStaff({ ...editingStaff, name: e.target.value })}
                 placeholder="Full name"
@@ -4134,6 +4253,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 <TextField
                   fullWidth
                   label="Department"
+                  required
                   value={editingStaff.department}
                   onChange={(e) => setEditingStaff({ ...editingStaff, department: e.target.value })}
                   placeholder="e.g., Mathematics"
@@ -4141,6 +4261,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 <TextField
                   fullWidth
                   label="Position"
+                  required
                   value={editingStaff.position}
                   onChange={(e) => setEditingStaff({ ...editingStaff, position: e.target.value })}
                   placeholder="e.g., Senior Teacher"
@@ -4150,6 +4271,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 <TextField
                   fullWidth
                   label="Experience"
+                  required
                   value={editingStaff.experience}
                   onChange={(e) => setEditingStaff({ ...editingStaff, experience: e.target.value })}
                   placeholder="e.g., 10 years"
@@ -4157,6 +4279,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 <TextField
                   fullWidth
                   label="Education"
+                  required
                   value={editingStaff.education}
                   onChange={(e) => setEditingStaff({ ...editingStaff, education: e.target.value })}
                   placeholder="e.g., M.Ed"
@@ -4181,6 +4304,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
               <TextField
                 fullWidth
                 label="Specializations (comma separated)"
+                required
                 value={editingStaff.specializations}
                 onChange={(e) => setEditingStaff({ ...editingStaff, specializations: e.target.value })}
                 placeholder="Mathematics, Algebra"
@@ -4296,6 +4420,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
               <TextField
                 fullWidth
                 label="Name"
+                required
                 value={editingAlumni.name}
                 onChange={(e) => setEditingAlumni({ ...editingAlumni, name: e.target.value })}
                 placeholder="Full name"
@@ -4304,9 +4429,11 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 <TextField
                   fullWidth
                   label="Graduation Year"
+                  required
                   value={editingAlumni.graduationYear}
                   onChange={(e) => setEditingAlumni({ ...editingAlumni, graduationYear: e.target.value })}
                   placeholder="e.g., 2010"
+                  inputProps={{ inputMode: 'numeric', pattern: '\\d{4}' }}
                 />
                 <TextField
                   fullWidth
@@ -4459,6 +4586,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
               <TextField
                 fullWidth
                 label="Title"
+                required
                 value={editingGallery.title}
                 onChange={(e) => setEditingGallery({ ...editingGallery, title: e.target.value })}
                 placeholder="Gallery item title"
@@ -4642,6 +4770,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="Description"
                 multiline
                 rows={3}
+                required
                 value={editingGallery.description}
                 onChange={(e) => setEditingGallery({ ...editingGallery, description: e.target.value })}
                 placeholder="Short description"
@@ -4685,6 +4814,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
               <TextField
                 fullWidth
                 label="Title"
+                required
                 value={editingAnnouncement.title}
                 onChange={(e) =>
                   setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })
@@ -4698,6 +4828,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="Description"
                 multiline
                 rows={3}
+                required
                 value={editingAnnouncement.description}
                 onChange={(e) =>
                   setEditingAnnouncement({ ...editingAnnouncement, description: e.target.value })
