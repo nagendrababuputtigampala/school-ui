@@ -20,6 +20,7 @@ export interface UserProfile {
   role: 'admin' | 'super-admin';
   schoolIds: string[]; // Array of school IDs the user has access to
   isActive: boolean;
+  requirePasswordChange?: boolean; // Flag to force password change on first login
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string; // UID of the user who created this profile
@@ -205,6 +206,40 @@ export async function deactivateUser(uid: string): Promise<void> {
  */
 export async function activateUser(uid: string): Promise<void> {
   await updateUserProfile(uid, { isActive: true });
+}
+
+/**
+ * Clears the password change requirement for a user
+ */
+export async function clearPasswordChangeRequirement(uid: string): Promise<void> {
+  await updateUserProfile(uid, { requirePasswordChange: false });
+}
+
+/**
+ * Creates an initial super admin user for setup
+ * This function should be used carefully and only for initial setup
+ */
+export async function createInitialSuperAdmin(
+  uid: string,
+  email: string,
+  name?: string
+): Promise<void> {
+  try {
+    const userProfile: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt'> = {
+      email,
+      name: name || 'Super Administrator',
+      role: 'super-admin',
+      schoolIds: ['*'], // Access to all schools
+      isActive: true,
+      requirePasswordChange: false,
+    };
+
+    await createUserProfile(uid, userProfile);
+    console.log('Initial super admin created successfully');
+  } catch (error) {
+    console.error('Error creating initial super admin:', error);
+    throw error;
+  }
 }
 
 /**
