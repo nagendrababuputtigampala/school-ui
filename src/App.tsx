@@ -7,6 +7,7 @@ import { SchoolProvider } from './contexts/SchoolContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { SchoolLayout } from './components/SchoolLayout';
 import { LoginPage } from './pages/LoginPage';
+import { SetPasswordPage } from './pages/SetPasswordPage';
 
 const theme = createTheme({
   palette: {
@@ -104,10 +105,14 @@ export default function App() {
               {/* Login route */}
               <Route path="/login" element={<LoginPage />} />
               
+              {/* Password setup routes - handle both custom and Firebase auth URLs */}
+              <Route path="/set-password" element={<SetPasswordPage />} />
+              <Route path="/__/auth/action" element={<SetPasswordPage />} />
+              
               {/* Default route - redirect to default school */}
               <Route path="/" element={<Navigate to="/school/educonnect" replace />} />
               
-              {/* School-specific routes */}
+              {/* School-specific routes - public by default, admin protected */}
               <Route path="/school/:schoolId/*" element={
                 <SchoolProvider>
                   <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

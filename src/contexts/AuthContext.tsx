@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import { getUserProfile, checkUserSchoolAccess, UserProfile } from '../config/userManagement';
+import { getUserProfile, checkUserSchoolAccess, UserProfile, clearPasswordChangeRequirement } from '../config/userManagement';
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +11,7 @@ interface AuthContextType {
   checkSchoolAccess: (schoolId: string) => Promise<boolean>;
   refreshUserProfile: () => Promise<void>;
   getUserPrimarySchool: () => string | null;
+  markPasswordChangeComplete: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,6 +39,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUserProfile(profile);
     } catch (error) {
       console.error('Error loading user profile:', error);
+      // Set userProfile to null so we know there was an error
       setUserProfile(null);
     }
   };
@@ -83,6 +85,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return userProfile.schoolIds[0];
   };
 
+  const markPasswordChangeComplete = async (): Promise<void> => {
+    if (user && userProfile?.requirePasswordChange) {
+      await clearPasswordChangeRequirement(user.uid);
+      await refreshUserProfile();
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -100,6 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSchoolAccess,
     refreshUserProfile,
     getUserPrimarySchool,
+    markPasswordChangeComplete,
   };
 
   return (

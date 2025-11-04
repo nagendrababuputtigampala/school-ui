@@ -40,9 +40,23 @@ export function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const { getUserPrimarySchool, user, userProfile, loading: authLoading } = useAuth();
+
+  // Handle success message from password setup or other redirects
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.message) {
+      setSuccessMessage(state.message);
+      if (state.email) {
+        setEmail(state.email);
+      }
+      // Clear the state to prevent the message from showing again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   // Handle navigation after successful login and profile loading
   useEffect(() => {
@@ -62,40 +76,17 @@ export function LoginPage() {
     }
   }, [user, userProfile, authLoading, loading, getUserPrimarySchool, navigate, location]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    setLoading(true);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      
-      // The AuthContext will handle loading the user profile
-      // Navigation will happen in the useEffect when profile is loaded
-      
-    } catch (error: any) {
+      // The useEffect will handle navigation based on user profile
+    } catch (error) {
       console.error('Login error:', error);
-      
-      // Handle specific Firebase auth errors
-      switch (error.code) {
-        case 'auth/user-not-found':
-          setError('No account found with this email address.');
-          break;
-        case 'auth/wrong-password':
-          setError('Incorrect password. Please try again.');
-          break;
-        case 'auth/invalid-email':
-          setError('Please enter a valid email address.');
-          break;
-        case 'auth/user-disabled':
-          setError('This account has been disabled.');
-          break;
-        case 'auth/too-many-requests':
-          setError('Too many failed login attempts. Please try again later.');
-          break;
-        default:
-          setError('Failed to sign in. Please check your credentials and try again.');
-      }
+      setError('Invalid email or password');
       setLoading(false);
     }
   };
@@ -198,6 +189,16 @@ export function LoginPage() {
           </Box>
 
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+            {successMessage && (
+              <Alert 
+                severity="success" 
+                sx={{ mb: 3, borderRadius: 2 }}
+                onClose={() => setSuccessMessage('')}
+              >
+                {successMessage}
+              </Alert>
+            )}
+            
             {error && (
               <Alert 
                 severity="error" 

@@ -56,6 +56,7 @@ export function SchoolLayout() {
       
       <Box component="main" sx={{ flexGrow: 1, py: 4 }}>
         <Routes>
+          {/* Public routes - no authentication required */}
           <Route path="/" element={<HomePage onNavigate={handleNavigate} />} />
           <Route path="/home" element={<HomePage onNavigate={handleNavigate} />} />
           <Route path="/about" element={<AboutPage />} />
@@ -65,6 +66,8 @@ export function SchoolLayout() {
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          
+          {/* Protected admin route - authentication required */}
           <Route path="/admin" element={
             <ProtectedRoute requireSchoolAccess={true}>
               <AdminPage />

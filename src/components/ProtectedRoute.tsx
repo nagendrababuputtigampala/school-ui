@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Box, CircularProgress, Typography, Alert, Button } from '@mui/material';
-import { ProfileSetup } from './ProfileSetup';
+import { InitialSetup } from './InitialSetup';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -69,7 +69,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check if user profile exists (for new users)
   if (!userProfile && user) {
-    return <ProfileSetup />;
+    return <InitialSetup />;
   }
 
   // Check if user is inactive
@@ -93,6 +93,42 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           <Typography variant="body2">
             Your account is currently inactive and pending administrator approval. 
             You'll receive an email notification once your access is approved.
+          </Typography>
+        </Alert>
+        <Button 
+          variant="contained" 
+          onClick={() => window.location.href = '/login'}
+        >
+          Back to Login
+        </Button>
+      </Box>
+    );
+  }
+
+  // Check if user needs to change password (first-time login)
+  if (userProfile && userProfile.requirePasswordChange) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          gap: 2,
+          p: 3,
+        }}
+      >
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Password Change Required
+          </Typography>
+          <Typography variant="body2">
+            You need to set a new password before you can access the system. 
+            Please check your email for password reset instructions.
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
+            After setting your new password, please log in again.
           </Typography>
         </Alert>
         <Button 
