@@ -936,6 +936,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     principalPhoto: 'principalPhoto',
     yearEstablished: 'yearEstablished',
     students: 'students',
+    teachers: 'teachers',
     successRate: 'successRate',
   };
 
@@ -958,6 +959,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       homeHeroImages: 'No hero images uploaded yet',
       yearEstablished: 'Add the founding year',
       students: 'Add total enrolled students',
+      teachers: 'Add total teaching staff',
       successRate: 'Add success rate percentage',
     },
   };
@@ -980,6 +982,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       principalPhoto: 'Upload a friendly portrait of the principal (PNG or JPG).',
       yearEstablished: 'Use a four-digit year (e.g., 1998).',
       students: 'Example: 1500 or 2500+.',
+      teachers: 'Example: 85 or 120+.',
       successRate: 'Enter a percentage between 0 and 100.',
     },
   };
@@ -1186,6 +1189,9 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       case 'students':
         if (!trimmedValue) return null;
         return /^[\d+\s,]+$/.test(trimmedValue) ? null : 'Use digits or "+" only.';
+      case 'teachers':
+        if (!trimmedValue) return null;
+        return /^[\d+\s,]+$/.test(trimmedValue) ? null : 'Use digits or "+" only.';
       case 'successRate': {
         if (!trimmedValue) return null;
         const cleaned = trimmedValue.replace('%', '').trim();
@@ -1230,6 +1236,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     heroImages: normalizeHomeHeroImages(home?.heroImages),
     yearEstablished: home?.yearEstablished || '',
     students: home?.students || '',
+    teachers: home?.teachers || '',
     successRate: home?.successRate || '',
     journeyMilestones: sortJourneyMilestones(milestones).map((milestone) => ({
       id: milestone.id,
@@ -1344,18 +1351,29 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     }
   };
 
+  type SummaryGridOptions = {
+    columns?: Partial<Record<'sm' | 'md' | 'lg', number>>;
+  };
+
   const renderSummaryGrid = (
     section: 'home' | 'contact',
-    items: Array<{ key: string; title: string; icon: ReactElement; lines: string[] }>
+    items: Array<{ key: string; title: string; icon: ReactElement; lines: string[] }>,
+    options: SummaryGridOptions = {}
   ) => (
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: {
-          xs: '1fr',
-          sm: 'repeat(2, minmax(0, 1fr))',
-          lg: 'repeat(3, minmax(0, 1fr))',
-        },
+        gridTemplateColumns: (() => {
+          const template: Record<string, string> = {
+            xs: '1fr',
+            sm: `repeat(${options.columns?.sm ?? 2}, minmax(0, 1fr))`,
+          };
+          if (options.columns?.md) {
+            template.md = `repeat(${options.columns.md}, minmax(0, 1fr))`;
+          }
+          template.lg = `repeat(${options.columns?.lg ?? 3}, minmax(0, 1fr))`;
+          return template;
+        })(),
         gap: { xs: 2, sm: 2.5 },
       }}
     >
@@ -1791,6 +1809,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       principalPhoto: principalSection.image || homePage.principalPhoto || '',
       yearEstablished: statisticsSection.yearEstablished || schoolData.yearEstablished || '',
       students: statisticsSection.studentsCount || schoolData.studentsCount || '',
+      teachers: statisticsSection.teachersCount || schoolData.teachersCount || '',
       successRate: statisticsSection.successRate || schoolData.successRate || '',
       heroImages,
     });
@@ -3327,6 +3346,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
               const homeMetricsItems = [
                 { key: 'students', title: 'Students', icon: <Users fontSize='small' />, lines: getHomeDisplayLines('students') },
+                { key: 'teachers', title: 'Teachers', icon: <SupervisorAccount fontSize='small' />, lines: getHomeDisplayLines('teachers') },
                 { key: 'yearEstablished', title: 'Year Established', icon: <AccessTime fontSize='small' />, lines: getHomeDisplayLines('yearEstablished') },
                 { key: 'successRate', title: 'Success Rate', icon: <Trophy fontSize='small' />, lines: getHomeDisplayLines('successRate') },
               ];
@@ -3434,7 +3454,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                       )}
                     </AccordionSummary>
                     <AccordionDetails sx={accordionDetailsSx}>
-                      {renderSummaryGrid('home', homeMetricsItems)}
+                      {renderSummaryGrid('home', homeMetricsItems, { columns: { md: 4, lg: 4 } })}
                     </AccordionDetails>
                   </Accordion>
 

@@ -413,6 +413,7 @@ export interface AdminHomePagePayload {
   heroImages?: string[];
   yearEstablished: string;
   students: string;
+  teachers: string;
   successRate: string;
   journeyMilestones: AdminJourneyMilestone[];
 }
@@ -446,6 +447,7 @@ export async function updateHomePageContent(identifier: string, payload: AdminHo
       statisticsSection: {
         yearEstablished: payload.yearEstablished,
         studentsCount: payload.students,
+        teachersCount: payload.teachers,
         successRate: payload.successRate
       },
       timelineSection: (payload.journeyMilestones || []).map((milestone) => ({
