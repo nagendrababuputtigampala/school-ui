@@ -1580,46 +1580,21 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
                             display: 'block',
                           }}
                         />
-                        <Box
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleRemoveHomeHeroImage(url)}
+                          disabled={homeHeroImagesSaving || isSaving}
                           sx={{
                             position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            px: 1,
-                            py: 0.5,
+                            bottom: 6,
+                            right: 6,
                             bgcolor: 'rgba(0,0,0,0.55)',
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.75)' },
                           }}
                         >
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                            Image {index + 1}
-                          </Typography>
-                          <Stack direction="row" spacing={0.5} alignItems="center">
-                            <Button
-                              size="small"
-                              variant="text"
-                              component="a"
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              sx={{ color: '#fff', textTransform: 'none', px: 0.5 }}
-                            >
-                              View
-                            </Button>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleRemoveHomeHeroImage(url)}
-                              disabled={homeHeroImagesSaving || isSaving}
-                              sx={{ bgcolor: 'rgba(255,255,255,0.1)' }}
-                            >
-                              <Trash2 fontSize="small" />
-                            </IconButton>
-                          </Stack>
-                        </Box>
+                          <Trash2 fontSize="small" />
+                        </IconButton>
                       </Box>
                     ))}
                   </Box>
