@@ -119,6 +119,11 @@ const galleryCategoryLookup: Record<string, string> = (() => {
 const defaultGalleryCategory = 'Others';
 const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB limit for uploads
 
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const PHONE_REGEX = /^[\d+\-()\s]+$/;
+const GRADUATION_YEAR_REGEX = /^\d{4}$/;
+const LINKEDIN_URL_REGEX = /^https?:\/\//i;
+
 const resolveGalleryCategoryLabel = (value?: string, fallback?: string): string => {
   const attempt = (candidate?: string) => {
     if (!candidate) return null;
@@ -238,6 +243,12 @@ interface Achievement {
   schoolId?: string;
 }
 
+type AchievementFormErrors = {
+  title?: string;
+  description?: string;
+  date?: string;
+};
+
 interface StaffMember {
   id: string;
   name: string;
@@ -252,6 +263,17 @@ interface StaffMember {
   schoolId: string;
 }
 
+type StaffFormErrors = {
+  name?: string;
+  department?: string;
+  position?: string;
+  education?: string;
+  experience?: string;
+  specializations?: string;
+  email?: string;
+  phone?: string;
+};
+
 interface AlumniMember {
   id: string;
   name: string;
@@ -263,6 +285,12 @@ interface AlumniMember {
   location: string;
   linkedinUrl: string;
 }
+
+type AlumniFormErrors = {
+  name?: string;
+  graduationYear?: string;
+  linkedinUrl?: string;
+};
 
 interface Announcement {
   id: string;
@@ -279,6 +307,11 @@ interface Announcement {
   tags: string[];
 }
 
+type AnnouncementFormErrors = {
+  title?: string;
+  description?: string;
+};
+
 interface GalleryImage {
   id: string;
   title: string;
@@ -289,6 +322,12 @@ interface GalleryImage {
   videoUrl?: string;
   type?: string;
 }
+
+type GalleryFormErrors = {
+  title?: string;
+  description?: string;
+  videoUrl?: string;
+};
 
 interface JourneyMilestone {
   id: string;
@@ -345,11 +384,15 @@ export function SchoolAdminPanel() {
   const [announcementDialog, setAnnouncementDialog] = useState(false);
   const [journeyDialog, setJourneyDialog] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
+  const [achievementErrors, setAchievementErrors] = useState<AchievementFormErrors>({});
+  const [staffErrors, setStaffErrors] = useState<StaffFormErrors>({});
+  const [alumniErrors, setAlumniErrors] = useState<AlumniFormErrors>({});
+  const [galleryErrors, setGalleryErrors] = useState<GalleryFormErrors>({});
+  const [announcementErrors, setAnnouncementErrors] = useState<AnnouncementFormErrors>({});
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [editingAlumni, setEditingAlumni] = useState<AlumniMember | null>(null);
   const [editingGallery, setEditingGallery] = useState<GalleryImage | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-  const [tagInput, setTagInput] = useState<string>('');
   const [editingJourney, setEditingJourney] = useState<JourneyMilestone | null>(null);
 
   // Data states
@@ -982,7 +1025,13 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
         <Chip
           label={level || 'Level'}
           size="small"
-          sx={{ fontWeight: 600 }}
+          sx={{
+            fontWeight: 600,
+            color: 'text.primary',
+            bgcolor: 'transparent',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
         />
       );
     }
@@ -994,17 +1043,19 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
         icon={
           <IconComponent
             sx={{
-              color: 'inherit !important',
+              color: 'text.primary !important',
               fontSize: 18,
             }}
           />
         }
         sx={{
           fontWeight: 600,
-          backgroundColor: style.color,
-          color: '#fff',
+          backgroundColor: 'transparent',
+          color: 'text.primary',
+          border: '1px solid',
+          borderColor: 'divider',
           '& .MuiChip-icon': {
-            color: 'inherit !important',
+            color: 'text.primary !important',
           },
         }}
       />
@@ -2285,6 +2336,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
   // Achievement handlers
   const openAddAchievement = () => {
     resetAchievementPhotoSelection();
+    setAchievementErrors({});
     setEditingAchievement({
       id: '',
       title: '',
@@ -2300,6 +2352,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
   const openEditAchievement = (achievement: Achievement) => {
     resetAchievementPhotoSelection();
+    setAchievementErrors({});
     setEditingAchievement({ ...achievement });
     setAchievementDialog(true);
   };
@@ -2307,8 +2360,146 @@ const looksLikeGalleryItem = (value: any): boolean => {
   const closeAchievementDialog = () => {
     setAchievementDialog(false);
     setEditingAchievement(null);
+    setAchievementErrors({});
     resetAchievementPhotoSelection();
   };
+
+  const handleAchievementInputChange =
+    (field: keyof AchievementFormErrors) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { value } = event.target;
+
+      setEditingAchievement((prev) => (prev ? { ...prev, [field]: value } : prev));
+
+      setAchievementErrors((prev) => {
+        if (!prev[field]) {
+          return prev;
+        }
+        if (!value.trim()) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    };
+
+  const handleStaffInputChange =
+    <K extends keyof StaffFormErrors & keyof StaffMember>(field: K) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { value } = event.target;
+
+      setEditingStaff((prev) => (prev ? { ...prev, [field]: value } : prev));
+
+      setStaffErrors((prev) => {
+        if (!prev[field]) {
+          return prev;
+        }
+
+        const trimmed = value.trim();
+        let isValid = true;
+
+        if (field === 'email') {
+          isValid = !trimmed || EMAIL_REGEX.test(trimmed);
+        } else if (field === 'phone') {
+          isValid = !trimmed || PHONE_REGEX.test(trimmed);
+        } else {
+          isValid = trimmed.length > 0;
+        }
+
+        if (!isValid) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    };
+
+  const handleAlumniInputChange =
+    <K extends keyof AlumniFormErrors & keyof AlumniMember>(field: K) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { value } = event.target;
+
+      setEditingAlumni((prev) => (prev ? { ...prev, [field]: value } : prev));
+
+      setAlumniErrors((prev) => {
+        if (!prev[field]) {
+          return prev;
+        }
+
+        const trimmed = value.trim();
+        let isValid = true;
+
+        if (field === 'graduationYear') {
+          isValid = Boolean(trimmed) && GRADUATION_YEAR_REGEX.test(trimmed);
+        } else if (field === 'linkedinUrl') {
+          isValid = !trimmed || LINKEDIN_URL_REGEX.test(trimmed);
+        } else {
+          isValid = trimmed.length > 0;
+        }
+
+        if (!isValid) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    };
+
+  const handleGalleryInputChange =
+    <K extends keyof GalleryFormErrors & keyof GalleryImage>(field: K) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { value } = event.target;
+
+      setEditingGallery((prev) => (prev ? { ...prev, [field]: value } : prev));
+
+      setGalleryErrors((prev) => {
+        if (!prev[field]) {
+          return prev;
+        }
+
+        const trimmed = value.trim();
+        const isValid =
+          field === 'videoUrl' ? !trimmed || isValidYouTubeUrl(trimmed) : trimmed.length > 0;
+
+        if (!isValid) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    };
+
+  const handleAnnouncementInputChange =
+    <K extends keyof AnnouncementFormErrors & keyof Announcement>(field: K) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { value } = event.target;
+
+      setEditingAnnouncement((prev) => (prev ? { ...prev, [field]: value } : prev));
+
+      setAnnouncementErrors((prev) => {
+        if (!prev[field]) {
+          return prev;
+        }
+
+        const trimmed = value.trim();
+        const isValid = trimmed.length > 0;
+
+        if (!isValid) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    };
 
   const saveAchievement = async () => {
     if (!editingAchievement) return;
@@ -2317,10 +2508,24 @@ const looksLikeGalleryItem = (value: any): boolean => {
     const trimmedDescription = (editingAchievement.description || '').trim();
     const trimmedDate = (editingAchievement.date || '').trim();
 
-    if (!trimmedTitle || !trimmedDescription || !trimmedDate) {
-      showError('Achievement title, description, and date are required.');
+    const errors: AchievementFormErrors = {};
+
+    if (!trimmedTitle) {
+      errors.title = 'Title is required.';
+    }
+    if (!trimmedDescription) {
+      errors.description = 'Description is required.';
+    }
+    if (!trimmedDate) {
+      errors.date = 'Date is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAchievementErrors(errors);
       return;
     }
+
+    setAchievementErrors({});
 
     setIsSaving(true);
 
@@ -2436,6 +2641,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
   const openAddStaff = () => {
     resetStaffPhotoSelection();
+    setStaffErrors({});
     setEditingStaff({
       id: '',
       name: '',
@@ -2454,6 +2660,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
   const openEditStaff = (staff: StaffMember) => {
     resetStaffPhotoSelection();
+    setStaffErrors({});
     setEditingStaff({ ...staff });
     setStaffDialog(true);
   };
@@ -2461,6 +2668,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
   const closeStaffDialog = () => {
     setStaffDialog(false);
     setEditingStaff(null);
+    setStaffErrors({});
     resetStaffPhotoSelection();
   };
 
@@ -2476,33 +2684,27 @@ const looksLikeGalleryItem = (value: any): boolean => {
     const trimmedEmail = (editingStaff.email || '').trim();
     const trimmedPhone = (editingStaff.phone || '').trim();
 
-    if (
-      !trimmedName ||
-      !trimmedDepartment ||
-      !trimmedPosition ||
-      !trimmedEducation ||
-      !trimmedExperience ||
-      !trimmedSpecializations
-    ) {
-      showError('Name, department, position, education, experience, and specializations are required for staff members.');
+    const errors: StaffFormErrors = {};
+
+    if (!trimmedName) errors.name = 'Name is required.';
+    if (!trimmedDepartment) errors.department = 'Department is required.';
+    if (!trimmedPosition) errors.position = 'Position is required.';
+    if (!trimmedEducation) errors.education = 'Education is required.';
+    if (!trimmedExperience) errors.experience = 'Experience is required.';
+    if (!trimmedSpecializations) errors.specializations = 'Specializations are required.';
+    if (trimmedEmail && !EMAIL_REGEX.test(trimmedEmail)) {
+      errors.email = 'Enter a valid staff email address.';
+    }
+    if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
+      errors.phone = 'Use numbers and + - ( ) spaces only for staff phone numbers.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setStaffErrors(errors);
       return;
     }
 
-    if (trimmedEmail) {
-      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-      if (!emailRegex.test(trimmedEmail)) {
-        showError('Enter a valid staff email address.');
-        return;
-      }
-    }
-
-    if (trimmedPhone) {
-      const phoneRegex = /^[\d+\-()\s]+$/;
-      if (!phoneRegex.test(trimmedPhone)) {
-        showError('Use numbers and + - ( ) spaces only for staff phone numbers.');
-        return;
-      }
-    }
+    setStaffErrors({});
 
     setIsSaving(true);
 
@@ -2575,6 +2777,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
   const openAddAlumni = () => {
     resetAlumniPhotoSelection();
+    setAlumniErrors({});
     setEditingAlumni({
       id: '',
       name: '',
@@ -2591,6 +2794,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
   const openEditAlumni = (alumni: AlumniMember) => {
     resetAlumniPhotoSelection();
+    setAlumniErrors({});
     setEditingAlumni({ ...alumni });
     setAlumniDialog(true);
   };
@@ -2598,6 +2802,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
   const closeAlumniDialog = () => {
     setAlumniDialog(false);
     setEditingAlumni(null);
+    setAlumniErrors({});
     resetAlumniPhotoSelection();
   };
 
@@ -2612,20 +2817,28 @@ const looksLikeGalleryItem = (value: any): boolean => {
     const trimmedIndustry = (editingAlumni.industry || '').trim();
     const trimmedLocation = (editingAlumni.location || '').trim();
 
-    if (!trimmedName || !trimmedGraduationYear) {
-      showError('Name and graduation year are required for alumni entries.');
+    const errors: AlumniFormErrors = {};
+
+    if (!trimmedName) {
+      errors.name = 'Name is required.';
+    }
+
+    if (!trimmedGraduationYear) {
+      errors.graduationYear = 'Graduation year is required.';
+    } else if (!GRADUATION_YEAR_REGEX.test(trimmedGraduationYear)) {
+      errors.graduationYear = 'Enter a four-digit graduation year.';
+    }
+
+    if (trimmedLinkedIn && !LINKEDIN_URL_REGEX.test(trimmedLinkedIn)) {
+      errors.linkedinUrl = 'Enter a valid LinkedIn URL (include https://).';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAlumniErrors(errors);
       return;
     }
 
-    if (!/^\d{4}$/.test(trimmedGraduationYear)) {
-      showError('Enter a four-digit graduation year for alumni entries.');
-      return;
-    }
-
-    if (trimmedLinkedIn && !/^https?:\/\//i.test(trimmedLinkedIn)) {
-      showError('Enter a valid LinkedIn URL (include https://).');
-      return;
-    }
+    setAlumniErrors({});
 
     setIsSaving(true);
 
@@ -2693,6 +2906,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
   const openAddGalleryImage = () => {
     resetGalleryPhotoSelection();
+    setGalleryErrors({});
     setEditingGallery({
       id: '',
       title: '',
@@ -2708,6 +2922,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
 
   const openEditGalleryImage = (image: GalleryImage) => {
     resetGalleryPhotoSelection();
+    setGalleryErrors({});
     const normalizedImages = Array.isArray(image.images)
       ? image.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
       : [];
@@ -2724,6 +2939,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
   const closeGalleryDialog = () => {
     setGalleryDialog(false);
     setEditingGallery(null);
+    setGalleryErrors({});
     resetGalleryPhotoSelection();
   };
 
@@ -2737,15 +2953,26 @@ const looksLikeGalleryItem = (value: any): boolean => {
       : [];
     const trimmedVideoUrl = (editingGallery.videoUrl || '').trim();
 
-    if (!trimmedTitle || !trimmedDescription) {
-      showError('Gallery title and description are required.');
-      return;
+    const errors: GalleryFormErrors = {};
+
+    if (!trimmedTitle) {
+      errors.title = 'Title is required.';
+    }
+
+    if (!trimmedDescription) {
+      errors.description = 'Description is required.';
     }
 
     if (trimmedVideoUrl && !isValidYouTubeUrl(trimmedVideoUrl)) {
-      showError('Please enter a valid YouTube video link (e.g., https://youtu.be/...).');
+      errors.videoUrl = 'Please enter a valid YouTube video link (e.g., https://youtu.be/...).';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setGalleryErrors(errors);
       return;
     }
+
+    setGalleryErrors({});
 
     setIsSaving(true);
 
@@ -2822,6 +3049,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
   };
 
   const openAddAnnouncement = () => {
+    setAnnouncementErrors({});
     setEditingAnnouncement({
       id: '',
       title: '',
@@ -2837,18 +3065,16 @@ const looksLikeGalleryItem = (value: any): boolean => {
       tags: [],
     });
     setAnnouncementDialog(true);
-    setTagInput('');
   };
 
   const openEditAnnouncement = (announcement: Announcement) => {
-
+    setAnnouncementErrors({});
     setEditingAnnouncement({
       ...announcement,
       category: announcement.category || '',
       priority: (announcement.priority || 'medium').toLowerCase(),
       type: (announcement.type || 'announcement').toLowerCase(),
     });
-    setTagInput((announcement.tags || []).join(', '));
     setAnnouncementDialog(true);
   };
 
@@ -2859,10 +3085,22 @@ const looksLikeGalleryItem = (value: any): boolean => {
     const trimmedDescription = (editingAnnouncement.description || '').trim();
     const trimmedDate = (editingAnnouncement.date || '').trim();
 
-    if (!trimmedTitle || !trimmedDescription) {
-      showError('Announcement title and content are required.');
+    const errors: AnnouncementFormErrors = {};
+
+    if (!trimmedTitle) {
+      errors.title = 'Title is required.';
+    }
+
+    if (!trimmedDescription) {
+      errors.description = 'Description is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAnnouncementErrors(errors);
       return;
     }
+
+    setAnnouncementErrors({});
 
     const categories = normalizeAnnouncementCategoryList([
       editingAnnouncement.category,
@@ -3482,11 +3720,11 @@ const looksLikeGalleryItem = (value: any): boolean => {
                       {staffMembers.map((staff) => (
                         <TableRow key={staff.id}>
                           <TableCell>{staff.name}</TableCell>
+                          <TableCell>{staff.position}</TableCell>
+                          <TableCell>{staff.experience}</TableCell>
                           <TableCell>
                             <Chip sx={{ fontWeight: 600 }} label={staff.department} size="small" />
                           </TableCell>
-                          <TableCell>{staff.position}</TableCell>
-                          <TableCell>{staff.experience}</TableCell>
                           <TableCell>{staff.email}</TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
@@ -3768,7 +4006,6 @@ const looksLikeGalleryItem = (value: any): boolean => {
                         <TableCell sx={tableHeaderSx}>Pinned</TableCell>
                         <TableCell sx={tableHeaderSx}>Urgent</TableCell>
                         <TableCell sx={tableHeaderSx}>Author</TableCell>
-                        <TableCell sx={tableHeaderSx}>Tags</TableCell>
                         <TableCell sx={{ ...tableHeaderSx, textAlign: 'right' }}>
                           Actions
                         </TableCell>
@@ -3779,7 +4016,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
                       {/* No announcements */}
                       {announcements.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={8}>
+                          <TableCell colSpan={9}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -3875,27 +4112,6 @@ const looksLikeGalleryItem = (value: any): boolean => {
                               <Typography variant="body2" fontWeight={600}>
                                 {announcement.author}
                               </Typography>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                —
-                              </Typography>
-                            )}
-                          </TableCell>
-
-                          {/* Tags */}
-                          <TableCell>
-                            {announcement.tags && announcement.tags.length > 0 ? (
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {announcement.tags.map((tag, idx) => (
-                                  <Chip
-                                    key={idx}
-                                    label={tag}
-                                    size="small"
-                                    color="secondary"
-                                    variant="outlined"
-                                  />
-                                ))}
-                              </Box>
                             ) : (
                               <Typography variant="body2" color="text.secondary">
                                 —
@@ -4063,8 +4279,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                   label="Title"
                   required
                   value={editingAchievement.title}
-                  onChange={(e) => setEditingAchievement({ ...editingAchievement, title: e.target.value })}
+                  onChange={handleAchievementInputChange('title')}
                   placeholder="Achievement title"
+                  error={Boolean(achievementErrors.title)}
+                  helperText={achievementErrors.title}
                 />
                 <FormControl fullWidth>
                   <InputLabel id="achievement-level-label">Level</InputLabel>
@@ -4115,8 +4333,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 rows={3}
                 required
                 value={editingAchievement.description}
-                onChange={(e) => setEditingAchievement({ ...editingAchievement, description: e.target.value })}
+                onChange={handleAchievementInputChange('description')}
                 placeholder="Describe the achievement"
+                error={Boolean(achievementErrors.description)}
+                helperText={achievementErrors.description}
               />
               <TextField
                 fullWidth
@@ -4124,8 +4344,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 type="date"
                 required
                 value={editingAchievement.date}
-                onChange={(e) => setEditingAchievement({ ...editingAchievement, date: e.target.value })}
+                onChange={handleAchievementInputChange('date')}
                 InputLabelProps={{ shrink: true }}
+                error={Boolean(achievementErrors.date)}
+                helperText={achievementErrors.date}
               />
 
                {/* Image Upload Section */}
@@ -4246,8 +4468,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="Name"
                 required
                 value={editingStaff.name}
-                onChange={(e) => setEditingStaff({ ...editingStaff, name: e.target.value })}
+                onChange={handleStaffInputChange('name')}
                 placeholder="Full name"
+                error={Boolean(staffErrors.name)}
+                helperText={staffErrors.name}
               />
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
                 <TextField
@@ -4255,16 +4479,20 @@ const looksLikeGalleryItem = (value: any): boolean => {
                   label="Department"
                   required
                   value={editingStaff.department}
-                  onChange={(e) => setEditingStaff({ ...editingStaff, department: e.target.value })}
+                  onChange={handleStaffInputChange('department')}
                   placeholder="e.g., Mathematics"
+                  error={Boolean(staffErrors.department)}
+                  helperText={staffErrors.department}
                 />
                 <TextField
                   fullWidth
                   label="Position"
                   required
                   value={editingStaff.position}
-                  onChange={(e) => setEditingStaff({ ...editingStaff, position: e.target.value })}
+                  onChange={handleStaffInputChange('position')}
                   placeholder="e.g., Senior Teacher"
+                  error={Boolean(staffErrors.position)}
+                  helperText={staffErrors.position}
                 />
               </Box>
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
@@ -4273,16 +4501,20 @@ const looksLikeGalleryItem = (value: any): boolean => {
                   label="Experience"
                   required
                   value={editingStaff.experience}
-                  onChange={(e) => setEditingStaff({ ...editingStaff, experience: e.target.value })}
+                  onChange={handleStaffInputChange('experience')}
                   placeholder="e.g., 10 years"
+                  error={Boolean(staffErrors.experience)}
+                  helperText={staffErrors.experience}
                 />
                 <TextField
                   fullWidth
                   label="Education"
                   required
                   value={editingStaff.education}
-                  onChange={(e) => setEditingStaff({ ...editingStaff, education: e.target.value })}
+                  onChange={handleStaffInputChange('education')}
                   placeholder="e.g., M.Ed"
+                  error={Boolean(staffErrors.education)}
+                  helperText={staffErrors.education}
                 />
               </Box>
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
@@ -4290,15 +4522,19 @@ const looksLikeGalleryItem = (value: any): boolean => {
                   fullWidth
                   label="Email"
                   value={editingStaff.email}
-                  onChange={(e) => setEditingStaff({ ...editingStaff, email: e.target.value })}
+                  onChange={handleStaffInputChange('email')}
                   placeholder="name@school.edu"
+                  error={Boolean(staffErrors.email)}
+                  helperText={staffErrors.email}
                 />
                 <TextField
                   fullWidth
                   label="Phone"
                   value={editingStaff.phone}
-                  onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
+                  onChange={handleStaffInputChange('phone')}
                   placeholder="+1 555 123 4567"
+                  error={Boolean(staffErrors.phone)}
+                  helperText={staffErrors.phone}
                 />
               </Box>
               <TextField
@@ -4306,8 +4542,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="Specializations (comma separated)"
                 required
                 value={editingStaff.specializations}
-                onChange={(e) => setEditingStaff({ ...editingStaff, specializations: e.target.value })}
+                onChange={handleStaffInputChange('specializations')}
                 placeholder="Mathematics, Algebra"
+                error={Boolean(staffErrors.specializations)}
+                helperText={staffErrors.specializations}
               />
               <Stack spacing={1.5}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
@@ -4422,8 +4660,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="Name"
                 required
                 value={editingAlumni.name}
-                onChange={(e) => setEditingAlumni({ ...editingAlumni, name: e.target.value })}
+                onChange={handleAlumniInputChange('name')}
                 placeholder="Full name"
+                error={Boolean(alumniErrors.name)}
+                helperText={alumniErrors.name}
               />
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
                 <TextField
@@ -4431,9 +4671,11 @@ const looksLikeGalleryItem = (value: any): boolean => {
                   label="Graduation Year"
                   required
                   value={editingAlumni.graduationYear}
-                  onChange={(e) => setEditingAlumni({ ...editingAlumni, graduationYear: e.target.value })}
+                  onChange={handleAlumniInputChange('graduationYear')}
                   placeholder="e.g., 2010"
                   inputProps={{ inputMode: 'numeric', pattern: '\\d{4}' }}
+                  error={Boolean(alumniErrors.graduationYear)}
+                  helperText={alumniErrors.graduationYear}
                 />
                 <TextField
                   fullWidth
@@ -4471,8 +4713,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                   fullWidth
                   label="LinkedIn URL"
                   value={editingAlumni.linkedinUrl}
-                  onChange={(e) => setEditingAlumni({ ...editingAlumni, linkedinUrl: e.target.value })}
+                  onChange={handleAlumniInputChange('linkedinUrl')}
                   placeholder="https://linkedin.com/in/example"
+                  error={Boolean(alumniErrors.linkedinUrl)}
+                  helperText={alumniErrors.linkedinUrl}
                 />
               </Box>
               <Stack spacing={1.5}>
@@ -4588,8 +4832,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="Title"
                 required
                 value={editingGallery.title}
-                onChange={(e) => setEditingGallery({ ...editingGallery, title: e.target.value })}
+                onChange={handleGalleryInputChange('title')}
                 placeholder="Gallery item title"
+                error={Boolean(galleryErrors.title)}
+                helperText={galleryErrors.title}
               />
               <FormControl fullWidth>
                 <InputLabel id="gallery-category-label">Category</InputLabel>
@@ -4759,11 +5005,13 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="YouTube Video URL"
                 type="url"
                 value={editingGallery.videoUrl || ''}
-                onChange={(e) =>
-                  setEditingGallery({ ...editingGallery, videoUrl: e.target.value })
-                }
+                onChange={handleGalleryInputChange('videoUrl')}
                 placeholder="https://youtu.be/your-video"
-                helperText="Optional. Paste a YouTube link to feature alongside the images."
+                error={Boolean(galleryErrors.videoUrl)}
+                helperText={
+                  galleryErrors.videoUrl ||
+                  'Optional. Paste a YouTube link to feature alongside the images.'
+                }
               />
               <TextField
                 fullWidth
@@ -4772,8 +5020,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 rows={3}
                 required
                 value={editingGallery.description}
-                onChange={(e) => setEditingGallery({ ...editingGallery, description: e.target.value })}
+                onChange={handleGalleryInputChange('description')}
                 placeholder="Short description"
+                error={Boolean(galleryErrors.description)}
+                helperText={galleryErrors.description}
               />
             </Stack>
           )}
@@ -4799,6 +5049,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
         onClose={() => {
           setAnnouncementDialog(false);
           setEditingAnnouncement(null);
+          setAnnouncementErrors({});
         }}
         maxWidth="md"
         fullWidth
@@ -4816,10 +5067,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 label="Title"
                 required
                 value={editingAnnouncement.title}
-                onChange={(e) =>
-                  setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })
-                }
+                onChange={handleAnnouncementInputChange('title')}
                 placeholder="Announcement title"
+                error={Boolean(announcementErrors.title)}
+                helperText={announcementErrors.title}
               />
 
               {/* Description */}
@@ -4830,10 +5081,10 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 rows={3}
                 required
                 value={editingAnnouncement.description}
-                onChange={(e) =>
-                  setEditingAnnouncement({ ...editingAnnouncement, description: e.target.value })
-                }
+                onChange={handleAnnouncementInputChange('description')}
                 placeholder="Announcement details"
+                error={Boolean(announcementErrors.description)}
+                helperText={announcementErrors.description}
               />
 
               {/* Date + Category */}
@@ -4940,8 +5191,8 @@ const looksLikeGalleryItem = (value: any): boolean => {
                 </Select>
               </FormControl>
 
-              {/* Pinned + Urgent Switches */}
-              <Box sx={{ display: 'flex', gap: 3, mt: 1 }}>
+              {/* Pinned/Urgent toggles and author */}
+              <Box sx={{ display: 'flex', gap: 3, mt: 1, flexWrap: 'wrap' }}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -4973,9 +5224,8 @@ const looksLikeGalleryItem = (value: any): boolean => {
                   label="Mark as Urgent"
                 />
 
-                {/* Author */}
                 <TextField
-                  fullWidth
+                  sx={{ flex: 1, minWidth: 220 }}
                   label="Author"
                   value={editingAnnouncement.author || ''}
                   onChange={(e) =>
@@ -4986,28 +5236,6 @@ const looksLikeGalleryItem = (value: any): boolean => {
                   }
                   placeholder="Name of the person posting this announcement"
                 />
-
-                {/* Tags */}
-                <TextField
-                  fullWidth
-                  label="Tags"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onBlur={() => {
-                    const tagList = tagInput
-                      .split(',')
-                      .map((tag) => tag.trim())
-                      .filter((tag) => tag.length > 0);
-                    setEditingAnnouncement({
-                      ...editingAnnouncement,
-                      tags: tagList,
-                    });
-                  }}
-                  placeholder="Enter tags separated by commas (e.g. Exam, Holiday, Notice)"
-                  helperText="Use commas to separate multiple tags"
-                />
-
-
               </Box>
             </Stack>
           )}
@@ -5018,6 +5246,7 @@ const looksLikeGalleryItem = (value: any): boolean => {
             onClick={() => {
               setAnnouncementDialog(false);
               setEditingAnnouncement(null);
+              setAnnouncementErrors({});
             }}
             disabled={isSaving}
           >
