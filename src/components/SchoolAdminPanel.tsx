@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, ReactElement, ChangeEvent } from 'react';
+import imageCompression from 'browser-image-compression';
 import { useParams } from 'react-router-dom';
 import {
   fetchSchoolData,
@@ -118,6 +119,7 @@ const galleryCategoryLookup: Record<string, string> = (() => {
 
 const defaultGalleryCategory = 'Others';
 const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB limit for uploads
+const MAX_IMAGE_UPLOAD_MB = MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024);
 
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const PHONE_REGEX = /^[\d+\-()\s]+$/;
@@ -501,27 +503,27 @@ export function SchoolAdminPanel() {
       return;
     }
 
-    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-      showError('Image is too large. Please upload a file smaller than 5 MB.');
-      input.value = '';
-      return;
-    }
-
   if (!homeData) {
     showError('Home data is unavailable. Please refresh and try again.');
     input.value = '';
     return;
   }
 
+    const processedFile = await compressImageIfNeeded(file);
+    if (!processedFile) {
+      input.value = '';
+      return;
+    }
+
     const previousPhoto = homeData.principalPhoto || '';
 
     try {
-      setPrincipalPhotoFileName(file.name);
+      setPrincipalPhotoFileName(processedFile.name);
       setPrincipalPhotoUploading(true);
 
       const targetSchoolId = schoolId || 'educonnect';
       const folder = `schools/${targetSchoolId}`;
-      const { secureUrl } = await uploadImageToCloudinary(file, { folder });
+      const { secureUrl } = await uploadImageToCloudinary(processedFile, { folder });
 
       const updatedHome = { ...homeData, principalPhoto: secureUrl };
       setHomeData(updatedHome);
@@ -558,16 +560,12 @@ export function SchoolAdminPanel() {
       return;
     }
 
-    const invalidFile = files.find(
-      (file) => !file.type.startsWith('image/') || file.size > MAX_IMAGE_UPLOAD_BYTES
-    );
-    if (invalidFile) {
-      const reason = !invalidFile.type.startsWith('image/')
-        ? 'Please choose valid image files (PNG or JPG).'
-        : 'One or more images are larger than 5 MB.';
-      showError(reason);
-      input.value = '';
-      return;
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        showError('Please choose valid image files (PNG or JPG).');
+        input.value = '';
+        return;
+      }
     }
 
     const targetSchoolId = schoolId || 'educonnect';
@@ -582,8 +580,16 @@ export function SchoolAdminPanel() {
       const folder = `schools/${targetSchoolId}/home`;
       const uploadedUrls: string[] = [];
 
-      for (const file of files) {
-        const { secureUrl } = await uploadImageToCloudinary(file, { folder });
+      for (const originalFile of files) {
+        const processedFile = await compressImageIfNeeded(originalFile);
+        if (!processedFile) {
+          input.value = '';
+          setHomeHeroImagesSaving(false);
+          setHomeHeroUploadStatus('');
+          return;
+        }
+
+        const { secureUrl } = await uploadImageToCloudinary(processedFile, { folder });
         uploadedUrls.push(secureUrl);
       }
 
@@ -650,23 +656,23 @@ export function SchoolAdminPanel() {
       return;
     }
 
-    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-      showError('Image is too large. Please upload a file smaller than 5 MB.');
+    if (staffPhotoPreviewUrl) {
+      URL.revokeObjectURL(staffPhotoPreviewUrl);
+    }
+
+    const processedFile = await compressImageIfNeeded(file);
+    if (!processedFile) {
       input.value = '';
       return;
     }
 
-  if (staffPhotoPreviewUrl) {
-    URL.revokeObjectURL(staffPhotoPreviewUrl);
-  }
+    setStaffPhotoFileName(processedFile.name);
+    setPendingStaffPhotoFile(processedFile);
+    setStaffPhotoPreviewUrl(URL.createObjectURL(processedFile));
+    input.value = '';
+  };
 
-  setStaffPhotoFileName(file.name);
-  setPendingStaffPhotoFile(file);
-    setStaffPhotoPreviewUrl(URL.createObjectURL(file));
-  input.value = '';
-};
-
-const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const file = input.files?.[0];
     if (!file || !editingAchievement) {
@@ -679,21 +685,21 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       return;
     }
 
-    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-      showError('Image is too large. Please upload a file smaller than 5 MB.');
+    if (achievementPhotoPreviewUrl) {
+      URL.revokeObjectURL(achievementPhotoPreviewUrl);
+    }
+
+    const processedFile = await compressImageIfNeeded(file);
+    if (!processedFile) {
       input.value = '';
       return;
     }
 
-  if (achievementPhotoPreviewUrl) {
-    URL.revokeObjectURL(achievementPhotoPreviewUrl);
-  }
-
-  setAchievementPhotoFileName(file.name);
-  setPendingAchievementPhotoFile(file);
-    setAchievementPhotoPreviewUrl(URL.createObjectURL(file));
-  input.value = '';
-};
+    setAchievementPhotoFileName(processedFile.name);
+    setPendingAchievementPhotoFile(processedFile);
+    setAchievementPhotoPreviewUrl(URL.createObjectURL(processedFile));
+    input.value = '';
+  };
 
   const handleAlumniPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
@@ -708,19 +714,19 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
       return;
     }
 
-    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-      showError('Image is too large. Please upload a file smaller than 5 MB.');
-      input.value = '';
-      return;
-    }
-
     if (alumniPhotoPreviewUrl) {
       URL.revokeObjectURL(alumniPhotoPreviewUrl);
     }
 
-    setAlumniPhotoFileName(file.name);
-    setPendingAlumniPhotoFile(file);
-    setAlumniPhotoPreviewUrl(URL.createObjectURL(file));
+    const processedFile = await compressImageIfNeeded(file);
+    if (!processedFile) {
+      input.value = '';
+      return;
+    }
+
+    setAlumniPhotoFileName(processedFile.name);
+    setPendingAlumniPhotoFile(processedFile);
+    setAlumniPhotoPreviewUrl(URL.createObjectURL(processedFile));
     input.value = '';
   };
 
@@ -799,7 +805,7 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     }
   };
 
-  const handleGalleryPhotoSelect = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryPhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const files = input.files;
     if (!editingGallery || !files || files.length === 0) {
@@ -812,22 +818,23 @@ const handleAchievementPhotoSelect = async (event: ChangeEvent<HTMLInputElement>
     const newNames: string[] = [];
     let skipped = false;
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) {
         skipped = true;
-        return;
+        continue;
       }
-      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      const processedFile = await compressImageIfNeeded(file);
+      if (!processedFile) {
         skipped = true;
-        return;
+        continue;
       }
-      acceptedFiles.push(file);
-      newPreviews.push(URL.createObjectURL(file));
-      newNames.push(file.name);
-    });
+      acceptedFiles.push(processedFile);
+      newPreviews.push(URL.createObjectURL(processedFile));
+      newNames.push(processedFile.name);
+    }
 
     if (skipped) {
-      showError('Some files were skipped because they were not valid images under 5 MB.');
+      showError('Some files were skipped because they were not valid images or exceeded 5 MB.');
     }
 
     if (!acceptedFiles.length) {
@@ -2221,6 +2228,35 @@ const looksLikeGalleryItem = (value: any): boolean => {
     setSnackbarSeverity('error');
     setSnackbarMessage(message);
     setSnackbarOpen(true);
+  };
+
+  const compressImageIfNeeded = async (file: File): Promise<File | null> => {
+    if (file.size <= MAX_IMAGE_UPLOAD_BYTES) {
+      return file;
+    }
+
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: MAX_IMAGE_UPLOAD_MB,
+        maxWidthOrHeight: 2560,
+        useWebWorker: true,
+        initialQuality: 0.8,
+      });
+
+      if (compressed.size <= MAX_IMAGE_UPLOAD_BYTES) {
+        return new File([compressed], file.name, {
+          type: compressed.type || file.type,
+          lastModified: Date.now(),
+        });
+      }
+
+      showError('Image is too large even after compression. Please upload a file smaller than 5 MB.');
+    } catch (error) {
+      console.error('Image compression failed:', error);
+      showError('Failed to compress image. Please try a smaller file.');
+    }
+
+    return null;
   };
 
   const handleSnackbarClose = () => {
