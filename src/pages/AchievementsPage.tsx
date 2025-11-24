@@ -12,14 +12,10 @@ import {
   Tab,
   Paper,
   Avatar,
-  Button,
 } from '@mui/material';
 import {
   EmojiEvents,
   School,
-  Science,
-  Palette,
-  Group,
   Public,
   Star,
   TrendingUp,
@@ -72,140 +68,60 @@ export function AchievementsPage() {
     );
   }
 
-  // Get achievements from school data or use fallback
-  const getAchievements = () => {
+  // Get achievements from school data
+  const getAchievements = (): Achievement[] => {
     if (schoolData?.pages?.achievementsPage) {
-      const allAchievements: Achievement[] = [];
       const achievementsData = schoolData.pages.achievementsPage;
       
-      // Extract achievements from different sections
-      Object.keys(achievementsData).forEach(sectionKey => {
-        const section = achievementsData[sectionKey];
-        if (section.achievements && Array.isArray(section.achievements)) {
-          section.achievements.forEach((achievement: any, index: number) => {
-            allAchievements.push({
-              id: `${sectionKey}-${index}`,
-              title: achievement.title || '',
-              description: achievement.description || '',
-              category: sectionKey.replace('Section', '').toLowerCase(),
-              year: achievement.year || '2024',
-              level: achievement.level || 'school',
-              image: achievement.image || `https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400`,
-              participants: achievement.participants || '',
-              award: achievement.award || 'Achievement Award'
-            });
-          });
-        }
-      });
+      // Convert Firestore object format to array
+      const achievementsArray = Object.values(achievementsData);
       
-      return allAchievements;
+      return achievementsArray.map((achievement: any, index: number): Achievement => ({
+        id: achievement.id || `achievement-${index}`,
+        title: achievement.title,
+        description: achievement.description,
+        category: achievement.category,
+        year: achievement.year,
+        level: achievement.level,
+        image: achievement.images?.[0] || achievement.image,
+        participants: achievement.participants,
+        award: achievement.award
+      }));
     }
     
-    // Fallback achievements if no data from Firebase
-    return fallbackAchievements;
+    return [];
   };
 
-  const fallbackAchievements: Achievement[] = [
-    {
-      id: '1',
-      title: 'National Science Fair Champions',
-      description: 'Our robotics team won first place at the National Science Fair with their innovative environmental monitoring robot.',
-      category: 'science',
-      year: '2024',
-      level: 'national',
-      image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxyb2JvdGljcyUyMGNvbXBldGl0aW9ufGVufDF8fHx8MTc1OTMxNTQ5N3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      participants: 'Team of 6 students',
-      award: 'Gold Medal'
-    },
-    {
-      id: '2',
-      title: 'State Basketball Championship',
-      description: 'Our varsity basketball team secured the state championship title for the third consecutive year.',
-      category: 'sports',
-      year: '2024',
-      level: 'state',
-      image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXNrZXRiYWxsJTIwY2hhbXBpb25zaGlwfGVufDF8fHx8MTc1OTMxNTQ5OXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      participants: 'Varsity Team',
-      award: 'Championship Trophy'
-    },
-    {
-      id: '3',
-      title: 'International Math Olympiad',
-      description: 'Five of our students qualified for the International Math Olympiad, with two earning bronze medals.',
-      category: 'academic',
-      year: '2023',
-      level: 'international',
-      image: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYXRoJTIwY29tcGV0aXRpb258ZW58MXx8fHwxNzU5MzE1NTAyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      participants: '5 students',
-      award: '2 Bronze Medals'
-    },
-    {
-      id: '4',
-      title: 'Regional Art Exhibition Winner',
-      description: 'Our student artwork was featured prominently at the Regional Art Exhibition, winning multiple categories.',
-      category: 'arts',
-      year: '2023',
-      level: 'district',
-      image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnQlMjBleGhpYml0aW9ufGVufDF8fHx8MTc1OTMxNTUwNHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      participants: '12 student artists',
-      award: 'Best School Display'
-    },
-    {
-      id: '5',
-      title: 'Environmental Leadership Award',
-      description: 'Recognized for our outstanding commitment to environmental sustainability and green initiatives.',
-      category: 'community',
-      year: '2023',
-      level: 'state',
-      image: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbnZpcm9ubWVudGFsJTIwc3VzdGFpbmFiaWxpdHl8ZW58MXx8fHwxNzU5MzE1NTA3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      participants: 'Entire school community',
-      award: 'Green School Certification'
-    },
-    {
-      id: '6',
-      title: 'Drama Competition Excellence',
-      description: 'Our theater group won first place in the district drama competition with their original production.',
-      category: 'arts',
-      year: '2023',
-      level: 'district',
-      image: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0aGVhdGVyJTIwcGVyZm9ybWFuY2V8ZW58MXx8fHwxNzU5MzE1NTA5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      participants: 'Drama Club (25 students)',
-      award: 'First Place Trophy'
-    },
-    {
-      id: '7',
-      title: 'Coding Competition Victory',
-      description: 'Our computer science students dominated the regional coding competition, placing in top 3 positions.',
-      category: 'science',
-      year: '2022',
-      level: 'district',
-      image: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2RpbmclMjBjb21wZXRpdGlvbnxlbnwxfHx8fDE3NTkzMTU1MTF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      participants: '8 students',
-      award: '1st, 2nd, and 3rd Place'
-    },
-    {
-      id: '8',
-      title: 'Community Service Recognition',
-      description: 'Honored for exceptional community service contributions, including 1000+ hours of volunteer work.',
-      category: 'community',
-      year: '2022',
-      level: 'district',
-      image: 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb21tdW5pdHklMjBzZXJ2aWNlfGVufDF8fHx8MTc1OTMxNTUxNHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-      participants: '200+ students',
-      award: 'Service Excellence Award'
-    }
-  ];
+  const achievements: Achievement[] = getAchievements();
 
-  const achievements = getAchievements();
+  // Don't load component if no achievements data
+  if (!schoolData?.pages?.achievementsPage || achievements.length === 0) {
+    return null;
+  }
 
-  const categories = [
-    { id: 'all', label: 'All Achievements', icon: EmojiEvents },
-    { id: 'academic', label: 'Academic', icon: School },
-    { id: 'science', label: 'Science & Tech', icon: Science },
-    { id: 'sports', label: 'Sports', icon: EmojiEvents },
-    { id: 'arts', label: 'Arts & Culture', icon: Palette },
-    { id: 'community', label: 'Community', icon: Group },
-  ];
+  // Generate categories dynamically from achievements data
+  const getCategories = () => {
+    // Extract unique categories from achievements, filtering out null/undefined values
+    const uniqueCategories = Array.from(new Set(
+      achievements
+        .map(achievement => achievement.category)
+        .filter(category => category && typeof category === 'string')
+    ));
+    
+    const dynamicCategories = uniqueCategories.map(category => ({
+      id: category,
+      label: category.charAt(0).toUpperCase() + category.slice(1), // Capitalize first letter only
+      icon: EmojiEvents, // Use consistent icon for all categories
+    }));
+
+    // Always include "All Achievements" as the first option
+    return [
+      { id: 'all', label: 'All Achievements', icon: EmojiEvents },
+      ...dynamicCategories
+    ];
+  };
+
+  const categories = getCategories();
 
   const levels = [
     { id: 'international', label: 'International', color: '#d32f2f', icon: Public },
@@ -215,16 +131,32 @@ export function AchievementsPage() {
     { id: 'school', label: 'School', color: '#7b1fa2', icon: School },
   ];
 
-  const filteredAchievements = selectedCategory === 'all' 
+  const filteredAchievements: Achievement[] = selectedCategory === 'all' 
     ? achievements 
-    : achievements.filter((achievement: Achievement) => achievement.category === selectedCategory);
+    : achievements.filter((achievement) => achievement.category === selectedCategory);
 
-  const stats = [
+  const allStats = [
     { label: 'Total Awards', value: achievements.length, color: '#1976d2' },
-    { label: 'National Honors', value: achievements.filter((a: Achievement) => a.level === 'national').length, color: '#f57c00' },
-    { label: 'State Titles', value: achievements.filter((a: Achievement) => a.level === 'state').length, color: '#388e3c' },
-    { label: 'This Year', value: achievements.filter((a: Achievement) => a.year === '2024').length, color: '#d32f2f' },
+    { label: 'National Honors', value: achievements.filter((a) => a.level === 'national').length, color: '#f57c00' },
+    { label: 'State Titles', value: achievements.filter((a) => a.level === 'state').length, color: '#388e3c' },
+    { label: 'This Year', value: achievements.filter((a) => a.year === '2024').length, color: '#d32f2f' },
   ];
+
+  // Filter out stats with 0, null, or undefined values
+  const stats = allStats.filter(stat => 
+    stat.value !== null && 
+    stat.value !== undefined && 
+    stat.value > 0
+  );
+
+  // Dynamic grid sizing based on number of visible stats
+  const getGridSize = () => {
+    const count = stats.length;
+    if (count === 1) return { xs: 12, sm: 12, md: 6, lg: 4 }; // Single stat - centered
+    if (count === 2) return { xs: 6, sm: 6, md: 6, lg: 6 }; // Two stats - half width each
+    if (count === 3) return { xs: 6, sm: 4, md: 4, lg: 4 }; // Three stats - third width each
+    return { xs: 6, sm: 6, md: 3, lg: 3 }; // Four or more stats - quarter width each
+  };
 
   const getLevelChip = (level: string) => {
     const levelData = levels.find(l => l.id === level);
@@ -275,14 +207,6 @@ export function AchievementsPage() {
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 }, px: { xs: 1, md: 0 } }}>
           <Typography 
-            variant="h2" 
-            component="h1" 
-            gutterBottom
-            sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } }}
-          >
-            Our Achievements
-          </Typography>
-          <Typography 
             variant="h6" 
             color="text.secondary" 
             sx={{ 
@@ -296,13 +220,19 @@ export function AchievementsPage() {
         </Box>
 
         {/* Statistics */}
+        {stats.length > 0 && (
         <Grid 
           container 
           spacing={{ xs: 2, sm: 3, md: 4 }} 
-          sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
+          sx={{ 
+            mb: { xs: 5, md: 6 }, 
+            mx: 0, 
+            width: '100%',
+            justifyContent: stats.length < 4 ? 'center' : 'flex-start'
+          }}
         >
           {stats.map((stat, index) => (
-            <Grid size={{ xs: 6, sm: 6, md: 3, lg: 3 }} key={index}>
+            <Grid size={getGridSize()} key={stat.label}>
               <Card 
                 sx={{ 
                   textAlign: 'center', 
@@ -341,6 +271,7 @@ export function AchievementsPage() {
             </Grid>
           ))}
         </Grid>
+        )}
 
         {/* Category Tabs */}
         <Paper sx={{ mb: { xs: 3, md: 4 }, px: { xs: 1, md: 2 } }}>
@@ -373,7 +304,7 @@ export function AchievementsPage() {
             spacing={{ xs: 2, sm: 3, md: 4 }} 
             sx={{ mb: { xs: 5, md: 6 }, mx: 0, width: '100%' }}
           >
-            {filteredAchievements.map((achievement: Achievement) => (
+            {filteredAchievements.map((achievement) => (
               <Grid size={{ xs: 12, sm: 6, md: 6, lg: 4 }} key={achievement.id}>
                 <Card
                   sx={{
@@ -447,135 +378,6 @@ export function AchievementsPage() {
             </Typography>
           </Paper>
         )}
-
-        {/* Recognition Levels */}
-        <Paper sx={{ p: { xs: 3, md: 4 }, mb: { xs: 5, md: 6 }, backgroundColor: 'grey.50' }}>
-          <Typography 
-            variant="h4" 
-            component="h2" 
-            textAlign="center" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
-          >
-            Recognition Levels
-          </Typography>
-          <Typography
-            variant="body1"
-            textAlign="center"
-            color="text.secondary"
-            paragraph
-            sx={{ mb: { xs: 3, md: 4 }, maxWidth: '600px', mx: 'auto', fontSize: { xs: '0.95rem', md: '1rem' }, px: { xs: 1.5, md: 0 } }}
-          >
-            Our achievements span across multiple levels of recognition, from local competitions 
-            to international honors.
-          </Typography>
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              gap: { xs: 1, sm: 1.5, md: 2 }, 
-              justifyContent: 'center' 
-            }}
-          >
-            {levels.map((level) => {
-              const IconComponent = level.icon;
-              const count = achievements.filter((a: Achievement) => a.level === level.id).length;
-              return (
-                <Chip
-                  key={level.id}
-                  label={`${level.label} (${count})`}
-                  icon={<IconComponent />}
-                  sx={{
-                    backgroundColor: level.color,
-                    color: 'white',
-                    fontWeight: 'bold',
-                    px: { xs: 1.5, md: 2 },
-                    py: { xs: 0.75, md: 1 },
-                    fontSize: { xs: '0.7rem', md: '0.75rem' },
-                    '& .MuiChip-icon': { color: 'white', fontSize: { xs: '0.9rem', md: '1rem' } },
-                  }}
-                />
-              );
-            })}
-          </Box>
-        </Paper>
-
-        {/* Call to Action */}
-        <Paper
-          sx={{
-            p: { xs: 3.5, md: 6 },
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            width: '100%',
-            maxWidth: '100%',
-            boxSizing: 'border-box'
-          }}
-        >
-          <Typography 
-            variant="h3" 
-            component="h2" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' } }}
-          >
-            Be Part of Our Success Story
-          </Typography>
-          <Typography 
-            variant="h6" 
-            paragraph 
-            sx={{ 
-              maxWidth: '700px', 
-              mx: 'auto', 
-              opacity: 0.9,
-              fontSize: { xs: '1rem', md: '1.15rem' },
-              px: { xs: 1.5, md: 0 }
-            }}
-          >
-            Join our community of achievers and unlock your potential. With dedicated faculty, 
-            world-class facilities, and a culture of excellence, your success story starts here.
-          </Typography>
-          <Box 
-            sx={{ 
-              mt: { xs: 3, md: 4 }, 
-              display: 'flex', 
-              justifyContent: 'center', 
-              gap: { xs: 1.5, md: 2 }, 
-              flexWrap: 'wrap'
-            }}
-          >
-            <Button
-              variant="contained"
-              size="large"
-              sx={{
-                backgroundColor: 'white',
-                color: 'primary.main',
-                fontSize: { xs: '0.8rem', md: '0.9rem' },
-                px: { xs: 2, md: 3 },
-                py: { xs: 1, md: 1.25 },
-                '&:hover': { backgroundColor: 'grey.100' },
-              }}
-            >
-              Apply Now
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              sx={{
-                borderColor: 'white',
-                color: 'white',
-                fontSize: { xs: '0.8rem', md: '0.9rem' },
-                px: { xs: 2, md: 3 },
-                py: { xs: 1, md: 1.25 },
-                '&:hover': {
-                  borderColor: 'grey.300',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                },
-              }}
-            >
-              Schedule Visit
-            </Button>
-          </Box>
-        </Paper>
       </Box>
       </Container>
     </Box>

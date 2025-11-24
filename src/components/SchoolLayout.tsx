@@ -2,8 +2,10 @@ import React from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { Box, CircularProgress, Alert, Container } from '@mui/material';
 import { useSchool } from '../contexts/SchoolContext';
+import { ProtectedRoute } from './ProtectedRoute';
 import { SimpleNav } from './SimpleNav';
 import { Footer } from './Footer';
+import { ScrollToTop } from './ScrollToTop';
 import { HomePage } from '../pages/HomePage';
 import { AchievementsPage } from '../pages/AchievementsPage';
 import { StaffDirectoryPage } from '../pages/StaffDirectoryPage';
@@ -12,6 +14,7 @@ import { GalleryPage } from '../pages/GalleryPage';
 import { AnnouncementsPage } from '../pages/AnnouncementsPage';
 import ContactPage from '../pages/ContactPage';
 import { AboutPage } from '../pages/AboutPage';
+import { AdminPage } from '../pages/AdminPage';
 
 export function SchoolLayout() {
   const { schoolData, loading, error } = useSchool();
@@ -53,6 +56,7 @@ export function SchoolLayout() {
       
       <Box component="main" sx={{ flexGrow: 1, py: 4 }}>
         <Routes>
+          {/* Public routes - no authentication required */}
           <Route path="/" element={<HomePage onNavigate={handleNavigate} />} />
           <Route path="/home" element={<HomePage onNavigate={handleNavigate} />} />
           <Route path="/about" element={<AboutPage />} />
@@ -62,10 +66,18 @@ export function SchoolLayout() {
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          
+          {/* Protected admin route - authentication required */}
+          <Route path="/admin" element={
+            <ProtectedRoute requireSchoolAccess={true}>
+              <AdminPage />
+            </ProtectedRoute>
+          } />
         </Routes>
       </Box>
       
       <Footer />
+      <ScrollToTop />
     </>
   );
 }

@@ -4,7 +4,10 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { SnackbarProvider } from 'notistack';
 import { SchoolProvider } from './contexts/SchoolContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { SchoolLayout } from './components/SchoolLayout';
+import { LoginPage } from './pages/LoginPage';
+import { SetPasswordPage } from './pages/SetPasswordPage';
 
 const theme = createTheme({
   palette: {
@@ -96,24 +99,33 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <SnackbarProvider maxSnack={3}>
-        <Router>
-          <Routes>
-            {/* Default route - redirect to default school */}
-            <Route path="/" element={<Navigate to="/school/educonnect" replace />} />
-            
-            {/* School-specific routes */}
-            <Route path="/school/:schoolId/*" element={
-              <SchoolProvider>
-                <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-                  <SchoolLayout />
-                </Box>
-              </SchoolProvider>
-            } />
-            
-            {/* Fallback route */}
-            <Route path="*" element={<Navigate to="/school/educonnect" replace />} />
-          </Routes>
-        </Router>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* Login route */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Password setup routes - handle both custom and Firebase auth URLs */}
+              <Route path="/set-password" element={<SetPasswordPage />} />
+              <Route path="/__/auth/action" element={<SetPasswordPage />} />
+              
+              {/* Default route - redirect to default school */}
+              <Route path="/" element={<Navigate to="/school/educonnect" replace />} />
+              
+              {/* School-specific routes - public by default, admin protected */}
+              <Route path="/school/:schoolId/*" element={
+                <SchoolProvider>
+                  <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                    <SchoolLayout />
+                  </Box>
+                </SchoolProvider>
+              } />
+              
+              {/* Fallback route */}
+              <Route path="*" element={<Navigate to="/school/educonnect" replace />} />
+            </Routes>
+          </Router>
+        </AuthProvider>
       </SnackbarProvider>
     </ThemeProvider>
   );
