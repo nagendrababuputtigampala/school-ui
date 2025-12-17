@@ -240,7 +240,7 @@ export function GalleryPage() {
               px: { xs: 1, md: 0 }
             }}
           >
-            Explore memorable moments, achievements, and daily life at EduConnect through our photo and video gallery. 
+            Explore memorable moments, achievements, and daily life at {schoolData?.name || 'our school'} through our photo and video gallery. 
             From academic achievements to cultural celebrations, sports victories to artistic expressions.
           </Typography>
         </Box>
